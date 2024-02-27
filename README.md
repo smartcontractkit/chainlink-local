@@ -12,7 +12,37 @@ To get started:
 
 Chainlink Local is a set of smart contracts and scripts that aims to enable the development of Chainlink-enabled smart contracts within a local blockchain environment.
 
-To use it, you will need to port `src/ccip`, `src/shared` and `src/interfaces` folders into your Foundry or Hardhat project, either manually or by installing them by running `npm install git+https://github.com/smartcontractkit/chainlink-local.git`
+To use it, you will need to port `src/ccip`, `src/shared` and `src/interfaces` folders into your Foundry or Hardhat project, either manually or by installing them by running:
+
+```
+npm install git+https://github.com/smartcontractkit/chainlink-local.git
+```
+
+Note that if you are using @chainlink/local with Hardhat, your `hardhat.config` file should contain the following:
+
+```ts
+import { HardhatUserConfig } from "hardhat/config";
+import "@nomicfoundation/hardhat-toolbox";
+
+const config: HardhatUserConfig = {
+  solidity: {
+    version: "0.8.19",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 1,
+      },
+    },
+  },
+  networks: {
+    hardhat: {
+      allowUnlimitedContractSize: true,
+    },
+  },
+};
+
+export default config;
+```
 
 Then, import `CCIPLocalSimulator.sol` inside your tests or scripts, for example:
 
@@ -22,7 +52,7 @@ Then, import `CCIPLocalSimulator.sol` inside your tests or scripts, for example:
 pragma solidity ^0.8.19;
 
 import {Test, console2} from "forge-std/Test.sol";
-import {CCIPLocalSimulator} from "@chainlink/local/ccip/CCIPLocalSimulator.sol";
+import {CCIPLocalSimulator} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
 
 contract Demo is Test {
     CCIPLocalSimulator public ccipLocalSimulator;
