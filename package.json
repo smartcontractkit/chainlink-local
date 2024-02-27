@@ -1,5 +1,18 @@
 {
-  "name": "chainlink-local",
+  "name": "@chainlink/local",
+  "description": "Chainlink Local Simulator",
+  "version": "0.0.0",
+  "files": [
+    "contracts/**/*.sol",
+    "!contracts/test/**/*"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/smartcontractkit/chainlink-local.git"
+  },
+  "keywords": [
+    "chainlink"
+  ],
   "scripts": {
     "hardhat-compile": "npx hardhat compile",
     "forge-compile": "forge build",
