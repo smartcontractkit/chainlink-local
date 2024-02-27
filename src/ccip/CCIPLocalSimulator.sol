@@ -24,7 +24,8 @@ contract CCIPLocalSimulator {
 
     WETH9 immutable wrappedNative;
     LinkToken immutable linkToken;
-    Router immutable router;
+    Router immutable sourceRouter;
+    Router immutable destinationRouter;
     ARMProxy immutable armProxy;
     ARM immutable arm;
     EVM2EVMOnRamp immutable evm2EvmOnRamp;
@@ -61,7 +62,11 @@ contract CCIPLocalSimulator {
         );
         armProxy = new ARMProxy(address(arm));
 
-        router = new Router(address(wrappedNative), address(armProxy));
+        sourceRouter = new Router(address(wrappedNative), address(armProxy));
+        destinationRouter = new Router(
+            address(wrappedNative),
+            address(armProxy)
+        );
 
         address[] memory priceUpdaters = new address[](1);
         priceUpdaters[0] = address(this);
@@ -88,7 +93,7 @@ contract CCIPLocalSimulator {
 
         EVM2EVMOnRamp.DynamicConfig memory dynamicConfig = EVM2EVMOnRamp
             .DynamicConfig(
-                address(router),
+                address(sourceRouter), // router
                 1, // maxNumberOfTokensPerMsg
                 350000, // destGasOverhead
                 16, // destGasPerPayloadByte
@@ -206,7 +211,7 @@ contract CCIPLocalSimulator {
             address(this), // ccipLocalSimulator
             MockEvm2EvmOffRamp.DynamicConfig(
                 604800, // permissionLessExecutionThresholdSeconds (1 week)
-                address(router), // router
+                address(destinationRouter), // router
                 address(priceRegistry), // priceRegistry
                 1, // maxNumberOfTokensPerMsg
                 30000, // maxDataBytes
@@ -223,14 +228,21 @@ contract CCIPLocalSimulator {
             CHAIN_SELECTOR,
             address(evm2EvmOnRamp)
         );
+
+        sourceRouter.applyRampUpdates(
+            onRampUpdates,
+            new Router.OffRamp[](0), // offRampRemoves
+            new Router.OffRamp[](0) // offRampAdds
+        );
+
         Router.OffRamp[] memory offRampAdds = new Router.OffRamp[](1);
         offRampAdds[0] = Router.OffRamp(
             CHAIN_SELECTOR,
             address(mockEvm2EvmOffRamp)
         );
 
-        router.applyRampUpdates(
-            onRampUpdates,
+        destinationRouter.applyRampUpdates(
+            new Router.OnRamp[](0), // onRampUpdates
             new Router.OffRamp[](0), // offRampRemoves
             offRampAdds
         );
@@ -276,10 +288,10 @@ contract CCIPLocalSimulator {
             IERC20 token = IERC20(message.tokenAmounts[i].token);
             uint256 amount = message.tokenAmounts[i].amount;
             token.safeTransferFrom(msg.sender, address(this), amount);
-            token.approve(address(router), amount);
+            token.approve(address(sourceRouter), amount);
         }
 
-        messageId = IRouterClient(router).ccipSend(
+        messageId = IRouterClient(sourceRouter).ccipSend(
             destinationChainSelector,
             message
         );
@@ -329,20 +341,20 @@ contract CCIPLocalSimulator {
     function isChainSupported(
         uint64 chainSelector
     ) external view returns (bool supported) {
-        supported = router.isChainSupported(chainSelector);
+        supported = sourceRouter.isChainSupported(chainSelector);
     }
 
     function getSupportedTokens(
         uint64 chainSelector
     ) external view returns (address[] memory tokens) {
-        tokens = router.getSupportedTokens(chainSelector);
+        tokens = sourceRouter.getSupportedTokens(chainSelector);
     }
 
     function getFee(
         uint64 destinationChainSelector,
         Client.EVM2AnyMessage memory message
     ) external view returns (uint256 fee) {
-        fee = router.getFee(destinationChainSelector, message);
+        fee = sourceRouter.getFee(destinationChainSelector, message);
     }
 
     function DOCUMENTATION()
@@ -361,7 +373,7 @@ contract CCIPLocalSimulator {
         return (
             CHAIN_SELECTOR,
             Router(address(this)),
-            router,
+            destinationRouter,
             wrappedNative,
             linkToken,
             ccipBnM,
