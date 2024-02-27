@@ -1,0 +1,15 @@
+{
+  "name": "@chainlink/local",
+  "description": "Chainlink Local Simulator",
+  "version": "0.0.0",
+  "files": [
+    "**/*.sol"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/smartcontractkit/chainlink-local.git"
+  },
+  "keywords": [
+    "chainlink"
+  ]
+}
