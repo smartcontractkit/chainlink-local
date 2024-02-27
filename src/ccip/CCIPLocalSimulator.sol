@@ -315,12 +315,12 @@ contract CCIPLocalSimulator {
 
         Internal.EVM2EVMMessage memory evm2EvmMessage = Internal.EVM2EVMMessage(
                 CHAIN_SELECTOR, // sourceChainSelector
-                tx.origin, //sender
+                msg.sender, //sender
                 address(uint160(decodedReceiver)), // receiver
                 evm2EvmOnRamp.getExpectedNextSequenceNumber(), //sequenceNumber
                 _fromBytes(message.extraArgs).gasLimit, // gasLimit
                 false, // strict; DEPRECATED
-                evm2EvmOnRamp.getSenderNonce(tx.origin), // nonce
+                evm2EvmOnRamp.getSenderNonce(msg.sender), // nonce
                 message.feeToken == address(0)
                     ? address(wrappedNative)
                     : address(linkToken), // feeToken
