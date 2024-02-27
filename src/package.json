@@ -3,7 +3,8 @@
   "description": "Chainlink Local Simulator",
   "version": "0.0.0",
   "files": [
-    "**/*.sol"
+    "contracts/**/*.sol",
+    "!contracts/test/**/*"
   ],
   "repository": {
     "type": "git",
