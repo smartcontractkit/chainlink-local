@@ -12,13 +12,29 @@ To get started:
 
 Chainlink Local is a set of smart contracts and scripts that aims to enable the development of Chainlink-enabled smart contracts within a local blockchain environment.
 
+#### Step 1
+
 To use it, you will need to port `src/ccip`, `src/shared` and `src/interfaces` folders into your Foundry or Hardhat project, either manually or by installing them by running:
 
 ```
 npm install git+https://github.com/smartcontractkit/chainlink-local.git
 ```
 
-Note that if you are using @chainlink/local with Hardhat, your `hardhat.config` file should contain the following:
+<details>
+<summary> Note for Foundry  </summary>
+
+If you installed the project using the above command you should set remappings to:
+
+
+```shell
+@chainlink/local/=node_modules/@chainlink/local
+```
+</details>
+
+<details>
+<summary>Note for Hardhat</summary>
+
+To use `@chainlink/local` your `hardhat.config` file should contain the following:
 
 ```ts
 import { HardhatUserConfig } from "hardhat/config";
@@ -43,6 +59,10 @@ const config: HardhatUserConfig = {
 
 export default config;
 ```
+
+</details>
+
+#### Step 2
 
 Then, import `CCIPLocalSimulator.sol` inside your tests or scripts, for example:
 
