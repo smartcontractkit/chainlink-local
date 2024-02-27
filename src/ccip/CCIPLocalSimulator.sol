@@ -350,6 +350,7 @@ contract CCIPLocalSimulator {
         view
         returns (
             uint64 chainSelector_,
+            Router sourceRouter_,
             Router destinationRouter_,
             WETH9 wrappedNative_,
             LinkToken linkToken_,
@@ -359,6 +360,7 @@ contract CCIPLocalSimulator {
     {
         return (
             CHAIN_SELECTOR,
+            Router(address(this)),
             router,
             wrappedNative,
             linkToken,

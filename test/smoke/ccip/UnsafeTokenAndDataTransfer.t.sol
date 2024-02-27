@@ -18,6 +18,7 @@ contract UnsafeTokenAndDataTransferTest is Test {
 
         (
             uint64 chainSelector_,
+            Router sourceRouter_,
             Router destinationRouter_,
             ,
             LinkToken linkToken_,
@@ -27,7 +28,7 @@ contract UnsafeTokenAndDataTransferTest is Test {
 
         chainSelector = chainSelector_;
         ccipBnM = ccipBnM_;
-        address sourceRouter = address(ccipLocalSimulator);
+        address sourceRouter = address(sourceRouter_);
         address linkToken = address(linkToken_);
         address destinationRouter = address(destinationRouter_);
 

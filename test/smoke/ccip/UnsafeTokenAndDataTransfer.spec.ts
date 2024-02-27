@@ -10,6 +10,7 @@ describe("CCIPSender_Unsafe", function () {
 
         const config: {
             chainSelector_: bigint;
+            sourceRouter_: string;
             destinationRouter_: string;
             wrappedNative_: string;
             linkToken_: string;
@@ -18,7 +19,7 @@ describe("CCIPSender_Unsafe", function () {
         } = await localSimulator.DOCUMENTATION();
 
         const CCIPSender_UnsafeFactory = await ethers.getContractFactory("CCIPSender_Unsafe");
-        const CCIPSender_Unsafe = await CCIPSender_UnsafeFactory.deploy(config.linkToken_, localSimulator.target);
+        const CCIPSender_Unsafe = await CCIPSender_UnsafeFactory.deploy(config.linkToken_, config.sourceRouter_);
 
         const CCIPReceiver_UnsafeFactory = await ethers.getContractFactory("CCIPReceiver_Unsafe");
         const CCIPReceiver_Unsafe = await CCIPReceiver_UnsafeFactory.deploy(config.destinationRouter_);

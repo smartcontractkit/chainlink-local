@@ -8,6 +8,7 @@ async function main() {
 
     const config: {
         chainSelector_: bigint;
+        sourceRouter_: string;
         destinationRouter_: string;
         wrappedNative_: string;
         linkToken_: string;
@@ -16,7 +17,7 @@ async function main() {
     } = await localSimulator.DOCUMENTATION();
 
     const CCIPSender_UnsafeFactory = await ethers.getContractFactory("CCIPSender_Unsafe");
-    const CCIPSender_Unsafe = await CCIPSender_UnsafeFactory.deploy(config.linkToken_, localSimulator.target);
+    const CCIPSender_Unsafe = await CCIPSender_UnsafeFactory.deploy(config.linkToken_, config.sourceRouter_);
 
     console.log("Deployed CCIPSender_Unsafe to: ", CCIPSender_Unsafe.target);
 
