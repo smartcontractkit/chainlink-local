@@ -19,4 +19,9 @@ interface ICCIPLocalSimulator {
             BurnMintERC677Helper ccipBnM_,
             BurnMintERC677Helper ccipLnM_
         );
+
+    function requestLinkFromFaucet(
+        address to,
+        uint256 amount
+    ) external returns (bool success);
 }

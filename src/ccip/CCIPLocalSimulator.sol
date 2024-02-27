@@ -381,6 +381,13 @@ contract CCIPLocalSimulator {
         );
     }
 
+    function requestLinkFromFaucet(
+        address to,
+        uint256 amount
+    ) external returns (bool success) {
+        success = linkToken.transfer(to, amount);
+    }
+
     /// @dev Convert the extra args bytes into a struct
     /// @param extraArgs The extra args bytes
     /// @return The extra args struct
