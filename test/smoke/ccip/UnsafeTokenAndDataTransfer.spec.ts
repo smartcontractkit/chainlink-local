@@ -51,7 +51,7 @@ describe("CCIPSender_Unsafe", function () {
         expect(ccipReceiverUnsafeBalanceAfter).to.deep.equal(ccipReceiverUnsafeBalanceBefore + amountToSend);
 
         const received = await CCIPReceiver_Unsafe.text();
-        expect(received).to.deep.equal(textToSend);
+        expect(received).to.equal(textToSend);
     });
 });
 
