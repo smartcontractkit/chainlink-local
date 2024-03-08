@@ -18,14 +18,15 @@ import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.s
 import {IRouterClient} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IRouterClient.sol";
 import {IERC20} from "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.0/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.0/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IAny2EVMMessageReceiver} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IAny2EVMMessageReceiver.sol";
+import {CallWithExactGas} from "@chainlink/contracts-ccip/src/v0.8/shared/call/CallWithExactGas.sol";
 
 contract CCIPLocalSimulator {
     using SafeERC20 for IERC20;
 
     WETH9 immutable wrappedNative;
     LinkToken immutable linkToken;
-    Router immutable sourceRouter;
-    Router immutable destinationRouter;
+    Router immutable router;
     ARMProxy immutable armProxy;
     ARM immutable arm;
     EVM2EVMOnRamp immutable evm2EvmOnRamp;
@@ -40,6 +41,14 @@ contract CCIPLocalSimulator {
 
     error CCIPLocalSimulator_InvalidExtraArgsTag();
     error CCIPLocalSimulator_InvalidAddress(bytes);
+    error CCIPLocalSimulator__OnlyOffRamp();
+
+    event MessageExecuted(
+        bytes32 messageId,
+        uint64 sourceChainSelector,
+        address offRamp,
+        bytes32 calldataHash
+    );
 
     constructor() {
         wrappedNative = new WETH9();
@@ -62,11 +71,7 @@ contract CCIPLocalSimulator {
         );
         armProxy = new ARMProxy(address(arm));
 
-        sourceRouter = new Router(address(wrappedNative), address(armProxy));
-        destinationRouter = new Router(
-            address(wrappedNative),
-            address(armProxy)
-        );
+        router = new Router(address(wrappedNative), address(armProxy));
 
         address[] memory priceUpdaters = new address[](1);
         priceUpdaters[0] = address(this);
@@ -93,7 +98,7 @@ contract CCIPLocalSimulator {
 
         EVM2EVMOnRamp.DynamicConfig memory dynamicConfig = EVM2EVMOnRamp
             .DynamicConfig(
-                address(sourceRouter), // router
+                address(router), // router
                 1, // maxNumberOfTokensPerMsg
                 350000, // destGasOverhead
                 16, // destGasPerPayloadByte
@@ -211,7 +216,7 @@ contract CCIPLocalSimulator {
             address(this), // ccipLocalSimulator
             MockEvm2EvmOffRamp.DynamicConfig(
                 604800, // permissionLessExecutionThresholdSeconds (1 week)
-                address(destinationRouter), // router
+                address(this), // router
                 address(priceRegistry), // priceRegistry
                 1, // maxNumberOfTokensPerMsg
                 30000, // maxDataBytes
@@ -229,20 +234,14 @@ contract CCIPLocalSimulator {
             address(evm2EvmOnRamp)
         );
 
-        sourceRouter.applyRampUpdates(
-            onRampUpdates,
-            new Router.OffRamp[](0), // offRampRemoves
-            new Router.OffRamp[](0) // offRampAdds
-        );
-
         Router.OffRamp[] memory offRampAdds = new Router.OffRamp[](1);
         offRampAdds[0] = Router.OffRamp(
             CHAIN_SELECTOR,
             address(mockEvm2EvmOffRamp)
         );
 
-        destinationRouter.applyRampUpdates(
-            new Router.OnRamp[](0), // onRampUpdates
+        router.applyRampUpdates(
+            onRampUpdates,
             new Router.OffRamp[](0), // offRampRemoves
             offRampAdds
         );
@@ -288,10 +287,10 @@ contract CCIPLocalSimulator {
             IERC20 token = IERC20(message.tokenAmounts[i].token);
             uint256 amount = message.tokenAmounts[i].amount;
             token.safeTransferFrom(msg.sender, address(this), amount);
-            token.approve(address(sourceRouter), amount);
+            token.approve(address(router), amount);
         }
 
-        messageId = IRouterClient(sourceRouter).ccipSend(
+        messageId = IRouterClient(router).ccipSend(
             destinationChainSelector,
             message
         );
@@ -341,20 +340,54 @@ contract CCIPLocalSimulator {
     function isChainSupported(
         uint64 chainSelector
     ) external view returns (bool supported) {
-        supported = sourceRouter.isChainSupported(chainSelector);
+        supported = router.isChainSupported(chainSelector);
     }
 
     function getSupportedTokens(
         uint64 chainSelector
     ) external view returns (address[] memory tokens) {
-        tokens = sourceRouter.getSupportedTokens(chainSelector);
+        tokens = router.getSupportedTokens(chainSelector);
     }
 
     function getFee(
         uint64 destinationChainSelector,
         Client.EVM2AnyMessage memory message
     ) external view returns (uint256 fee) {
-        fee = sourceRouter.getFee(destinationChainSelector, message);
+        fee = router.getFee(destinationChainSelector, message);
+    }
+
+    function routeMessage(
+        Client.Any2EVMMessage calldata message,
+        uint16 gasForCallExactCheck,
+        uint256 gasLimit,
+        address receiver
+    ) external returns (bool success, bytes memory retData, uint256 gasUsed) {
+        if (msg.sender != address(mockEvm2EvmOffRamp))
+            revert CCIPLocalSimulator__OnlyOffRamp();
+
+        // We encode here instead of the offRamps to constrain specifically what functions
+        // can be called from the router.
+        bytes memory data = abi.encodeWithSelector(
+            IAny2EVMMessageReceiver.ccipReceive.selector,
+            message
+        );
+
+        (success, retData, gasUsed) = CallWithExactGas
+            ._callWithExactGasSafeReturnData(
+                data,
+                receiver,
+                gasLimit,
+                gasForCallExactCheck,
+                Internal.MAX_RET_BYTES
+            );
+
+        emit MessageExecuted(
+            message.messageId,
+            message.sourceChainSelector,
+            msg.sender,
+            keccak256(data)
+        );
+        return (success, retData, gasUsed);
     }
 
     function DOCUMENTATION()
@@ -373,7 +406,7 @@ contract CCIPLocalSimulator {
         return (
             CHAIN_SELECTOR,
             Router(address(this)),
-            destinationRouter,
+            Router(address(this)),
             wrappedNative,
             linkToken,
             ccipBnM,

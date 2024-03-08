@@ -25,10 +25,10 @@ npm install git+https://github.com/smartcontractkit/chainlink-local.git
 
 If you installed the project using the above command you should set remappings to:
 
-
 ```shell
 @chainlink/local/=node_modules/@chainlink/local
 ```
+
 </details>
 
 <details>
@@ -113,3 +113,7 @@ And also recreated test examples in Foundry from the [Official Chainlink Documen
 - [Token Transferor](./test/smoke/ccip/TokenTransferor.t.sol)
 - [Programmable Token Transfers](./test/smoke/ccip/ProgrammableTokenTransfers.t.sol)
 - [Programmable Token Transfers - Defensive Example](./test/smoke/ccip/ProgrammableDefensiveTokenTransfers.t.sol)
+
+> [!IMPORTANT]
+>
+> Currently, for gas-heavy examples, simulator can produce false negative tests. If you see the `ReceiverError(0x37c3be29)` error, that means that `gasLeft()` for the completion of test is smaller than the cross-chain message's `gasLimit`
