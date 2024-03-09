@@ -109,10 +109,10 @@ You can check our current examples for reference:
 - [Unsafe Token And Data Transfer Test in Foundry](./test/smoke/ccip/UnsafeTokenAndDataTransfer.t.sol)
 - [Unsafe Token And Data Transfer Test in Hardhat](./test/smoke/ccip/UnsafeTokenAndDataTransfer.spec.ts)
 - [Unsafe Token And Data Transfer Script in Hardhat](./scripts/UnsafeTokenAndDataTransfer.ts)
+- [Unsafe Token Transfer With Native Coin in Foundry](./test/smoke/ccip/PayWithNative.t.sol)
 
 And also recreated test examples in Foundry from the [Official Chainlink Documentation](https://docs.chain.link/ccip):
 
 - [Token Transferor](./test/smoke/ccip/TokenTransferor.t.sol)
 - [Programmable Token Transfers](./test/smoke/ccip/ProgrammableTokenTransfers.t.sol)
 - [Programmable Token Transfers - Defensive Example](./test/smoke/ccip/ProgrammableDefensiveTokenTransfers.t.sol)
-

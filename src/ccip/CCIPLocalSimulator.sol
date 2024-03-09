@@ -148,7 +148,7 @@ contract CCIPLocalSimulator {
             0 // rate
         );
         EVM2EVMOnRamp.FeeTokenConfigArgs[]
-            memory feeTokenConfigs = new EVM2EVMOnRamp.FeeTokenConfigArgs[](2);
+            memory feeTokenConfigs = new EVM2EVMOnRamp.FeeTokenConfigArgs[](3);
         feeTokenConfigs[0] = EVM2EVMOnRamp.FeeTokenConfigArgs(
             address(linkToken), // token
             0, // networkFeeUSDCents
@@ -158,6 +158,13 @@ contract CCIPLocalSimulator {
         );
         feeTokenConfigs[1] = EVM2EVMOnRamp.FeeTokenConfigArgs(
             address(wrappedNative), // token
+            0, // networkFeeUSDCents
+            0, // gasMultiplierWeiPerEth
+            0, // premiumMultiplierWeiPerEth
+            true // enabled
+        );
+        feeTokenConfigs[2] = EVM2EVMOnRamp.FeeTokenConfigArgs(
+            address(0), // token
             0, // networkFeeUSDCents
             0, // gasMultiplierWeiPerEth
             0, // premiumMultiplierWeiPerEth
@@ -247,14 +254,15 @@ contract CCIPLocalSimulator {
         );
 
         Internal.TokenPriceUpdate[]
-            memory tokenPriceUpdates = new Internal.TokenPriceUpdate[](4);
+            memory tokenPriceUpdates = new Internal.TokenPriceUpdate[](5);
         tokenPriceUpdates[0] = Internal.TokenPriceUpdate(
             address(wrappedNative), // sourceToken
             1 // usdPerToken
         );
-        tokenPriceUpdates[1] = Internal.TokenPriceUpdate(address(linkToken), 1);
-        tokenPriceUpdates[2] = Internal.TokenPriceUpdate(address(ccipBnM), 1);
+        tokenPriceUpdates[1] = Internal.TokenPriceUpdate(address(0), 1);
+        tokenPriceUpdates[2] = Internal.TokenPriceUpdate(address(linkToken), 1);
         tokenPriceUpdates[3] = Internal.TokenPriceUpdate(address(ccipBnM), 1);
+        tokenPriceUpdates[4] = Internal.TokenPriceUpdate(address(ccipBnM), 1);
         Internal.GasPriceUpdate[]
             memory gasPriceUpdates = new Internal.GasPriceUpdate[](1);
         gasPriceUpdates[0] = Internal.GasPriceUpdate(CHAIN_SELECTOR, 0);
