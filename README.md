@@ -100,7 +100,9 @@ contract Demo is Test {
 }
 ```
 
-This project is a combination of Foundry and Hardhat development environments, so you could technically try the local simulator here with much less friction. Just develop (or reuse) client smart contracts from `src/test/ccip` folder and create a new test file under the `test` folder, or a new script file under the `scripts` folder.
+> [!IMPORTANT]
+>
+> Currently, for gas-heavy examples, simulator can produce false negative tests. If you see the `ReceiverError(0x37c3be29)` error, that means that `gasLeft()` for the completion of test is smaller than the cross-chain message's `gasLimit`
 
 You can check our current examples for reference:
 
@@ -114,6 +116,3 @@ And also recreated test examples in Foundry from the [Official Chainlink Documen
 - [Programmable Token Transfers](./test/smoke/ccip/ProgrammableTokenTransfers.t.sol)
 - [Programmable Token Transfers - Defensive Example](./test/smoke/ccip/ProgrammableDefensiveTokenTransfers.t.sol)
 
-> [!IMPORTANT]
->
-> Currently, for gas-heavy examples, simulator can produce false negative tests. If you see the `ReceiverError(0x37c3be29)` error, that means that `gasLeft()` for the completion of test is smaller than the cross-chain message's `gasLimit`
