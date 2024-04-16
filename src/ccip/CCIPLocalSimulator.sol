@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.19;
+pragma solidity ^0.8.19;
 
 import {WETH9} from "../shared/WETH9.sol";
 import {LinkToken} from "../shared/LinkToken.sol";
