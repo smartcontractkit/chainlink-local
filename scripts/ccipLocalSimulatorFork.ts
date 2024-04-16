@@ -2,10 +2,10 @@ import { ethers } from 'hardhat';
 import { TransactionReceipt } from 'ethers';
 import { setBalance } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 
-import RouterAbi from "@chainlink/contracts-ccip/abi/v0.8/Router.json"
-import LinkTokenAbi from "@chainlink/contracts-ccip/abi/v0.8/LinkToken.json"
-import EVM2EVMOnRampAbi from "@chainlink/contracts-ccip/abi/v0.8/EVM2EVMOnRamp.json"
-import EVM2EVMOffRampAbi from "@chainlink/contracts-ccip/abi/v0.8/EVM2EVMOffRamp.json"
+import RouterAbi from "../abi/Router.json"
+import LinkTokenAbi from "../abi/LinkToken.json"
+import EVM2EVMOnRampAbi from "../abi/EVM2EVMOnRamp.json"
+import EVM2EVMOffRampAbi from "../abi/EVM2EVMOffRamp.json"
 
 export type Evm2EvmMessage = {
     sourceChainSelector: bigint,
