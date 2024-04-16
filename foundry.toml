@@ -1,10 +1,10 @@
 [profile.default]
 src = 'src'
 out = 'out'
-libs = ['node_modules', 'lib']
+libs = ['lib']
 test = 'test'
 cache_path = 'cache_forge'
 remappings = [
-    '@chainlink/contracts-ccip/=node_modules/@chainlink/contracts-ccip',
+    '@chainlink/contracts-ccip/=lib/ccip/contracts/',
     '@chainlink/local/src/=src/',
 ]

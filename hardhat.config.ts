@@ -7,20 +7,7 @@ import "@nomicfoundation/hardhat-foundry";
 dotenv.config()
 
 const config: HardhatUserConfig = {
-  solidity: {
-    version: "0.8.19",
-    settings: {
-      optimizer: {
-        enabled: true,
-        runs: 1,
-      },
-    },
-  },
-  networks: {
-    hardhat: {
-      allowUnlimitedContractSize: true
-    }
-  },
+  solidity: "0.8.19",
   paths: {
     sources: './src'
   },

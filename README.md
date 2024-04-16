@@ -1,70 +1,28 @@
 ## Chainlink Local
 
-To get started:
-
-- Clone this repo.
-- Run `npm i && forge install` to install dependencies.
-- Run `npx hardhat test` to run Hardhat tests.
-- Run `forge test` to run Foundry tests.
-- Optionally, try Hardhat scripting by running `npx hardhat run ./scripts/UnsafeTokenAndDataTransfer.ts`
-
-### Usage
-
 Chainlink Local is a set of smart contracts and scripts that aims to enable the development of Chainlink-enabled smart contracts within a local blockchain environment.
 
-#### Step 1
+### Installation
 
-To use it, you will need to port `src/ccip`, `src/shared` and `src/interfaces` folders into your Foundry or Hardhat project, either manually or by installing them by running:
+Install the package by running:
+
+#### Foundry (git)
+
+```
+forge install smartcontractkit/chainlink-local
+```
+
+and the set remappings to: `@chainlink/local/=lib/chainlink-local/` in either `remmapings.txt` or `foundry.toml` file
+
+#### Hardhat (npm)
 
 ```
 npm install git+https://github.com/smartcontractkit/chainlink-local.git
 ```
 
-<details>
-<summary> Note for Foundry  </summary>
+### Usage
 
-If you installed the project using the above command you should set remappings to:
-
-```shell
-@chainlink/local/=node_modules/@chainlink/local
-```
-
-</details>
-
-<details>
-<summary>Note for Hardhat</summary>
-
-To use `@chainlink/local` your `hardhat.config` file should contain the following:
-
-```ts
-import { HardhatUserConfig } from "hardhat/config";
-import "@nomicfoundation/hardhat-toolbox";
-
-const config: HardhatUserConfig = {
-  solidity: {
-    version: "0.8.19",
-    settings: {
-      optimizer: {
-        enabled: true,
-        runs: 1,
-      },
-    },
-  },
-  networks: {
-    hardhat: {
-      allowUnlimitedContractSize: true,
-    },
-  },
-};
-
-export default config;
-```
-
-</details>
-
-#### Step 2
-
-Then, import `CCIPLocalSimulator.sol` inside your tests or scripts, for example:
+Import `CCIPLocalSimulator.sol` inside your tests or scripts, for example:
 
 ```solidity
 // test/demo.t.sol
@@ -100,10 +58,6 @@ contract Demo is Test {
 }
 ```
 
-> [!IMPORTANT]
->
-> Currently, for gas-heavy examples, simulator can produce false negative tests. If you see the `ReceiverError(0x37c3be29)` error, that means that `gasLeft()` for the completion of test is smaller than the cross-chain message's `gasLimit`
-
 You can check our current examples for reference:
 
 - [Unsafe Token And Data Transfer Test in Foundry](./test/smoke/ccip/UnsafeTokenAndDataTransfer.t.sol)
@@ -116,3 +70,13 @@ And also recreated test examples in Foundry from the [Official Chainlink Documen
 - [Token Transferor](./test/smoke/ccip/TokenTransferor.t.sol)
 - [Programmable Token Transfers](./test/smoke/ccip/ProgrammableTokenTransfers.t.sol)
 - [Programmable Token Transfers - Defensive Example](./test/smoke/ccip/ProgrammableDefensiveTokenTransfers.t.sol)
+
+### Build & Test
+
+To get started:
+
+- Clone this repo.
+- Run `npm i && forge install` to install dependencies.
+- Run `npx hardhat test` to run Hardhat tests.
+- Run `forge test` to run Foundry tests.
+- Optionally, try Hardhat scripting by running `npx hardhat run ./scripts/UnsafeTokenAndDataTransfer.ts`
