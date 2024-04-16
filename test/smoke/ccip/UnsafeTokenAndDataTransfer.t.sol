@@ -4,7 +4,7 @@ pragma solidity ^0.8.19;
 import {Test, console2} from "forge-std/Test.sol";
 import {CCIPSender_Unsafe} from "../../../src/test/ccip/CCIPSender_Unsafe.sol";
 import {CCIPReceiver_Unsafe} from "../../../src/test/ccip/CCIPReceiver_Unsafe.sol";
-import {CCIPLocalSimulator, Router, LinkToken, BurnMintERC677Helper} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
+import {CCIPLocalSimulator, IRouterClient, LinkToken, BurnMintERC677Helper} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
 
 contract UnsafeTokenAndDataTransferTest is Test {
     CCIPSender_Unsafe public sender;
@@ -18,8 +18,8 @@ contract UnsafeTokenAndDataTransferTest is Test {
 
         (
             uint64 chainSelector_,
-            Router sourceRouter_,
-            Router destinationRouter_,
+            IRouterClient sourceRouter_,
+            IRouterClient destinationRouter_,
             ,
             LinkToken linkToken_,
             BurnMintERC677Helper ccipBnM_,

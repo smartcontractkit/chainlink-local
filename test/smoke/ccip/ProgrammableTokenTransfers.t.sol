@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import {Test, console2} from "forge-std/Test.sol";
 import {ProgrammableTokenTransfers} from "../../../src/test/ccip/ProgrammableTokenTransfers.sol";
-import {CCIPLocalSimulator, Router, LinkToken, BurnMintERC677Helper} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
+import {CCIPLocalSimulator, IRouterClient, LinkToken, BurnMintERC677Helper} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
 
 contract ProgrammableTokenTransfersTest is Test {
     ProgrammableTokenTransfers public sender;
@@ -17,8 +17,8 @@ contract ProgrammableTokenTransfersTest is Test {
         ccipLocalSimulator = new CCIPLocalSimulator();
         (
             uint64 chainSelector_,
-            Router sourceRouter,
-            Router destinationRouter,
+            IRouterClient sourceRouter,
+            IRouterClient destinationRouter,
             ,
             LinkToken linkToken,
             BurnMintERC677Helper ccipBnM_,

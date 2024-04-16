@@ -4,7 +4,7 @@ pragma solidity ^0.8.19;
 import {Test, console2} from "forge-std/Test.sol";
 import {Ping} from "../../../src/test/ccip/Ping.sol";
 import {Pong} from "../../../src/test/ccip/Pong.sol";
-import {CCIPLocalSimulator, Router, LinkToken} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
+import {CCIPLocalSimulator, IRouterClient, LinkToken} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
 
 contract PingPongTest is Test {
     CCIPLocalSimulator public ccipLocalSimulator;
@@ -18,8 +18,8 @@ contract PingPongTest is Test {
         ccipLocalSimulator = new CCIPLocalSimulator();
         (
             uint64 chainSelector_,
-            Router sourceRouter,
-            Router destinationRouter,
+            IRouterClient sourceRouter,
+            IRouterClient destinationRouter,
             ,
             LinkToken linkToken,
             ,

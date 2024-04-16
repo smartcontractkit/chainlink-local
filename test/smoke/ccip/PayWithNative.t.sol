@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import {Test, console2} from "forge-std/Test.sol";
 import {BasicTokenSender} from "../../../src/test/ccip/BasicTokenSender.sol";
-import {CCIPLocalSimulator, Router, BurnMintERC677Helper} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
+import {CCIPLocalSimulator, IRouterClient, BurnMintERC677Helper} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
 import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
 
 contract PayWithNativeTest is Test {
@@ -11,7 +11,7 @@ contract PayWithNativeTest is Test {
     BasicTokenSender public sender;
     uint64 chainSelector;
     BurnMintERC677Helper ccipBnM;
-    Router sourceRouter;
+    IRouterClient sourceRouter;
     address alice;
     address bob;
 
@@ -19,7 +19,7 @@ contract PayWithNativeTest is Test {
         ccipLocalSimulator = new CCIPLocalSimulator();
         (
             uint64 chainSelector_,
-            Router sourceRouter_,
+            IRouterClient sourceRouter_,
             ,
             ,
             ,
