@@ -12,9 +12,9 @@ import {EnumerableMapAddresses} from "@chainlink/contracts-ccip/src/v0.8/shared/
 import {RateLimiter} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/RateLimiter.sol";
 import {USDPriceWith18Decimals} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/USDPriceWith18Decimals.sol";
 import {AggregateRateLimiter} from "@chainlink/contracts-ccip/src/v0.8/ccip/AggregateRateLimiter.sol";
-import {IERC20} from "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.0/contracts/token/ERC20/IERC20.sol";
-import {Address} from "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.0/contracts/utils/Address.sol";
-import {ERC165Checker} from "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.0/contracts/utils/introspection/ERC165Checker.sol";
+import {IERC20} from "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/IERC20.sol";
+import {Address} from "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/utils/Address.sol";
+import {ERC165Checker} from "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/utils/introspection/ERC165Checker.sol";
 
 contract MockEvm2EvmOffRamp is AggregateRateLimiter {
     using EnumerableMapAddresses for EnumerableMapAddresses.AddressToAddressMap;

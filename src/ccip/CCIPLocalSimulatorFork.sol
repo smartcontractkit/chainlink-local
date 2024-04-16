@@ -3,10 +3,11 @@ pragma solidity 0.8.19;
 
 import {Test, Vm} from "forge-std/Test.sol";
 import {Register} from "./Register.sol";
-import {Internal, Router} from "./CCIPLocalSimulator.sol";
+import {Router} from "@chainlink/contracts-ccip/src/v0.8/ccip/Router.sol";
+import {Internal} from "@chainlink/contracts-ccip/src/v0.8/ccip/onRamp/EVM2EVMOnRamp.sol";
 import {EVM2EVMOffRamp} from "@chainlink/contracts-ccip/src/v0.8/ccip/offRamp/EVM2EVMOffRamp.sol";
 import {IERC20} from
-    "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.0/contracts/token/ERC20/IERC20.sol";
+    "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/IERC20.sol";
 
 // @notice Works with Foundry only
 contract CCIPLocalSimulatorFork is Test {

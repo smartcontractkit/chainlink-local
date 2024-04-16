@@ -39,7 +39,7 @@ contract ProgrammableTokenTransfersTest is Test {
         ccipBnM = ccipBnM_;
     }
 
-    function testSmoke() public {
+    function testProgrammableTokenTransfer() public {
         uint256 amountToSend = 0.001 ether;
         uint256 amountForFees = 1 ether;
         string memory textToSend = "Hello World";

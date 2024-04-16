@@ -6,11 +6,11 @@ import {OwnerIsCreator} from "@chainlink/contracts-ccip/src/v0.8/shared/access/O
 import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
 import {CCIPReceiver} from "@chainlink/contracts-ccip/src/v0.8/ccip/applications/CCIPReceiver.sol";
 import {IERC20} from
-    "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.0/contracts/token/ERC20/IERC20.sol";
+    "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from
-    "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.0/contracts/token/ERC20/utils/SafeERC20.sol";
+    "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/utils/SafeERC20.sol";
 import {EnumerableMap} from
-    "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.0/contracts/utils/structs/EnumerableMap.sol";
+    "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/utils/structs/EnumerableMap.sol";
 
 /**
  * THIS IS AN EXAMPLE CONTRACT THAT USES HARDCODED VALUES FOR CLARITY.
@@ -37,9 +37,8 @@ contract ProgrammableDefensiveTokenTransfers is CCIPReceiver, OwnerIsCreator {
     error MessageNotFailed(bytes32 messageId);
 
     // Example error code, could have many different error codes.
-    enum ErrorCode
-    // RESOLVED is first so that the default value is resolved.
-    {
+    enum ErrorCode {
+        // RESOLVED is first so that the default value is resolved.
         RESOLVED,
         // Could have any number of error codes here.
         FAILED
@@ -58,7 +57,8 @@ contract ProgrammableDefensiveTokenTransfers is CCIPReceiver, OwnerIsCreator {
     // The token amount that was transferred.
     // the token address used to pay CCIP fees.
     // The fees paid for sending the message.
-    event MessageSent( // The unique ID of the CCIP message.
+    // The unique ID of the CCIP message.
+    event MessageSent(
         bytes32 indexed messageId,
         uint64 indexed destinationChainSelector,
         address receiver,
@@ -75,7 +75,8 @@ contract ProgrammableDefensiveTokenTransfers is CCIPReceiver, OwnerIsCreator {
     // The text that was received.
     // The token address that was transferred.
     // The token amount that was transferred.
-    event MessageReceived( // The unique ID of the CCIP message.
+    // The unique ID of the CCIP message.
+    event MessageReceived(
         bytes32 indexed messageId,
         uint64 indexed sourceChainSelector,
         address sender,
@@ -309,9 +310,7 @@ contract ProgrammableDefensiveTokenTransfers is CCIPReceiver, OwnerIsCreator {
 
         // Calculate the actual number of items to return (can't exceed total length or requested limit)
         uint256 returnLength = (offset + limit > length) ? length - offset : limit;
-        FailedMessage[] memory failedMessages = new FailedMessage[](
-            returnLength
-        );
+        FailedMessage[] memory failedMessages = new FailedMessage[](returnLength);
 
         // Adjust loop to respect pagination (start at offset, end at offset + limit or total length)
         for (uint256 i = 0; i < returnLength; i++) {

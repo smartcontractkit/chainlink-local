@@ -33,7 +33,7 @@ contract TokenTransferorTest is Test {
         ccipBnM = ccipBnM_;
     }
 
-    function testSmoke() public {
+    function testTokenTransfer() public {
         uint256 amountToSend = 0.001 ether;
         uint256 amountForFees = 1 ether;
         address receiver = msg.sender;

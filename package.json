@@ -28,6 +28,6 @@
     "hardhat": "^2.20.1"
   },
   "dependencies": {
-    "@chainlink/contracts-ccip": "^1.2.1"
+    "@chainlink/contracts-ccip": "^1.4.0"
   }
 }

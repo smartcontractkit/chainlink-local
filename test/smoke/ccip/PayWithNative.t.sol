@@ -3,7 +3,8 @@ pragma solidity ^0.8.19;
 
 import {Test, console2} from "forge-std/Test.sol";
 import {BasicTokenSender} from "../../../src/test/ccip/BasicTokenSender.sol";
-import {CCIPLocalSimulator, Router, BurnMintERC677Helper, Client} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
+import {CCIPLocalSimulator, Router, BurnMintERC677Helper} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
+import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
 
 contract PayWithNativeTest is Test {
     CCIPLocalSimulator public ccipLocalSimulator;
