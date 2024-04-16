@@ -3,14 +3,19 @@ pragma solidity 0.8.19;
 
 import {Test, Vm} from "forge-std/Test.sol";
 import {Register} from "./Register.sol";
-import {Internal, Router} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
+import {Internal, Router} from "./CCIPLocalSimulator.sol";
 import {EVM2EVMOffRamp} from "@chainlink/contracts-ccip/src/v0.8/ccip/offRamp/EVM2EVMOffRamp.sol";
+import {IERC20} from
+    "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.0/contracts/token/ERC20/IERC20.sol";
 
 // @notice Works with Foundry only
 contract CCIPLocalSimulatorFork is Test {
     event CCIPSendRequested(Internal.EVM2EVMMessage message);
 
     Register immutable i_register;
+    address constant LINK_FAUCET = 0x4281eCF07378Ee595C564a59048801330f3084eE;
+
+    mapping(bytes32 messageId => bool isProcessed) internal s_processedMessages;
 
     constructor() {
         vm.recordLogs();
@@ -25,7 +30,10 @@ contract CCIPLocalSimulatorFork is Test {
         for (uint256 i; i < length; ++i) {
             if (entries[i].topics[0] == CCIPSendRequested.selector) {
                 message = abi.decode(entries[i].data, (Internal.EVM2EVMMessage));
-                break;
+                if (!s_processedMessages[message.messageId]) {
+                    s_processedMessages[message.messageId] = true;
+                    break;
+                }
             }
         }
 
@@ -54,5 +62,13 @@ contract CCIPLocalSimulatorFork is Test {
 
     function setNetworkDetails(uint256 chainId, Register.NetworkDetails memory networkDetails) external {
         i_register.setNetworkDetails(chainId, networkDetails);
+    }
+
+    function requestLinkFromFaucet(address to, uint256 amount) external returns (bool success) {
+        address linkAddress = i_register.getNetworkDetails(block.chainid).linkAddress;
+
+        vm.startPrank(LINK_FAUCET);
+        success = IERC20(linkAddress).transfer(to, amount);
+        vm.stopPrank();
     }
 }

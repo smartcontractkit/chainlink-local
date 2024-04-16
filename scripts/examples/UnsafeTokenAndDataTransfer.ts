@@ -1,6 +1,6 @@
 import { ethers } from "hardhat";
 
-// npx hardhat run ./scripts/UnsafeTokenAndDataTransfer.ts
+// npx hardhat run ./scripts/examples/UnsafeTokenAndDataTransfer.ts
 
 async function main() {
     const localSimulatorFactory = await ethers.getContractFactory("CCIPLocalSimulator");

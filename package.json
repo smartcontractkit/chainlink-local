@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "files": [
     "src/**/*.sol",
-    "!src/test/**/*"
+    "!src/test/**/*",
+    "scripts/ccipLocalSimulatorFork.ts"
   ],
   "repository": {
     "type": "git",
@@ -23,6 +24,7 @@
   "devDependencies": {
     "@nomicfoundation/hardhat-foundry": "^1.1.1",
     "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "dotenv": "^16.4.5",
     "hardhat": "^2.20.1"
   },
   "dependencies": {

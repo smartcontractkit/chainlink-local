@@ -14,13 +14,13 @@ contract TokenTransferorFork is Test {
     address alice;
 
     uint256 sepoliaFork;
-    uint256 mumbaiFork;
+    uint256 arbSepoliaFork;
 
     function setUp() public {
         string memory ETHEREUM_SEPOLIA_RPC_URL = vm.envString("ETHEREUM_SEPOLIA_RPC_URL");
-        string memory POLYGON_MUMBAI_RPC_URL = vm.envString("POLYGON_MUMBAI_RPC_URL");
+        string memory ARBITRUM_SEPOLIA_RPC_URL = vm.envString("ARBITRUM_SEPOLIA_RPC_URL");
         sepoliaFork = vm.createSelectFork(ETHEREUM_SEPOLIA_RPC_URL);
-        mumbaiFork = vm.createFork(POLYGON_MUMBAI_RPC_URL);
+        arbSepoliaFork = vm.createFork(ARBITRUM_SEPOLIA_RPC_URL);
 
         ccipLocalSimulatorFork = new CCIPLocalSimulatorFork();
         vm.makePersistent(address(ccipLocalSimulatorFork));
@@ -35,31 +35,29 @@ contract TokenTransferorFork is Test {
 
         alice = makeAddr("alice");
 
-        address linkFaucetSepolia = 0x4281eCF07378Ee595C564a59048801330f3084eE;
-        vm.startPrank(linkFaucetSepolia);
-        linkToken.transfer(address(sender), 25 ether);
-        vm.stopPrank();
+        ccipLocalSimulatorFork.requestLinkFromFaucet(address(sender), 25 ether);
     }
 
     function test_forkTokenTransfer() external {
         uint256 amountToSend = 100;
         ccipBnM.drip(address(sender));
 
-        uint64 polygonChainSelector = 12532609583862916517;
-        sender.allowlistDestinationChain(polygonChainSelector, true);
+        uint64 arbSepoliaChainSelector = 3478487238524512106;
+        sender.allowlistDestinationChain(arbSepoliaChainSelector, true);
 
         uint256 balanceBefore = ccipBnM.balanceOf(address(sender));
 
-        sender.transferTokensPayLINK(polygonChainSelector, alice, address(ccipBnM), amountToSend);
+        sender.transferTokensPayLINK(arbSepoliaChainSelector, alice, address(ccipBnM), amountToSend);
 
         uint256 balanceAfer = ccipBnM.balanceOf(address(sender));
         assertEq(balanceAfer, balanceBefore - amountToSend);
 
-        ccipLocalSimulatorFork.switchChainAndRouteMessage(mumbaiFork);
+        ccipLocalSimulatorFork.switchChainAndRouteMessage(arbSepoliaFork);
 
-        Register.NetworkDetails memory mumbaiNetworkDetails = ccipLocalSimulatorFork.getNetworkDetails(block.chainid);
-        BurnMintERC677Helper ccipBnMPolygon = BurnMintERC677Helper(mumbaiNetworkDetails.ccipBnMAddress);
+        Register.NetworkDetails memory arbSepoliaNetworkDetails =
+            ccipLocalSimulatorFork.getNetworkDetails(block.chainid);
+        BurnMintERC677Helper ccipBnMArbSepolia = BurnMintERC677Helper(arbSepoliaNetworkDetails.ccipBnMAddress);
 
-        assertEq(ccipBnMPolygon.balanceOf(alice), amountToSend);
+        assertEq(ccipBnMArbSepolia.balanceOf(alice), amountToSend);
     }
 }
