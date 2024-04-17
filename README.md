@@ -1,6 +1,8 @@
 ## Chainlink Local
 
-Chainlink Local is a set of smart contracts and scripts that aims to enable the development of Chainlink-enabled smart contracts within a local blockchain environment.
+Chainlink Local is a simulator for developers to be able to use Chainlink CCIP locally in Hardhat and Foundry.
+
+It is a set of smart contracts and scripts that aims to enable you to build, deploy and execute CCIP token transfers and arbitrary messages on a local Hardhat or Anvil (Foundry) node, both with and without forking.
 
 ### Installation
 
@@ -46,7 +48,7 @@ contract Demo is Test {
             LinkToken linkToken,
             BurnMintERC677Helper ccipBnM,
             BurnMintERC677Helper ccipLnM,
-        ) = ccipLocalSimulator.DOCUMENTATION();
+        ) = ccipLocalSimulator.configuration();
 
 
         ccipLocalSimulator.requestLinkFromFaucet(
@@ -58,25 +60,6 @@ contract Demo is Test {
 }
 ```
 
-You can check our current examples for reference:
+### Learn more
 
-- [Unsafe Token And Data Transfer Test in Foundry](./test/smoke/ccip/UnsafeTokenAndDataTransfer.t.sol)
-- [Unsafe Token And Data Transfer Test in Hardhat](./test/smoke/ccip/UnsafeTokenAndDataTransfer.spec.ts)
-- [Unsafe Token And Data Transfer Script in Hardhat](./scripts/UnsafeTokenAndDataTransfer.ts)
-- [Unsafe Token Transfer With Native Coin in Foundry](./test/smoke/ccip/PayWithNative.t.sol)
-
-And also recreated test examples in Foundry from the [Official Chainlink Documentation](https://docs.chain.link/ccip):
-
-- [Token Transferor](./test/smoke/ccip/TokenTransferor.t.sol)
-- [Programmable Token Transfers](./test/smoke/ccip/ProgrammableTokenTransfers.t.sol)
-- [Programmable Token Transfers - Defensive Example](./test/smoke/ccip/ProgrammableDefensiveTokenTransfers.t.sol)
-
-### Build & Test
-
-To get started:
-
-- Clone this repo.
-- Run `npm i && forge install` to install dependencies.
-- Run `npx hardhat test` to run Hardhat tests.
-- Run `forge test` to run Foundry tests.
-- Optionally, try Hardhat scripting by running `npx hardhat run ./scripts/UnsafeTokenAndDataTransfer.ts`
+To view detailed documentation and more examples, visit [DOCUMENTATION.md](./DOCUMENTATION.md).

@@ -60,7 +60,7 @@ contract CCIPLocalSimulator {
         success = i_linkToken.transfer(to, amount);
     }
 
-    function DOCUMENTATION()
+    function configuration()
         public
         view
         returns (

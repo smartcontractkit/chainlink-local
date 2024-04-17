@@ -25,7 +25,7 @@ contract PayWithNativeTest is Test {
             ,
             BurnMintERC677Helper ccipBnM_,
 
-        ) = ccipLocalSimulator.DOCUMENTATION();
+        ) = ccipLocalSimulator.configuration();
 
         sender = new BasicTokenSender(address(sourceRouter_));
 

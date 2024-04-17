@@ -22,7 +22,7 @@ contract TokenTransferorTest is Test {
             LinkToken linkToken,
             BurnMintERC677Helper ccipBnM_,
 
-        ) = ccipLocalSimulator.DOCUMENTATION();
+        ) = ccipLocalSimulator.configuration();
 
         tokenTransferor = new TokenTransferor(
             address(sourceRouter),

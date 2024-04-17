@@ -14,7 +14,7 @@ async function main() {
         linkToken_: string;
         ccipBnM_: string;
         ccipLnM_: string;
-    } = await localSimulator.DOCUMENTATION();
+    } = await localSimulator.configuration();
 
     const CCIPSender_UnsafeFactory = await ethers.getContractFactory("CCIPSender_Unsafe");
     const CCIPSender_Unsafe = await CCIPSender_UnsafeFactory.deploy(config.linkToken_, config.sourceRouter_);

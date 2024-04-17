@@ -23,7 +23,7 @@ contract ProgrammableTokenTransfersTest is Test {
             LinkToken linkToken,
             BurnMintERC677Helper ccipBnM_,
 
-        ) = ccipLocalSimulator.DOCUMENTATION();
+        ) = ccipLocalSimulator.configuration();
 
         sender = new ProgrammableTokenTransfers(
             address(sourceRouter),

@@ -24,7 +24,7 @@ contract PingPongTest is Test {
             LinkToken linkToken,
             ,
 
-        ) = ccipLocalSimulator.DOCUMENTATION();
+        ) = ccipLocalSimulator.configuration();
 
         ping = new Ping(address(linkToken), address(sourceRouter));
         pong = new Pong(address(linkToken), address(destinationRouter));

@@ -24,7 +24,7 @@ contract UnsafeTokenAndDataTransferTest is Test {
             LinkToken linkToken_,
             BurnMintERC677Helper ccipBnM_,
 
-        ) = ccipLocalSimulator.DOCUMENTATION();
+        ) = ccipLocalSimulator.configuration();
 
         chainSelector = chainSelector_;
         ccipBnM = ccipBnM_;

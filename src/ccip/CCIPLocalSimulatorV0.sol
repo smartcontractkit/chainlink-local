@@ -398,7 +398,7 @@
 //         return (success, retData, gasUsed);
 //     }
 
-//     function DOCUMENTATION()
+//     function configuration()
 //         public
 //         view
 //         returns (
