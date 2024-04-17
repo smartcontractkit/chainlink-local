@@ -10,7 +10,7 @@ The simulator supports two modes: working with mock contracts on a single localh
 
 When working in localhost mode, the simulator pre-deploys a set of smart contracts to a blank Hardhat/Anvil network EVM state and expose their details as part of the `configuration` function. Even though there are two Router contracts exposed, `sourceRouter` and `destinationRouter`, to support the developer's mental model of routing cross-chain messages through two different Routers, both are actually the same contract. In the localhost mode, all interactions are happening on the same, default, network.
 
-When working in fork mode, then one need to fork multiple networks (using the archival node creates a copy on the network's state in the pinned block) and interact with the contract addresses provided in the Official Chainlink Documentation (https://docs.chain.link/ccip). CCIP Local Simulator Fork (contract for Foundry, TypeScript with ethers v6 script for Hardhat) exposes funtionality to switch between forks and route messages on the destination blockchain.
+When working in fork mode, then one need to fork multiple networks (using the archival node creates a copy on the network's state in the pinned block) and interact with the contract addresses provided in the [Official Chainlink Documentation](https://docs.chain.link/ccip). CCIP Local Simulator Fork (contract for Foundry, TypeScript with ethers v6 script for Hardhat) exposes funtionality to switch between forks and route messages on the destination blockchain.
 
 ## API Reference
 
