@@ -51,7 +51,7 @@ export async function requestLinkFromTheFaucet(linkAddress: string, to: string, 
  * Parses a transaction receipt to extract the sent message
  * Scans through transaction logs to find a `CCIPSendRequested` event and then decodes it to Evm2EvmMessage
  * 
- * @param {TransactionReceipt} receipt - The transaction receipt from the ccipSend call
+ * @param {TransactionReceipt} receipt - The transaction receipt from the `ccipSend` call
  * @returns {Evm2EvmMessage | null} Returns either the sent message or null if provided receipt does not contain `CCIPSendRequested` log
  */
 export function getEvm2EvmMessage(receipt: TransactionReceipt): Evm2EvmMessage | null {
