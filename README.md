@@ -20,7 +20,15 @@ forge install smartcontractkit/chainlink-local --no-commit
 
 This command will install chainlink-local into the `./lib` folder in your Foundry project.
 
-Then you need to update [remappings](https://book.getfoundry.sh/projects/dependencies#remapping-dependencies) in either `remappings.txt` or `foundry.toml` file to: `@chainlink/local/=lib/chainlink-local/`
+Then you need to update [remappings](https://book.getfoundry.sh/projects/dependencies#remapping-dependencies) in either `remappings.txt` or `foundry.toml` file to: `@chainlink/local/=lib/chainlink-local/`.
+
+For example the remappings property in `foundry.toml` could look like this:
+
+```
+remappings = [
+    '@chainlink/local/src/=slib/chainlink-local/',
+]
+```
 
 #### Hardhat (npm)
 
