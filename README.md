@@ -8,15 +8,19 @@ User Contracts tested with Chainlink Local can be deployed to test networks with
 
 ### Installation
 
+Before you start, please make sure you have the latest version of the Foundry tools by following the installation (and update) instructions [here](https://book.getfoundry.sh/getting-started/installation).
+
 Install the package by running:
 
 #### Foundry (git)
 
 ```
-forge install smartcontractkit/chainlink-local
+forge install smartcontractkit/chainlink-local --no-commit
 ```
 
-and then set remappings to: `@chainlink/local/=lib/chainlink-local/` in either `remappings.txt` or `foundry.toml` file
+This command will install chainlink-local into the `./lib` folder in your Foundry project.
+
+Then you need to update [remappings](https://book.getfoundry.sh/projects/dependencies#remapping-dependencies) in either `remappings.txt` or `foundry.toml` file to: `@chainlink/local/=lib/chainlink-local/`
 
 #### Hardhat (npm)
 
