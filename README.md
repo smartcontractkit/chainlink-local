@@ -26,7 +26,7 @@ For example the remappings property in `foundry.toml` could look like this:
 
 ```
 remappings = [
-    '@chainlink/local/src/=slib/chainlink-local/',
+    '@chainlink/local/src/=lib/chainlink-local/',
 ]
 ```
 
