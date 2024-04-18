@@ -1,5 +1,5 @@
 import { ethers, network } from "hardhat";
-import { getEvm2EvmMessage, requestLinkFromTheFaucet, routeMessage } from "../CCIPLocalSimulatorFork";
+import { getEvm2EvmMessage, requestLinkFromTheFaucet, routeMessage } from "../XCCIPLocalSimulatorFork";
 
 // 1st Terminal: npx hardhat node
 // 2nd Terminal: npx hardhat run ./scripts/examples/UnsafeTokenAndDataTransferFork.ts
