@@ -33,16 +33,35 @@ contract CCIPLocalSimulator {
         s_supportedTokens.push(address(i_ccipLnM));
     }
 
+    /**
+     * @notice Allows user to support any new token, besides CCIP BnM and CCIP LnM, for cross-chain transfers.
+     *
+     * @param tokenAddress - The address of the token to add to the list of supported tokens.
+     */
     function supportNewToken(address tokenAddress) external {
         s_supportedTokens.push(tokenAddress);
     }
 
+    /**
+     * @notice Checks whether the provided `chainSelector` is supported by the simulator.
+     *
+     * @param chainSelector - The unique CCIP Chain Selector.
+     *
+     * @return supported - Returns true if `chainSelector` is supported by the simulator.
+     */
     function isChainSupported(
         uint64 chainSelector
     ) public pure returns (bool supported) {
         supported = chainSelector == CHAIN_SELECTOR;
     }
 
+    /**
+     * @notice Gets a list of token addresses that are supported for cross-chain transfers by the simulator.
+     *
+     * @param chainSelector - The unique CCIP Chain Selector.
+     *
+     * @return tokens - Returns a list of token addresses that are supported for cross-chain transfers by the simulator.
+     */
     function getSupportedTokens(
         uint64 chainSelector
     ) external view returns (address[] memory tokens) {
@@ -53,6 +72,14 @@ contract CCIPLocalSimulator {
         tokens = s_supportedTokens;
     }
 
+    /**
+     * @notice Requests LINK tokens from the faucet. The provided amount of tokens are transferred to provided destination address.
+     *
+     * @param to - The address to which LINK tokens are to be sent.
+     * @param amount - The amount of LINK tokens to send.
+     *
+     * @return success - Returns `true` if the transfer of tokens was successful, otherwise `false`.
+     */
     function requestLinkFromFaucet(
         address to,
         uint256 amount
@@ -60,6 +87,17 @@ contract CCIPLocalSimulator {
         success = i_linkToken.transfer(to, amount);
     }
 
+    /**
+     * @notice Returns configuration details for pre-deployed contracts and services needed for local CCIP simulations.
+     *
+     * @return chainSelector_ - The unique CCIP Chain Selector.
+     * @return sourceRouter_  - The source chain Router contract.
+     * @return destinationRouter_ - The destination chain Router contract.
+     * @return wrappedNative_ - The wrapped native token which can be used for CCIP fees.
+     * @return linkToken_ - The LINK token.
+     * @return ccipBnM_ - The ccipBnM token.
+     * @return ccipLnM_ - The ccipLnM token.
+     */
     function configuration()
         public
         view

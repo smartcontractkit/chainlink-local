@@ -24,6 +24,11 @@ contract CCIPLocalSimulatorFork is Test {
         vm.makePersistent(address(i_register));
     }
 
+    /**
+     * @notice To be called after the sending of the cross-chain message (`ccipSend`). Goes through the list of past logs and looks for the `CCIPSendRequested` event. Switches to a destination network fork. Routes the sent cross-chain message on the destination network.
+     *
+     * @param forkId - The ID of the destination network fork. This is the returned value of `createFork()` or `createSelectFork()`
+     */
     function switchChainAndRouteMessage(uint256 forkId) external {
         Internal.EVM2EVMMessage memory message;
         Vm.Log[] memory entries = vm.getRecordedLogs();
@@ -57,14 +62,47 @@ contract CCIPLocalSimulatorFork is Test {
         }
     }
 
+    /**
+     * @notice Returns the default values for currently CCIP supported networks. If network is not present or some of the values are changed, user can manually add new network details using the `setNetworkDetails` function.
+     *
+     * @param chainId - The blockchain network chain ID. For example 11155111 for Ethereum Sepolia. Not CCIP chain selector.
+     *
+     * @return networkDetails - The tuple containing:
+     *          chainSelector - The unique CCIP Chain Selector.
+     *          routerAddress - The address of the CCIP Router contract.
+     *          linkAddress - The address of the LINK token.
+     *          wrappedNativeAddress - The address of the wrapped native token that can be used for CCIP fees.
+     *          ccipBnMAddress - The address of the CCIP BnM token.
+     *          ccipLnMAddress - The address of the CCIP LnM token.
+     */
     function getNetworkDetails(uint256 chainId) external view returns (Register.NetworkDetails memory) {
         return i_register.getNetworkDetails(chainId);
     }
 
+    /**
+     * @notice If network details are not present or some of the values are changed, user can manually add new network details using the `setNetworkDetails` function.
+     *
+     * @param chainId - The blockchain network chain ID. For example 11155111 for Ethereum Sepolia. Not CCIP chain selector.
+     * @param networkDetails - The tuple containing:
+     *          chainSelector - The unique CCIP Chain Selector.
+     *          routerAddress - The address of the CCIP Router contract.
+     *          linkAddress - The address of the LINK token.
+     *          wrappedNativeAddress - The address of the wrapped native token that can be used for CCIP fees.
+     *          ccipBnMAddress - The address of the CCIP BnM token.
+     *          ccipLnMAddress - The address of the CCIP LnM token.
+     */
     function setNetworkDetails(uint256 chainId, Register.NetworkDetails memory networkDetails) external {
         i_register.setNetworkDetails(chainId, networkDetails);
     }
 
+    /**
+     * @notice Requests LINK tokens from the faucet. The provided amount of tokens are transferred to provided destination address.
+     *
+     * @param to - The address to which LINK tokens are to be sent.
+     * @param amount - The amount of LINK tokens to send.
+     *
+     * @return success - Returns `true` if the transfer of tokens was successful, otherwise `false`.
+     */
     function requestLinkFromFaucet(address to, uint256 amount) external returns (bool success) {
         address linkAddress = i_register.getNetworkDetails(block.chainid).linkAddress;
 
