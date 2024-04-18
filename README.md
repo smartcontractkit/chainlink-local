@@ -16,6 +16,8 @@ Install the package by running:
 forge install smartcontractkit/chainlink-local
 ```
 
+and then set remappings to: `@chainlink/local/=lib/chainlink-local/` in either `remappings.txt` or `foundry.toml` file
+
 #### Hardhat (npm)
 
 ```
