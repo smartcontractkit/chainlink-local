@@ -6,17 +6,26 @@ User Contracts tested with Chainlink Local can be deployed to test networks with
 
 ## Architecture
 
-The simulator supports two modes: working with mock contracts on a single localhost network and working with actual Chainlink CCIP contracts using multiple forked networks.
+The simulator supports two modes:
 
-When working in localhost mode, the simulator pre-deploys a set of smart contracts to a blank Hardhat/Anvil network EVM state and expose their details as part of the `configuration` function. Even though there are two Router contracts exposed, `sourceRouter` and `destinationRouter`, to support the developer's mental model of routing cross-chain messages through two different Routers, both are actually the same contract. In the localhost mode, all interactions are happening on the same, default, network.
+1. working with mock contracts on a locally running development blockchain node running on `localhost`, and
+2. working with deployed Chainlink CCIP contracts using multiple [forked networks](https://hardhat.org/hardhat-network/docs/guides/forking-other-networks).
 
-When working in fork mode, then one need to fork multiple networks (using the archival node creates a copy on the network's state in the pinned block) and interact with the contract addresses provided in the [Official Chainlink Documentation](https://docs.chain.link/ccip). CCIP Local Simulator Fork (contract for Foundry, TypeScript with ethers v6 script for Hardhat) exposes funtionality to switch between forks and route messages on the destination blockchain.
+### Local Simulator Mode
+
+When working in local simulation mode, the simulator pre-deploys a set of smart contracts to a blank Hardhat/Anvil network EVM state and exposes their details via a call to the `configuration()` function (see `./src/ccip/CCIPLocalSimulator.sol`). Even though there are two Router contracts exposed, `sourceRouter` and `destinationRouter`, to support the developer's mental model of routing cross-chain messages through two different Routers, both are actually the same contract running on the locally development blockchain node.
+
+## Local Forked Mode
+
+When working in fork mode, we create multiple locally running blockchain networks (you need an archive node that has historical network state in the pinned block from which you have forked for local development - see [here](https://hardhat.org/hardhat-network/docs/guides/forking-other-networks)) and interact with the contract addresses provided in the [Official Chainlink Documentation](https://docs.chain.link/ccip).
+
+CCIP Local Simulator Fork (smart contract for Foundry, and typescript script for Hardhat) exposes functionality to switch between forks and route messages to the destination blockchain.
 
 ## API Reference
 
-### `CCIPLocalSimulator.sol`
+### `CCIPLocalSimulator.sol` (Foundry & Hardhat)
 
-To use Chainlink Local in a localhost environment in any smart contract development framework, user must import the `CCIPLocalSimulator.sol` singleton contract from the `@chainlink/local` package. Then it must deploy it on a local network, and after that the simulator is ready for usage.
+To use Chainlink Local in a localhost environment in any smart contract development framework, user must import the `CCIPLocalSimulator.sol` singleton contract from the `@chainlink/local` package. Then deploy it on your local development network, and after that the simulator is ready for usage.
 
 #### Foundry:
 
@@ -30,6 +39,17 @@ contract Demo is Test {
 
     function setUp() public {
         ccipLocalSimulator = new CCIPLocalSimulator();
+
+        (
+            uint64 chainSelector,
+            IRouterClient sourceRouter,
+            IRouterClient destinationRouter,
+            WETH9 wrappedNative,
+            LinkToken linkToken,
+            BurnMintERC677Helper ccipBnM,
+            BurnMintERC677Helper ccipLnM
+        ) = ccipLocalSimulator.configuration();
+
     }
 }
 ```
@@ -57,28 +77,13 @@ async function deploy() {
     ccipLnM_: string;
   } = await localSimulator.configuration();
 
-  return { localSimulator };
+  return {localSimulator};
 }
 ```
 
-#### configuration
+#### [CCIPLocalSimulator].configuration()
 
-```solidity
-function configuration()
-        public
-        view
-        returns (
-            uint64 chainSelector_,
-            IRouterClient sourceRouter_,
-            IRouterClient destinationRouter_,
-            WETH9 wrappedNative_,
-            LinkToken linkToken_,
-            BurnMintERC677Helper ccipBnM_,
-            BurnMintERC677Helper ccipLnM_
-        );
-```
-
-Gets the details about pre-deployed contracts and other configuration info needed for local CCIP simulations.
+Call the `.configuration()` method on the deployed `CCIPLocalSimulator` [contract](./src/ccip/CCIPLocalSimulator.sol) to obtain the configuration details for pre-deployed contracts and services needed for local CCIP simulations.
 
 ##### Return values:
 
@@ -90,7 +95,9 @@ Gets the details about pre-deployed contracts and other configuration info neede
 - `ccipBnM_` (BurnMintERC677Helper): The ccipBnM token.
 - `ccipLnM_` (BurnMintERC677Helper): The ccipLnM token.
 
-#### requestLinkFromFaucet
+See the code snippets in [Foundry](#foundry) and [Hardhat](#hardhat) above for usage.
+
+#### [CCIPLocalSimulator].requestLinkFromFaucet()
 
 ```solidity
 function requestLinkFromFaucet(address to, uint256 amount) external returns (bool success);
@@ -107,7 +114,7 @@ Requests LINK tokens from the faucet. The provided amount of tokens are transfer
 
 - `success` (bool): Returns `true` if the transfer of tokens was successful, otherwise `false`.
 
-#### getSupportedTokens
+#### [CCIPLocalSimulator].getSupportedTokens()
 
 ```solidity
 function getSupportedTokens(uint64 chainSelector) external view returns (address[] memory tokens);
@@ -123,7 +130,7 @@ Gets a list of token addresses that are supported for cross-chain transfers by t
 
 - `tokens` (address[]): Returns a list of token addresses that are supported for cross-chain transfers by the simulator.
 
-#### isChainSupported
+#### [CCIPLocalSimulator].isChainSupported()
 
 ```solidity
 function isChainSupported(uint64 chainSelector) public pure returns (bool supported);
@@ -139,7 +146,7 @@ Checks whether the provided `chainSelector` is supported by the simulator.
 
 - `supported` (bool): Returns true if `chainSelector` is supported by the simulator.
 
-#### supportNewToken
+#### [CCIPLocalSimulator].supportNewToken()
 
 ```solidity
 function supportNewToken(address tokenAddress) external;
@@ -154,6 +161,12 @@ Allows user to support any new token, besides CCIP BnM and CCIP LnM, for cross-c
 ---
 
 ### `CCIPLocalSimulatorFork.sol` (Foundry only)
+
+Note: the RPC URLs here must point to [archive nodes](https://docs.alchemy.com/docs/what-is-archive-data-on-ethereum#:~:text=Archive%20nodes%20store%20the%20same,%2C%20technical%20expertise%2C%20and%20experience.).
+
+[Foundry Fork-Testing Guide](https://book.getfoundry.sh/forge/fork-testing)
+
+Note also that in Foundry, [scripts are generally written in Solidity](https://book.getfoundry.sh/tutorials/solidity-scripting), which may be different from what you've come to expect after using tools like Hardhat.
 
 ```solidity
 pragma solidity ^0.8.19;
@@ -183,7 +196,7 @@ contract Demo is Test {
 }
 ```
 
-#### switchChainAndRouteMessage
+#### [CCIPLocalSimulatorFork].switchChainAndRouteMessage()
 
 ```solidity
 function switchChainAndRouteMessage(uint256 forkId) external;
@@ -193,9 +206,9 @@ To be called after the sending of the cross-chain message (`ccipSend`). Goes thr
 
 ##### Parameters:
 
-- `forkId` (uint256) - The ID of the destination network fork.
+- `forkId` (uint256) - The ID of the destination network fork. This is the returned value of `createFork()` or `createSelectFork()`
 
-#### requestLinkFromFaucet
+#### [CCIPLocalSimulatorFork].requestLinkFromFaucet()
 
 ```solidity
 function requestLinkFromFaucet(address to, uint256 amount) external returns (bool success);
@@ -212,7 +225,7 @@ Requests LINK tokens from the faucet. The provided amount of tokens are transfer
 
 - `success` (bool): Returns `true` if the transfer of tokens was successful, otherwise `false`.
 
-#### getNetworkDetails
+#### [CCIPLocalSimulatorFork].getNetworkDetails()
 
 ```solidity
 function getNetworkDetails(uint256 chainId) external view returns (Register.NetworkDetails memory);
@@ -234,7 +247,7 @@ Returns the default values for currently CCIP supported networks. If network is 
   - `ccipBnMAddress` (address) - The address of the CCIP BnM token.
   - `ccipLnMAddress` (address) - The address of the CCIP LnM token.
 
-##### setNetworkDetails
+##### [CCIPLocalSimulatorFork].setNetworkDetails()
 
 ```solidity
 unction setNetworkDetails(uint256 chainId, Register.NetworkDetails memory networkDetails) external;
@@ -255,17 +268,21 @@ If network details are not present or some of the values are changed, user can m
 
 ---
 
-### `ccipLocalSimulatorFork.ts` (Hardhat only)
+### [`CCIPLocalSimulatorFork.ts`](`./scripts/CCIPLocalSimulatorFork.ts`) (Hardhat only)
 
 ```typescript
-import { getEvm2EvmMessage, requestLinkFromTheFaucet, routeMessage } from "@chainlink/local/scripts/ccipLocalSimulatorFork";
+import {
+  getEvm2EvmMessage,
+  requestLinkFromTheFaucet,
+  routeMessage,
+} from "@chainlink/local/scripts/CCIPLocalSimulatorFork";
 
 // 1st Terminal: npx hardhat node
 // 2nd Terminal: npx hardhat run ./scripts/myScript.ts
 
 async function main() {
-  const ETHEREUM_SEPOLIA_RPC_URL = process.env.ETHEREUM_SEPOLIA_RPC_URL;
-  const ARBITRUM_SEPOLIA_RPC_URL = process.env.ARBITRUM_SEPOLIA_RPC_URL;
+  const ETHEREUM_SEPOLIA_RPC_URL = process.env.ETHEREUM_SEPOLIA_RPC_URL; // Archive node
+  const ARBITRUM_SEPOLIA_RPC_URL = process.env.ARBITRUM_SEPOLIA_RPC_URL; // Archive node
 
   await network.provider.request({
     method: "hardhat_reset",
@@ -282,7 +299,13 @@ async function main() {
   const linkAmountForFees = 5000000000000000000n; // 5 LINK
   await requestLinkFromTheFaucet(linkTokenAddressSepolia, await CCIPSender_Unsafe.getAddress(), linkAmountForFees);
 
-  const tx = await CCIPSender_Unsafe.send(CCIPReceiver_Unsafe.target, textToSend, arbSepoliaChainSelector, ccipBnMTokenAddressSepolia, amountToSend);
+  const tx = await CCIPSender_Unsafe.send(
+    CCIPReceiver_Unsafe.target,
+    textToSend,
+    arbSepoliaChainSelector,
+    ccipBnMTokenAddressSepolia,
+    amountToSend
+  );
   const receipt = await tx.wait();
   if (!receipt) return;
   const evm2EvmMessage = getEvm2EvmMessage(receipt);
@@ -309,7 +332,7 @@ async function main() {
 }
 ```
 
-#### requestLinkFromTheFaucet
+#### [CCIPLocalSimulatorFork].requestLinkFromTheFaucet()
 
 ```typescript
 async function requestLinkFromTheFaucet(linkAddress: string, to: string, amount: bigint): Promise<string>;
@@ -327,7 +350,7 @@ Requests LINK tokens from the faucet and returns the transaction hash.
 
 - `Promise<string>` - Promise resolving to the transaction hash of the fund transfer.
 
-#### getEvm2EvmMessage
+#### [CCIPLocalSimulatorFork].getEvm2EvmMessage()
 
 ```typescript
 function getEvm2EvmMessage(receipt: TransactionReceipt): Evm2EvmMessage | null;

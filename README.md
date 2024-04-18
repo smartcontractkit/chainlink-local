@@ -1,20 +1,34 @@
 ## Chainlink Local
 
-Chainlink Local is a simulator for developers to be able to use Chainlink CCIP locally in Hardhat and Foundry. It is a set of smart contracts and scripts that aims to enable you to build, deploy and execute CCIP token transfers and arbitrary messages on a local Hardhat or Anvil (Foundry) node, both with and without forking.
+Chainlink Local is an installable package. It provides a simulation tool for developers to be able to depend on [Chainlink CCIP](https://docs.chain.link/ccip) locally in their Hardhat and Foundry projects.
+
+The package exposes a set of smart contracts and scripts with which you build, deploy and execute CCIP token transfers and arbitrary messages on a local Hardhat or Anvil (Foundry) development node. Chainlink Local also supports forked nodes.
 
 User Contracts tested with Chainlink Local can be deployed to test networks without any modifications.
 
 ### Installation
+
+Before you start, please make sure you have the latest version of the Foundry tools by following the installation (and update) instructions [here](https://book.getfoundry.sh/getting-started/installation).
 
 Install the package by running:
 
 #### Foundry (git)
 
 ```
-forge install smartcontractkit/chainlink-local
+forge install smartcontractkit/chainlink-local --no-commit
 ```
 
-and the set remappings to: `@chainlink/local/=lib/chainlink-local/` in either `remappings.txt` or `foundry.toml` file
+This command will install chainlink-local into the `./lib` folder in your Foundry project.
+
+Then you need to update [remappings](https://book.getfoundry.sh/projects/dependencies#remapping-dependencies) in either `remappings.txt` or `foundry.toml` file to: `@chainlink/local/=lib/chainlink-local/`.
+
+For example the remappings property in `foundry.toml` could look like this:
+
+```
+remappings = [
+    '@chainlink/local/=lib/chainlink-local/',
+]
+```
 
 #### Hardhat (npm)
 
