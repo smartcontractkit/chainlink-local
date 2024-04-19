@@ -29,57 +29,16 @@ To use Chainlink Local in a localhost environment in any smart contract developm
 
 #### Foundry:
 
-```solidity
-pragma solidity ^0.8.19;
-
-import {CCIPLocalSimulator} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
-
-contract Demo is Test {
-    CCIPLocalSimulator public ccipLocalSimulator;
-
-    function setUp() public {
-        ccipLocalSimulator = new CCIPLocalSimulator();
-
-        (
-            uint64 chainSelector,
-            IRouterClient sourceRouter,
-            IRouterClient destinationRouter,
-            WETH9 wrappedNative,
-            LinkToken linkToken,
-            BurnMintERC677Helper ccipBnM,
-            BurnMintERC677Helper ccipLnM
-        ) = ccipLocalSimulator.configuration();
-
-    }
-}
-```
+Refer to the example Foundry test [here](./test/smoke/ccip/UnsafeTokenAndDataTransfer.t.sol) to see `CCIPLocalSimulator.sol` in action.
+It uses the `CCIPSender_Unsafe.sol` and `CCIPReceiver_Unsafe` that are found in [this directory](./src/test/ccip).
 
 #### Hardhat:
 
-```solidity
-pragma solidity ^0.8.19;
+After installing CCIP Local in your hardhat project (with [this command](./README.md#hardhat-npm)), you can use `CCIPLocalSimulator.sol` in your Hardhat Tasks and Scripts by importing it with:
+`import {CCIPLocalSimulator} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";`.
 
-import {CCIPLocalSimulator} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
-```
-
-```typescript
-async function deploy() {
-  const localSimulatorFactory = await ethers.getContractFactory("CCIPLocalSimulator");
-  const localSimulator = await localSimulatorFactory.deploy();
-
-  const config: {
-    chainSelector_: bigint;
-    sourceRouter_: string;
-    destinationRouter_: string;
-    wrappedNative_: string;
-    linkToken_: string;
-    ccipBnM_: string;
-    ccipLnM_: string;
-  } = await localSimulator.configuration();
-
-  return {localSimulator};
-}
-```
+Refer to the example Hardhat Test [here](./test/smoke/ccip/UnsafeTokenAndDataTransfer.spec.ts) to see `CCIPLocalSimulator.sol` in action.
+It uses the `CCIPSender_Unsafe.sol` and `CCIPReceiver_Unsafe` that are found in [this directory](./src/test/ccip).
 
 #### [CCIPLocalSimulator].configuration()
 
