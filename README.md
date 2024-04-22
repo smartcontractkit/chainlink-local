@@ -6,6 +6,8 @@ The package exposes a set of smart contracts and scripts with which you build, d
 
 User Contracts tested with Chainlink Local can be deployed to test networks without any modifications.
 
+> <b>NOTE: The use of Chainlink Local for CCIP development presumes you have prior knowledge of [Chainlink CCIP](https://docs.chain.link/ccip) and its primitives. We recommend going through the [tutorials](https://docs.chain.link/ccip/tutorials/) in the documentation prior to using this tool. It is also assumed that you are familiar with either [Harhdhat tooling](https://hardhat.org/) or [Foundry tooling](https://book.getfoundry.sh/).</b>
+
 ### Installation
 
 Install the package by running:
