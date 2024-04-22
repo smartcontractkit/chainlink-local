@@ -1,6 +1,6 @@
 ## Chainlink Local
 
-Chainlink Local is an installable package. It provides a simulation tool for developers to be able to depend on [Chainlink CCIP](https://docs.chain.link/ccip) locally in their Hardhat and Foundry projects.
+Chainlink Local is an installable dependency. It provides a tool (the Chainlink Local Simulator) that developers import into their Foundry and Hardhat scripts. This tool runs [Chainlink CCIP](https://docs.chain.link/ccip) locally which means developers can rapidly explore prototype and iterate CCIP dApps off-chain, and move to testnet only when they're ready to test in a live environment.
 
 The package exposes a set of smart contracts and scripts with which you build, deploy and execute CCIP token transfers and arbitrary messages on a local Hardhat or Anvil (Foundry) development node. Chainlink Local also supports forked nodes.
 

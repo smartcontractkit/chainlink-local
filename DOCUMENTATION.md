@@ -54,6 +54,9 @@ contract Demo is Test {
 }
 ```
 
+Refer to the example Foundry test [here](./test/smoke/ccip/UnsafeTokenAndDataTransfer.t.sol) to see `CCIPLocalSimulator.sol` in action.
+It uses the `CCIPSender_Unsafe.sol` and `CCIPReceiver_Unsafe` that are found in [this directory](./src/test/ccip).
+
 #### Hardhat:
 
 ```solidity
@@ -80,6 +83,12 @@ async function deploy() {
   return {localSimulator};
 }
 ```
+
+After installing CCIP Local in your hardhat project (with [this command](./README.md#hardhat-npm)), you can use `CCIPLocalSimulator.sol` in your Hardhat Tasks and Scripts by importing it with:
+`import {CCIPLocalSimulator} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";`.
+
+Refer to the example Hardhat Test [here](./test/smoke/ccip/UnsafeTokenAndDataTransfer.spec.ts) to see `CCIPLocalSimulator.sol` in action.
+It uses the `CCIPSender_Unsafe.sol` and `CCIPReceiver_Unsafe` that are found in [this directory](./src/test/ccip).
 
 #### [CCIPLocalSimulator].configuration()
 
