@@ -247,7 +247,7 @@ Returns the default values for currently CCIP supported networks. If network is 
   - `ccipBnMAddress` (address) - The address of the CCIP BnM token.
   - `ccipLnMAddress` (address) - The address of the CCIP LnM token.
 
-##### [CCIPLocalSimulatorFork].setNetworkDetails()
+#### [CCIPLocalSimulatorFork].setNetworkDetails()
 
 ```solidity
 unction setNetworkDetails(uint256 chainId, Register.NetworkDetails memory networkDetails) external;
@@ -268,7 +268,7 @@ If network details are not present or some of the values are changed, user can m
 
 ---
 
-### [`CCIPLocalSimulatorFork.ts`](`./scripts/CCIPLocalSimulatorFork.ts`) (Hardhat only)
+### `CCIPLocalSimulatorFork.ts` (Hardhat only)
 
 ```typescript
 import {
@@ -380,7 +380,7 @@ Parses a transaction receipt to extract the sent message. Scans through transact
   - `sourceTokenData` ([])
   - `messageId` (string)
 
-#### routeMessage
+#### [CCIPLocalSimulatorFork].routeMessage()
 
 ```typescript
 async function routeMessage(routerAddress: string, evm2EvmMessage: Evm2EvmMessage): Promise<void>;
@@ -441,3 +441,9 @@ To get started:
 - Run `npm i && forge install` to install dependencies.
 - Run `npx hardhat test` to run Hardhat tests.
 - Run `forge test` to run Foundry tests.
+
+### Contributing
+
+Contributions are welcome, feel free to raise issues and/or open pull requests.
+
+Thank you!
