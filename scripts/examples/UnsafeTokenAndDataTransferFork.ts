@@ -2,7 +2,7 @@ import { ethers, network } from "hardhat";
 import { getEvm2EvmMessage, requestLinkFromTheFaucet, routeMessage } from "../CCIPLocalSimulatorFork";
 
 // 1st Terminal: npx hardhat node
-// 2nd Terminal: npx hardhat run ./scripts/examples/UnsafeTokenAndDataTransferFork.ts
+// 2nd Terminal: npx hardhat run ./scripts/examples/UnsafeTokenAndDataTransferFork.ts --network localhost
 
 async function main() {
     const ETHEREUM_SEPOLIA_RPC_URL = process.env.ETHEREUM_SEPOLIA_RPC_URL;

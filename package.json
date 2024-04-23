@@ -5,7 +5,8 @@
   "files": [
     "src/**/*.sol",
     "!src/test/**/*",
-    "scripts/ccipLocalSimulatorFork.ts"
+    "scripts/ccipLocalSimulatorFork.js",
+    "abi/**/*.json"
   ],
   "repository": {
     "type": "git",

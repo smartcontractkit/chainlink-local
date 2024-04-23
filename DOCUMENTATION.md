@@ -77,7 +77,7 @@ async function deploy() {
     ccipLnM_: string;
   } = await localSimulator.configuration();
 
-  return {localSimulator};
+  return { localSimulator };
 }
 ```
 
@@ -268,17 +268,13 @@ If network details are not present or some of the values are changed, user can m
 
 ---
 
-### `CCIPLocalSimulatorFork.ts` (Hardhat only)
+### `CCIPLocalSimulatorFork.js` (Hardhat only)
 
 ```typescript
-import {
-  getEvm2EvmMessage,
-  requestLinkFromTheFaucet,
-  routeMessage,
-} from "@chainlink/local/scripts/CCIPLocalSimulatorFork";
+import { getEvm2EvmMessage, requestLinkFromTheFaucet, routeMessage } from "@chainlink/local/scripts/CCIPLocalSimulatorFork";
 
 // 1st Terminal: npx hardhat node
-// 2nd Terminal: npx hardhat run ./scripts/myScript.ts
+// 2nd Terminal: npx hardhat run ./scripts/myScript.ts --network localhost
 
 async function main() {
   const ETHEREUM_SEPOLIA_RPC_URL = process.env.ETHEREUM_SEPOLIA_RPC_URL; // Archive node
@@ -299,13 +295,7 @@ async function main() {
   const linkAmountForFees = 5000000000000000000n; // 5 LINK
   await requestLinkFromTheFaucet(linkTokenAddressSepolia, await CCIPSender_Unsafe.getAddress(), linkAmountForFees);
 
-  const tx = await CCIPSender_Unsafe.send(
-    CCIPReceiver_Unsafe.target,
-    textToSend,
-    arbSepoliaChainSelector,
-    ccipBnMTokenAddressSepolia,
-    amountToSend
-  );
+  const tx = await CCIPSender_Unsafe.send(CCIPReceiver_Unsafe.target, textToSend, arbSepoliaChainSelector, ccipBnMTokenAddressSepolia, amountToSend);
   const receipt = await tx.wait();
   if (!receipt) return;
   const evm2EvmMessage = getEvm2EvmMessage(receipt);
@@ -429,7 +419,7 @@ User must provide `ETHEREUM_SEPOLIA_RPC_URL` and `ARBITRUM_SEPOLIA_RPC_URL`.
 To run this example:
 
 1. In the first terminal window run: `npx hardhat node`
-2. In the second terminal window run: `npx hardhat run ./scripts/examples/UnsafeTokenAndDataTransferFork.ts`
+2. In the second terminal window run: `npx hardhat run ./scripts/examples/UnsafeTokenAndDataTransferFork.ts --network localhost`
 
 ## Contribute to Chainlink Local
 
