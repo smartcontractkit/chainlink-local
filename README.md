@@ -7,8 +7,8 @@ The package exposes a set of smart contracts and scripts with which you build, d
 User Contracts tested with Chainlink Local can be deployed to test networks without any modifications.
 
 <p align="center">
-  <a href="https://youtu.be/rEVjU9tOf74?si=w-SHJQmFxJ0zi24q">
-    <img src="https://github.com/smartcontractkit/chainlink-local/assets/37881789/9f8c2444-b238-431f-bb0b-8805be9c936f" alt="Watch the demo on YouTube" style="width:75%; border-radius:5%;">
+  <a href="https://www.youtube.com/watch?v=rEVjU9tOf74&list=PL3ZUTf1nxlFyHKswTYFa2tffUsR94KAEv">
+    <img src="./assets/thumbnail.png" alt="Watch the demo on YouTube" style="width:75%; border-radius:5%;">
   </a>
 </p>
 
@@ -28,6 +28,12 @@ and then set remappings to: `@chainlink/local/=lib/chainlink-local/` in either `
 
 ```
 npm install git+https://github.com/smartcontractkit/chainlink-local.git
+```
+
+#### Remix IDE
+
+```solidity
+import "https://github.com/smartcontractkit/chainlink-local/blob/main/src/ccip/CCIPLocalSimulator.sol";
 ```
 
 ### Usage
@@ -68,7 +74,7 @@ contract Demo is Test {
 
 ### Learn more
 
-To view detailed documentation and more examples, visit [DOCUMENTATION.md](./DOCUMENTATION.md).
+To view detailed documentation and more examples, visit the [Chainlink Local Documentation](https://cll-devrel.gitbook.io/chainlink-local-documentation).
 
 > **Note**
 >
