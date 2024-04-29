@@ -92,18 +92,18 @@ Create `CCIPLocalSimulator.sol` and paste the following code:
 ```solidity
 pragma solidity ^0.8.19;
 
-import {CCIPLocalSimulator} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
+import {CCIPLocalSimulator} from  "https://github.com/smartcontractkit/chainlink-local/blob/main/src/ccip/CCIPLocalSimulator.sol";
 ```
 
-Compile it and deploy to RemixVM. If deployment fail, go back to the "Solidity compiler" tab, toggle the "Advanced Configurations" and under "Compiler configuration" check the "Enable optimization" check box. Then compile it and try depoying again.
+Compile it and deploy it to RemixVM. If deployment fails, go back to the "Solidity compiler" tab, toggle the "Advanced Configurations" and under "Compiler configuration" check the "Enable optimization" check box. Then compile it and try deploying it again.
 
-<img src="./assets/remix-001.png" alt="Remix IDE Screenshot" style="width:75%; border-radius:5%;">
+<img src="./assets/remix-001.png" alt="Remix IDE Screenshot" style="width:75%">
 
 After that deploy your smart contracts using addresses provided by the `configuration()` function (Router, LinkToken, etc.) and start interacting and testing your smart contracts.
 
-If you encounter in `NotEnoughGasForCall` custom error provided by the Router smart contract, scroll up to the "Gas Limit" section, select "Custom" radio button and try again.
+If you encounter the `NotEnoughGasForCall` custom error provided by the Router smart contract, scroll up to the "Gas Limit" section, select the "Custom" radio button and try again.
 
-<img src="./assets/remix-002.png" alt="Remix IDE Screenshot" style="width:75%; border-radius:5%;">
+<img src="./assets/remix-002.png" alt="Remix IDE Screenshot" style="width:75%">
 
 #### [CCIPLocalSimulator].configuration()
 
