@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import {Test, Vm} from "forge-std/Test.sol";
 import {Register} from "./Register.sol";
-import {Internal} from "@chainlink/contracts-ccip/src/v0.8/ccip/onRamp/EVM2EVMOnRamp.sol";
+import {Internal} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Internal.sol";
 import {IERC20} from
     "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/IERC20.sol";
 
