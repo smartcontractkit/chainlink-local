@@ -3,11 +3,22 @@ pragma solidity ^0.8.19;
 
 import {Test, Vm} from "forge-std/Test.sol";
 import {Register} from "./Register.sol";
-import {Router} from "@chainlink/contracts-ccip/src/v0.8/ccip/Router.sol";
-import {Internal} from "@chainlink/contracts-ccip/src/v0.8/ccip/onRamp/EVM2EVMOnRamp.sol";
-import {EVM2EVMOffRamp} from "@chainlink/contracts-ccip/src/v0.8/ccip/offRamp/EVM2EVMOffRamp.sol";
+import {Internal} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Internal.sol";
 import {IERC20} from
     "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/IERC20.sol";
+
+interface IRouterFork {
+    struct OffRamp {
+        uint64 sourceChainSelector;
+        address offRamp;
+    }
+
+    function getOffRamps() external view returns (OffRamp[] memory);
+}
+
+interface IEVM2EVMOffRampFork {
+    function executeSingleMessage(Internal.EVM2EVMMessage memory message, bytes[] memory offchainTokenData) external;
+}
 
 // @notice Works with Foundry only
 contract CCIPLocalSimulatorFork is Test {
@@ -46,8 +57,8 @@ contract CCIPLocalSimulatorFork is Test {
         vm.selectFork(forkId);
         assertEq(vm.activeFork(), forkId);
 
-        Router.OffRamp[] memory offRamps =
-            Router(i_register.getNetworkDetails(block.chainid).routerAddress).getOffRamps();
+        IRouterFork.OffRamp[] memory offRamps =
+            IRouterFork(i_register.getNetworkDetails(block.chainid).routerAddress).getOffRamps();
         length = offRamps.length;
 
         for (uint256 i; i < length; ++i) {
@@ -55,7 +66,7 @@ contract CCIPLocalSimulatorFork is Test {
                 vm.startPrank(offRamps[i].offRamp);
                 uint256 numberOfTokens = message.tokenAmounts.length;
                 bytes[] memory offchainTokenData = new bytes[](numberOfTokens);
-                EVM2EVMOffRamp(offRamps[i].offRamp).executeSingleMessage(message, offchainTokenData);
+                IEVM2EVMOffRampFork(offRamps[i].offRamp).executeSingleMessage(message, offchainTokenData);
                 vm.stopPrank();
                 break;
             }
