@@ -108,7 +108,7 @@ async function routeMessage(routerAddress, evm2EvmMessage) {
             const evm2EvmOffRamp = new ethers.Contract(offRamp.offRamp, EVM2EVMOffRampAbi);
 
             const self = await ethers.getImpersonatedSigner(offRamp.offRamp);
-            setBalance(self.address, BigInt(100) ** BigInt(18));
+            await setBalance(self.address, BigInt(100) ** BigInt(18));
 
             const offchainTokenData = new Array(evm2EvmMessage.tokenAmounts.length).fill("0x");
 
