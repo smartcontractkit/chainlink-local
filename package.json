@@ -10,7 +10,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/smartcontractkit/chainlink-local.git"
+    "url": "git+https://github.com/smartcontractkit/chainlink-local.git"
   },
   "keywords": [
     "chainlink"
