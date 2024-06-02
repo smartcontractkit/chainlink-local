@@ -1,7 +1,7 @@
 {
   "name": "@chainlink/local",
   "description": "Chainlink Local Simulator",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "files": [
     "src/**/*.sol",
     "!src/test/**/*",
