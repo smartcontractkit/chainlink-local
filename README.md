@@ -1,10 +1,12 @@
 ## Chainlink Local
 
-Chainlink Local is an installable dependency. It provides a tool (the Chainlink Local Simulator) that developers import into their Foundry and Hardhat scripts. This tool runs [Chainlink CCIP](https://docs.chain.link/ccip) locally which means developers can rapidly explore, prototype and iterate CCIP dApps off-chain, and move to testnet only when they're ready to test in a live environment.
+Chainlink Local is an installable dependency. It provides a tool (the Chainlink Local Simulator) that developers import into their Foundry or Hardhat or Remix projects. This tool runs [Chainlink CCIP](https://docs.chain.link/ccip) locally which means developers can rapidly explore, prototype and iterate CCIP dApps off-chain in a local environment, and move to testnet only when they're ready to test in a live environment.
 
-The package exposes a set of smart contracts and scripts with which you build, deploy and execute CCIP token transfers and arbitrary messages on a local Hardhat or Anvil (Foundry) development node. Chainlink Local also supports forked nodes.
+The package exposes a set of smart contracts and scripts with which you build, deploy and execute CCIP token transfers and arbitrary messages on a local Remix, Hardhat or Anvil (Foundry) development node. Chainlink Local also supports forked nodes.
 
-User Contracts tested with Chainlink Local can be deployed to test networks without any modifications.
+User Contracts tested with Chainlink Local can be deployed to test networks without any modifications (assuming network specific contract addresses such as Router contracts and LINK token addresses are passed in via a constructor).
+
+To view more detailed documentation and more examples, visit the [Chainlink Local Documentation](https://cll-devrel.gitbook.io/chainlink-local-documentation).
 
 <p align="center">
   <a href="https://www.youtube.com/watch?v=rEVjU9tOf74&list=PL3ZUTf1nxlFyHKswTYFa2tffUsR94KAEv">
@@ -27,7 +29,7 @@ and then set remappings to: `@chainlink/local/=lib/chainlink-local/` in either `
 #### Hardhat (npm)
 
 ```
-npm install git+https://github.com/smartcontractkit/chainlink-local.git
+npm install @chainlink/local
 ```
 
 #### Remix IDE
@@ -35,6 +37,8 @@ npm install git+https://github.com/smartcontractkit/chainlink-local.git
 ```solidity
 import "https://github.com/smartcontractkit/chainlink-local/blob/main/src/ccip/CCIPLocalSimulator.sol";
 ```
+
+Once you have installed CCIP Local, you are now ready to start using it with your project.
 
 ### Usage
 
