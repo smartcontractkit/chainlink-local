@@ -57,6 +57,14 @@ contract MockV3Aggregator is AggregatorV2V3Interface {
         return AggregatorV2V3Interface(aggregator).latestRound();
     }
 
+    function updateAnswer(int256 _answer) public {
+        MockOffchainAggregator(aggregator).updateAnswer(_answer);
+    }
+
+    function updateRoundData(uint80 _roundId, int256 _answer, uint256 _timestamp, uint256 _startedAt) public {
+        MockOffchainAggregator(aggregator).updateRoundData(_roundId, _answer, _timestamp, _startedAt);
+    }
+
     function proposeAggregator(AggregatorV2V3Interface _aggregator) external {
         proposedAggregator = address(_aggregator);
     }

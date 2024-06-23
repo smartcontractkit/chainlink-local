@@ -1,14 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {AggregatorV2V3Interface} from "./interfaces/AggregatorV2V3Interface.sol";
-
-contract MockOffchainAggregator is AggregatorV2V3Interface {
-    uint256 public constant override version = 0;
-    uint8 public override decimals;
-    int256 public override latestAnswer;
-    uint256 public override latestTimestamp;
-    uint256 public override latestRound;
+contract MockOffchainAggregator {
+    uint8 public decimals;
+    int256 public latestAnswer;
+    uint256 public latestTimestamp;
+    uint256 public latestRound;
 
     // Lowest answer the system is allowed to report in response to transmissions
     // Not exposed from the Proxy contract
@@ -17,8 +14,8 @@ contract MockOffchainAggregator is AggregatorV2V3Interface {
     // Not exposed from the Proxy contract
     int192 public maxAnswer;
 
-    mapping(uint256 => int256) public override getAnswer;
-    mapping(uint256 => uint256) public override getTimestamp;
+    mapping(uint256 => int256) public getAnswer;
+    mapping(uint256 => uint256) public getTimestamp;
     mapping(uint256 => uint256) private getStartedAt;
 
     constructor(uint8 _decimals, int256 _initialAnswer) {
@@ -51,7 +48,6 @@ contract MockOffchainAggregator is AggregatorV2V3Interface {
     function getRoundData(uint80 _roundId)
         external
         view
-        override
         returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
     {
         return (_roundId, getAnswer[_roundId], getStartedAt[_roundId], getTimestamp[_roundId], _roundId);
@@ -60,7 +56,6 @@ contract MockOffchainAggregator is AggregatorV2V3Interface {
     function latestRoundData()
         external
         view
-        override
         returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
     {
         return (
@@ -75,9 +70,5 @@ contract MockOffchainAggregator is AggregatorV2V3Interface {
     function updateMinAndMaxAnswers(int192 _minAnswer, int192 _maxAnswer) external {
         minAnswer = _minAnswer;
         maxAnswer = _maxAnswer;
-    }
-
-    function description() external pure override returns (string memory) {
-        return "src/data-feeds/MockOffchainAggregator.sol";
     }
 }
