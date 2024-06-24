@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.0] - Upcoming release
+## [0.2.0-beta] - 24 June 2024
 
 ### Dependencies
 
@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [x] Chainlink CCIP
 - [x] Chainlink Data Feeds
-- [ ] Chainlink Data Streams
+- [ ] Chainlink VRF 2
 - [ ] Chainlink VRF 2.5
 
 ### Added
@@ -45,4 +45,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release of the project
 
 [0.1.0]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.1.0
-[0.2.0]: https://github.com/smartcontractkit/chainlink-local/tree/develop
+[0.2.0-beta]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.0-beta
