@@ -134,7 +134,7 @@ contract BasicDataConsumerV3Test is Test {
         currentProposedAggregator = mockAggregator.proposedAggregator();
         assertEq(currentProposedAggregator, address(newMockOffchainAggregator));
 
-        mockAggregator.confirmAggregator();
+        mockAggregator.confirmAggregator(address(newMockOffchainAggregator));
 
         currentAggregator = mockAggregator.aggregator();
         currentProposedAggregator = mockAggregator.proposedAggregator();
@@ -148,7 +148,7 @@ contract BasicDataConsumerV3Test is Test {
 
     function test_shouldReturnMinAndMaxAnswers() public {
         int192 minAnswer = 1;
-        int192 maxAnswer = type(int192).max;
+        int192 maxAnswer = 95780971304118053647396689196894323976171195136475135; // type(uint176).max
 
         int192 resultMinAnswer = mockOffchainAggregator.minAnswer();
         int192 resultMaxAnswer = mockOffchainAggregator.maxAnswer();
@@ -168,5 +168,61 @@ contract BasicDataConsumerV3Test is Test {
 
         assertEq(resultMinAnswer, newMinAnswer);
         assertEq(resultMaxAnswer, newMaxAnswer);
+    }
+
+    function test_shouldRevertIfProposedAggregatorIsZero() public {
+        vm.expectRevert("Proposed aggregator cannot be zero address");
+        mockAggregator.proposeAggregator(AggregatorV2V3Interface(address(0)));
+    }
+
+    function test_shouldRevertIfProposedAggregatorIsCurrentAggregator() public {
+        vm.expectRevert("Proposed aggregator cannot be current aggregator");
+        mockAggregator.proposeAggregator(AggregatorV2V3Interface(address(mockOffchainAggregator)));
+    }
+
+    function test_shouldRevertIfProposedAggregatorIsNotSet() public {
+        vm.expectRevert("Invalid proposed aggregator");
+        mockAggregator.confirmAggregator(address(1));
+    }
+
+    function test_shouldRevertIfProposedAggregatorIsNotCorrect() public {
+        int256 newAnswer = 200000000000;
+        MockOffchainAggregator newMockOffchainAggregator = new MockOffchainAggregator(decimals, newAnswer);
+
+        mockAggregator.proposeAggregator(AggregatorV2V3Interface(address(newMockOffchainAggregator)));
+        vm.expectRevert("Invalid proposed aggregator");
+        mockAggregator.confirmAggregator(address(1));
+    }
+
+    function test_shouldRevertIfMinAnswerIsGreaterThanMaxAnswer() public {
+        int192 newMinAnswer = 1.5 ether;
+        int192 newMaxAnswer = 0.5 ether;
+
+        vm.expectRevert("minAnswer must be less than maxAnswer");
+        mockOffchainAggregator.updateMinAndMaxAnswers(newMinAnswer, newMaxAnswer);
+    }
+
+    function test_shouldRevertIfMinAnswerIsEqualToMaxAnswer() public {
+        int192 newMinAnswer = 1.5 ether;
+        int192 newMaxAnswer = 1.5 ether;
+
+        vm.expectRevert("minAnswer must be less than maxAnswer");
+        mockOffchainAggregator.updateMinAndMaxAnswers(newMinAnswer, newMaxAnswer);
+    }
+
+    function test_shouldRevertIfMinAnswerIsLessMinAnswerPossible() public {
+        int192 newMinAnswer = 0;
+        int192 newMaxAnswer = 1.5 ether;
+
+        vm.expectRevert("minAnswer is too low");
+        mockOffchainAggregator.updateMinAndMaxAnswers(newMinAnswer, newMaxAnswer);
+    }
+
+    function test_shouldRevertIfMaxAnswerIsGreaterThanMaxAnswerPossible() public {
+        int192 newMinAnswer = 0.5 ether;
+        int192 newMaxAnswer = type(int192).max;
+
+        vm.expectRevert("maxAnswer is too high");
+        mockOffchainAggregator.updateMinAndMaxAnswers(newMinAnswer, newMaxAnswer);
     }
 }

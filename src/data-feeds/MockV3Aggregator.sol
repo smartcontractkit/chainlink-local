@@ -66,10 +66,13 @@ contract MockV3Aggregator is AggregatorV2V3Interface {
     }
 
     function proposeAggregator(AggregatorV2V3Interface _aggregator) external {
+        require(address(_aggregator) != address(0), "Proposed aggregator cannot be zero address");
+        require(address(_aggregator) != aggregator, "Proposed aggregator cannot be current aggregator");
         proposedAggregator = address(_aggregator);
     }
 
-    function confirmAggregator() external {
+    function confirmAggregator(address _aggregator) external {
+        require(_aggregator == address(proposedAggregator), "Invalid proposed aggregator");
         aggregator = proposedAggregator;
         proposedAggregator = address(0);
     }
