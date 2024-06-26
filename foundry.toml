@@ -6,5 +6,6 @@ test = 'test'
 cache_path = 'cache_forge'
 remappings = [
     '@chainlink/contracts-ccip/=lib/ccip/contracts/',
+    '@chainlink/contracts/=lib/chainlink-brownie-contracts/contracts/',
     '@chainlink/local/src/=src/',
 ]
