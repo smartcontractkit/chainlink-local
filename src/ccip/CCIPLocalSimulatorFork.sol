@@ -4,7 +4,8 @@ pragma solidity ^0.8.19;
 import {Test, Vm} from "forge-std/Test.sol";
 import {Register} from "./Register.sol";
 import {Internal} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Internal.sol";
-import {IERC20} from "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/IERC20.sol";
+import {IERC20} from
+    "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/IERC20.sol";
 
 /// @title IRouterFork Interface
 interface IRouterFork {
@@ -37,7 +38,8 @@ interface IEVM2EVMOffRampFork {
      */
     function executeSingleMessage(
         Internal.EVM2EVMMessage memory message,
-        bytes[] memory offchainTokenData
+        bytes[] memory offchainTokenData,
+        uint32[] memory tokenGasOverrides
     ) external;
 }
 
@@ -80,10 +82,7 @@ contract CCIPLocalSimulatorFork is Test {
         uint256 length = entries.length;
         for (uint256 i; i < length; ++i) {
             if (entries[i].topics[0] == CCIPSendRequested.selector) {
-                message = abi.decode(
-                    entries[i].data,
-                    (Internal.EVM2EVMMessage)
-                );
+                message = abi.decode(entries[i].data, (Internal.EVM2EVMMessage));
                 if (!s_processedMessages[message.messageId]) {
                     s_processedMessages[message.messageId] = true;
                     break;
@@ -94,21 +93,21 @@ contract CCIPLocalSimulatorFork is Test {
         vm.selectFork(forkId);
         assertEq(vm.activeFork(), forkId);
 
-        IRouterFork.OffRamp[] memory offRamps = IRouterFork(
-            i_register.getNetworkDetails(block.chainid).routerAddress
-        ).getOffRamps();
+        IRouterFork.OffRamp[] memory offRamps =
+            IRouterFork(i_register.getNetworkDetails(block.chainid).routerAddress).getOffRamps();
         length = offRamps.length;
 
         for (uint256 i; i < length; ++i) {
-            if (
-                offRamps[i].sourceChainSelector == message.sourceChainSelector
-            ) {
+            if (offRamps[i].sourceChainSelector == message.sourceChainSelector) {
                 vm.startPrank(offRamps[i].offRamp);
                 uint256 numberOfTokens = message.tokenAmounts.length;
                 bytes[] memory offchainTokenData = new bytes[](numberOfTokens);
+                uint32[] memory tokenGasOverrides = new uint32[](numberOfTokens);
+                for (uint256 j; j < numberOfTokens; ++j) {
+                    tokenGasOverrides[j] = uint32(message.gasLimit);
+                }
                 IEVM2EVMOffRampFork(offRamps[i].offRamp).executeSingleMessage(
-                    message,
-                    offchainTokenData
+                    message, offchainTokenData, tokenGasOverrides
                 );
                 vm.stopPrank();
                 break;
@@ -129,9 +128,7 @@ contract CCIPLocalSimulatorFork is Test {
      *          ccipBnMAddress - The address of the CCIP BnM token.
      *          ccipLnMAddress - The address of the CCIP LnM token.
      */
-    function getNetworkDetails(
-        uint256 chainId
-    ) external view returns (Register.NetworkDetails memory) {
+    function getNetworkDetails(uint256 chainId) external view returns (Register.NetworkDetails memory) {
         return i_register.getNetworkDetails(chainId);
     }
 
@@ -147,10 +144,7 @@ contract CCIPLocalSimulatorFork is Test {
      *          ccipBnMAddress - The address of the CCIP BnM token.
      *          ccipLnMAddress - The address of the CCIP LnM token.
      */
-    function setNetworkDetails(
-        uint256 chainId,
-        Register.NetworkDetails memory networkDetails
-    ) external {
+    function setNetworkDetails(uint256 chainId, Register.NetworkDetails memory networkDetails) external {
         i_register.setNetworkDetails(chainId, networkDetails);
     }
 
@@ -162,13 +156,8 @@ contract CCIPLocalSimulatorFork is Test {
      *
      * @return success - Returns `true` if the transfer of tokens was successful, otherwise `false`.
      */
-    function requestLinkFromFaucet(
-        address to,
-        uint256 amount
-    ) external returns (bool success) {
-        address linkAddress = i_register
-            .getNetworkDetails(block.chainid)
-            .linkAddress;
+    function requestLinkFromFaucet(address to, uint256 amount) external returns (bool success) {
+        address linkAddress = i_register.getNetworkDetails(block.chainid).linkAddress;
 
         vm.startPrank(LINK_FAUCET);
         success = IERC20(linkAddress).transfer(to, amount);

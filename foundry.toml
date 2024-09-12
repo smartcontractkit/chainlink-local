@@ -1,5 +1,7 @@
 [profile.default]
 src = 'src'
+solc = '0.8.24'
+evm_version = 'paris'
 out = 'out'
 libs = ['lib']
 test = 'test'

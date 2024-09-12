@@ -64,6 +64,12 @@ address[] s_supportedTokens
 
 The list of supported token addresses
 
+### CCIPLocalSimulator\_\_MsgSenderIsNotTokenOwner
+
+```solidity
+error CCIPLocalSimulator__MsgSenderIsNotTokenOwner()
+```
+
 ### constructor
 
 ```solidity
@@ -72,14 +78,31 @@ constructor() public
 
 Constructor to initialize the contract and pre-deployed token instances
 
-### supportNewToken
+### supportNewTokenViaOwner
 
 ```solidity
-function supportNewToken(address tokenAddress) external
+function supportNewTokenViaOwner(address tokenAddress) external
 ```
 
 Allows user to support any new token, besides CCIP BnM and CCIP LnM, for
-cross-chain transfers.
+cross-chain transfers. Reverts if token does not implement owner() function.
+Reverts if the caller is not the token owner.
+
+#### Parameters
+
+| Name         | Type    | Description                                                        |
+| ------------ | ------- | ------------------------------------------------------------------ |
+| tokenAddress | address | - The address of the token to add to the list of supported tokens. |
+
+### supportNewTokenViaGetCCIPAdmin
+
+```solidity
+function supportNewTokenViaGetCCIPAdmin(address tokenAddress) external
+```
+
+Allows user to support any new token, besides CCIP BnM and CCIP LnM, for
+cross-chain transfers. Reverts if token does not implement getCCIPAdmin()
+function. Reverts if the caller is not the token CCIPAdmin.
 
 #### Parameters
 

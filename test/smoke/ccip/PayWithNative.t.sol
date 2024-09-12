@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.24;
 
 import {Test, console2} from "forge-std/Test.sol";
 import {BasicTokenSender} from "../../../src/test/ccip/BasicTokenSender.sol";
-import {CCIPLocalSimulator, IRouterClient, BurnMintERC677Helper} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
+import {
+    CCIPLocalSimulator, IRouterClient, BurnMintERC677Helper
+} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
 import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
 
 contract PayWithNativeTest is Test {
@@ -17,15 +19,8 @@ contract PayWithNativeTest is Test {
 
     function setUp() public {
         ccipLocalSimulator = new CCIPLocalSimulator();
-        (
-            uint64 chainSelector_,
-            IRouterClient sourceRouter_,
-            ,
-            ,
-            ,
-            BurnMintERC677Helper ccipBnM_,
-
-        ) = ccipLocalSimulator.configuration();
+        (uint64 chainSelector_, IRouterClient sourceRouter_,,,, BurnMintERC677Helper ccipBnM_,) =
+            ccipLocalSimulator.configuration();
 
         sender = new BasicTokenSender(address(sourceRouter_));
 
@@ -43,12 +38,9 @@ contract PayWithNativeTest is Test {
         ccipBnM.drip(alice);
         uint256 amountToSend = 100;
 
-        Client.EVMTokenAmount[]
-            memory tokensToSendDetails = new Client.EVMTokenAmount[](1);
-        Client.EVMTokenAmount memory tokenToSend = Client.EVMTokenAmount({
-            token: address(ccipBnM),
-            amount: amountToSend
-        });
+        Client.EVMTokenAmount[] memory tokensToSendDetails = new Client.EVMTokenAmount[](1);
+        Client.EVMTokenAmount memory tokenToSend =
+            Client.EVMTokenAmount({token: address(ccipBnM), amount: amountToSend});
         tokensToSendDetails[0] = tokenToSend;
 
         Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({

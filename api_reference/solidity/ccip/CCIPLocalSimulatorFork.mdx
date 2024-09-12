@@ -4,6 +4,13 @@
 
 ### OffRamp
 
+Structure representing an offRamp configuration
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+
 ```solidity
 struct OffRamp {
   uint64 sourceChainSelector;
@@ -30,7 +37,7 @@ Gets the list of offRamps
 ### executeSingleMessage
 
 ```solidity
-function executeSingleMessage(struct Internal.EVM2EVMMessage message, bytes[] offchainTokenData) external
+function executeSingleMessage(struct Internal.EVM2EVMMessage message, bytes[] offchainTokenData, uint32[] tokenGasOverrides) external
 ```
 
 Executes a single CCIP message on the offRamp
@@ -41,6 +48,7 @@ Executes a single CCIP message on the offRamp
 | ----------------- | ------------------------------ | --------------------------------- |
 | message           | struct Internal.EVM2EVMMessage | - The CCIP message to be executed |
 | offchainTokenData | bytes[]                        | - Additional offchain token data  |
+| tokenGasOverrides | uint32[]                       |                                   |
 
 ## CCIPLocalSimulatorFork
 

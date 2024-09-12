@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.19;
+pragma solidity 0.8.24;
 
-import {IERC20} from "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from
+    "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from
+    "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IRouterClient} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IRouterClient.sol";
 import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
 
@@ -24,29 +26,17 @@ contract BasicTokenSender {
 
     receive() external payable {}
 
-    function getSupportedTokens(
-        uint64 chainSelector
-    ) external view returns (address[] memory tokens) {
-        tokens = IRouterClient(i_router).getSupportedTokens(chainSelector);
-    }
-
-    function send(
-        uint64 destinationChainSelector,
-        address receiver,
-        Client.EVMTokenAmount[] memory tokensToSendDetails
-    ) external payable {
+    function send(uint64 destinationChainSelector, address receiver, Client.EVMTokenAmount[] memory tokensToSendDetails)
+        external
+        payable
+    {
         uint256 length = tokensToSendDetails.length;
 
-        for (uint256 i = 0; i < length; ) {
+        for (uint256 i = 0; i < length;) {
             IERC20(tokensToSendDetails[i].token).safeTransferFrom(
-                msg.sender,
-                address(this),
-                tokensToSendDetails[i].amount
+                msg.sender, address(this), tokensToSendDetails[i].amount
             );
-            IERC20(tokensToSendDetails[i].token).approve(
-                i_router,
-                tokensToSendDetails[i].amount
-            );
+            IERC20(tokensToSendDetails[i].token).approve(i_router, tokensToSendDetails[i].amount);
 
             unchecked {
                 ++i;
@@ -61,15 +51,9 @@ contract BasicTokenSender {
             feeToken: address(0)
         });
 
-        uint256 fee = IRouterClient(i_router).getFee(
-            destinationChainSelector,
-            message
-        );
+        uint256 fee = IRouterClient(i_router).getFee(destinationChainSelector, message);
 
-        bytes32 messageId = IRouterClient(i_router).ccipSend{value: fee}(
-            destinationChainSelector,
-            message
-        );
+        bytes32 messageId = IRouterClient(i_router).ccipSend{value: fee}(destinationChainSelector, message);
 
         emit MessageSent(messageId);
     }
