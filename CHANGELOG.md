@@ -6,6 +6,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2-beta.0] - 04 October 2024
+
+### Dependencies
+
+| Package                   | Version      |
+| ------------------------- | ------------ |
+| @chainlink/contracts-ccip | 1.4.0        |
+| @chainlink/contracts      | 1.5.0-beta.0 |
+
+### Services
+
+- [x] Chainlink CCIP
+- [x] Chainlink CCIP v1.5
+- [x] Chainlink Data Feeds
+- [ ] Chainlink Automation
+- [ ] Chainlink VRF 2
+- [ ] Chainlink VRF 2.5
+
+### Added
+
+- Added CCIP v1.5 config details to `Register.sol` for all available testnet
+  lanes
+
 ## [0.2.2-beta] - 12 September 2024
 
 ### Dependencies
@@ -154,3 +177,5 @@ and this project adheres to
 [0.2.1]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.1
 [0.2.2-beta]:
   https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.2-beta
+[0.2.2-beta.0]:
+  https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.2-beta.0
