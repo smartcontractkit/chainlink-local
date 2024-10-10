@@ -97,16 +97,16 @@ contract CCIPLocalSimulatorFork is Test {
             IRouterFork(i_register.getNetworkDetails(block.chainid).routerAddress).getOffRamps();
         length = offRamps.length;
 
-        for (uint256 i; i < length; ++i) {
-            if (offRamps[i].sourceChainSelector == message.sourceChainSelector) {
-                vm.startPrank(offRamps[i].offRamp);
+        for (uint256 i = length; i > 0; --i) {
+            if (offRamps[i - 1].sourceChainSelector == message.sourceChainSelector) {
+                vm.startPrank(offRamps[i - 1].offRamp);
                 uint256 numberOfTokens = message.tokenAmounts.length;
                 bytes[] memory offchainTokenData = new bytes[](numberOfTokens);
                 uint32[] memory tokenGasOverrides = new uint32[](numberOfTokens);
                 for (uint256 j; j < numberOfTokens; ++j) {
                     tokenGasOverrides[j] = uint32(message.gasLimit);
                 }
-                IEVM2EVMOffRampFork(offRamps[i].offRamp).executeSingleMessage(
+                IEVM2EVMOffRampFork(offRamps[i - 1].offRamp).executeSingleMessage(
                     message, offchainTokenData, tokenGasOverrides
                 );
                 vm.stopPrank();
