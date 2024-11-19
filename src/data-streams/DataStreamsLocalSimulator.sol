@@ -33,6 +33,9 @@ contract DataStreamsLocalSimulator {
         s_mockFeeManager = new MockFeeManager(
             address(i_linkToken), address(i_wrappedNative), address(s_mockVerifierProxy), address(s_mockRewardManager)
         );
+
+        s_mockVerifierProxy.setFeeManager(s_mockFeeManager);
+        s_mockRewardManager.setFeeManager(address(s_mockFeeManager));
     }
 
     /**

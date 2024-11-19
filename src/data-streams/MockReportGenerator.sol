@@ -130,8 +130,8 @@ contract MockReportGenerator is Test, ReportVersions {
 
     function signReport(bytes memory reportData) private returns (bytes memory signedReport) {
         bytes32[3] memory reportContext;
-        bytes32[] memory rawRs;
-        bytes32[] memory rawSs;
+        bytes32[] memory rawRs = new bytes32[](1);
+        bytes32[] memory rawSs = new bytes32[](1);
         bytes32 rawVs;
 
         reportContext[0] = bytes32(i_donDigest);

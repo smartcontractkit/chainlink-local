@@ -10,7 +10,7 @@ import {SafeERC20} from
 // import {IRewardManager} from "@chainlink/contracts/src/v0.8/llo-feeds/interfaces/IRewardManager.sol";
 import {IRewardManager} from "./interfaces/IRewardManager.sol";
 
-contract MockRewardManager is IRewardManager, OwnerIsCreator {
+contract MockRewardManager is IRewardManager {
     using SafeERC20 for IERC20;
 
     error Unauthorized();
@@ -48,7 +48,7 @@ contract MockRewardManager is IRewardManager, OwnerIsCreator {
         revert("Not implemented");
     }
 
-    function setFeeManager(address newFeeManager) external override onlyOwner {
+    function setFeeManager(address newFeeManager) external override {
         s_feeManagerAddress = newFeeManager;
     }
 
