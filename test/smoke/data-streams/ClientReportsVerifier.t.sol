@@ -15,12 +15,13 @@ contract ClientReportsVerifierTest is Test {
     MockReportGenerator public mockReportGenerator;
 
     ClientReportsVerifier public consumer;
+    int192 initialPrice;
 
     function setUp() public {
         dataStreamsLocalSimulator = new DataStreamsLocalSimulator();
         (,,, MockVerifierProxy mockVerifierProxy_,,) = dataStreamsLocalSimulator.configuration();
 
-        int192 initialPrice = 1 ether;
+        initialPrice = 1 ether;
         mockReportGenerator = new MockReportGenerator(initialPrice);
 
         consumer = new ClientReportsVerifier(address(mockVerifierProxy_));
@@ -33,5 +34,8 @@ contract ClientReportsVerifierTest is Test {
         dataStreamsLocalSimulator.requestLinkFromFaucet(address(consumer), 1 ether);
 
         consumer.verifyReport(signedReportV3);
+
+        int192 lastDecodedPrice = consumer.lastDecodedPrice();
+        assertEq(lastDecodedPrice, initialPrice);
     }
 }

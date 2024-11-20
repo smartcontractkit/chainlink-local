@@ -10,7 +10,7 @@ import {MockReportGenerator} from "@chainlink/local/src/data-streams/MockReportG
 
 import {DataStreamsERC7412Compatible} from "../../../src/test/data-streams/ERC7412Compatible.sol";
 
-contract ClientReportsVerifierTest is Test {
+contract ERC7412CompatibleTest is Test {
     DataStreamsLocalSimulator public dataStreamsLocalSimulator;
     MockReportGenerator public mockReportGenerator;
 
@@ -46,11 +46,9 @@ contract ClientReportsVerifierTest is Test {
                 }
 
                 (address oracleContract, bytes memory oracleQuery) = abi.decode(revertData, (address, bytes));
-
                 assertEq(oracleContract, address(consumer));
 
                 (, bytes32 revertedFeedId,,,) = abi.decode(oracleQuery, (string, bytes32, string, uint256, string));
-
                 assertEq(feedId, revertedFeedId);
 
                 bytes memory signedReportV2 = mockReportGenerator.generateReportV2();
