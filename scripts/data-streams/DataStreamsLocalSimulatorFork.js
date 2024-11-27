@@ -1,7 +1,7 @@
 const { ethers } = require("hardhat");
 const { setBalance } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 
-const LinkTokenAbi = require("../abi/LinkToken.json");
+const LinkTokenAbi = require("../../abi/LinkToken.json");
 
 /**
  * Requests LINK tokens from the faucet and returns the transaction hash

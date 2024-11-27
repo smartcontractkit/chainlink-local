@@ -1,5 +1,5 @@
 import { ethers, network } from "hardhat";
-import { requestLinkFromFaucet, requestNativeFromFaucet } from "../DataStreamsLocalSimulatorFork";
+import { requestLinkFromFaucet, requestNativeFromFaucet } from "../data-streams/DataStreamsLocalSimulatorFork";
 
 // 1st Terminal: npx hardhat node
 // 2nd Terminal: npx hardhat run ./scripts/examples/DataStreamsConsumerFork.ts --network localhost
