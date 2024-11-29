@@ -43,6 +43,6 @@
   },
   "dependencies": {
     "@chainlink/contracts": "^1.1.1",
-    "@chainlink/contracts-ccip": "^1.5.0"
+    "@chainlink/contracts-ccip": "^1.5.1-beta.0"
   }
 }

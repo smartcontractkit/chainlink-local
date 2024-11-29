@@ -101,10 +101,12 @@ contract CCIPv1_5BurnMintPoolFork is Test {
         Register.NetworkDetails memory ethSepoliaNetworkDetails =
             ccipLocalSimulatorFork.getNetworkDetails(block.chainid);
         address[] memory allowlist = new address[](0);
+        uint8 localTokenDecimals = 18;
 
         vm.startPrank(alice);
         BurnMintTokenPool burnMintTokenPoolEthSepolia = new BurnMintTokenPool(
             IBurnMintERC20(address(mockERC20TokenEthSepolia)),
+            localTokenDecimals,
             allowlist,
             ethSepoliaNetworkDetails.rmnProxyAddress,
             ethSepoliaNetworkDetails.routerAddress
@@ -118,6 +120,7 @@ contract CCIPv1_5BurnMintPoolFork is Test {
         vm.startPrank(alice);
         BurnMintTokenPool burnMintTokenPoolBaseSepolia = new BurnMintTokenPool(
             IBurnMintERC20(address(mockERC20TokenBaseSepolia)),
+            localTokenDecimals,
             allowlist,
             baseSepoliaNetworkDetails.rmnProxyAddress,
             baseSepoliaNetworkDetails.routerAddress
@@ -203,15 +206,17 @@ contract CCIPv1_5BurnMintPoolFork is Test {
 
         vm.startPrank(alice);
         TokenPool.ChainUpdate[] memory chains = new TokenPool.ChainUpdate[](1);
+        bytes[] memory remotePoolAddressesEthSepolia = new bytes[](1);
+        remotePoolAddressesEthSepolia[0] = abi.encode(address(burnMintTokenPoolEthSepolia));
         chains[0] = TokenPool.ChainUpdate({
             remoteChainSelector: baseSepoliaNetworkDetails.chainSelector,
-            allowed: true,
-            remotePoolAddress: abi.encode(address(burnMintTokenPoolBaseSepolia)),
+            remotePoolAddresses: remotePoolAddressesEthSepolia,
             remoteTokenAddress: abi.encode(address(mockERC20TokenBaseSepolia)),
             outboundRateLimiterConfig: RateLimiter.Config({isEnabled: true, capacity: 100_000, rate: 167}),
             inboundRateLimiterConfig: RateLimiter.Config({isEnabled: true, capacity: 100_000, rate: 167})
         });
-        burnMintTokenPoolEthSepolia.applyChainUpdates(chains);
+        uint64[] memory remoteChainSelectorsToRemove = new uint64[](0);
+        burnMintTokenPoolEthSepolia.applyChainUpdates(remoteChainSelectorsToRemove, chains);
         vm.stopPrank();
 
         // Step 14) Configure Token Pool on Base Sepolia
@@ -219,15 +224,16 @@ contract CCIPv1_5BurnMintPoolFork is Test {
 
         vm.startPrank(alice);
         chains = new TokenPool.ChainUpdate[](1);
+        bytes[] memory remotePoolAddressesBaseSepolia = new bytes[](1);
+        remotePoolAddressesBaseSepolia[0] = abi.encode(address(burnMintTokenPoolEthSepolia));
         chains[0] = TokenPool.ChainUpdate({
             remoteChainSelector: ethSepoliaNetworkDetails.chainSelector,
-            allowed: true,
-            remotePoolAddress: abi.encode(address(burnMintTokenPoolEthSepolia)),
+            remotePoolAddresses: remotePoolAddressesBaseSepolia,
             remoteTokenAddress: abi.encode(address(mockERC20TokenEthSepolia)),
             outboundRateLimiterConfig: RateLimiter.Config({isEnabled: true, capacity: 100_000, rate: 167}),
             inboundRateLimiterConfig: RateLimiter.Config({isEnabled: true, capacity: 100_000, rate: 167})
         });
-        burnMintTokenPoolBaseSepolia.applyChainUpdates(chains);
+        burnMintTokenPoolBaseSepolia.applyChainUpdates(remoteChainSelectorsToRemove, chains);
         vm.stopPrank();
 
         // Step 15) Mint tokens on Ethereum Sepolia and transfer them to Base Sepolia
