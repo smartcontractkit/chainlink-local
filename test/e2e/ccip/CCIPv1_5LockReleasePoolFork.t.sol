@@ -29,6 +29,11 @@ contract CCIPv1_5LockReleasePoolFork is Test {
     CCIPLocalSimulatorFork public ccipLocalSimulatorFork;
     MockERC20TokenOwner public mockERC20TokenEthSepolia;
     MockERC20TokenOwner public mockERC20TokenBaseSepolia;
+    LockReleaseTokenPool public lockReleaseTokenPoolEthSepolia;
+    LockReleaseTokenPool public lockReleaseTokenPoolBaseSepolia;
+
+    Register.NetworkDetails ethSepoliaNetworkDetails;
+    Register.NetworkDetails baseSepoliaNetworkDetails;
 
     uint256 ethSepoliaFork;
     uint256 baseSepoliaFork;
@@ -62,13 +67,12 @@ contract CCIPv1_5LockReleasePoolFork is Test {
     function test_forkSupportNewCCIPToken() public {
         // Step 3) Deploy LockReleaseTokenPool on Ethereum Sepolia
         vm.selectFork(ethSepoliaFork);
-        Register.NetworkDetails memory ethSepoliaNetworkDetails =
-            ccipLocalSimulatorFork.getNetworkDetails(block.chainid);
+        ethSepoliaNetworkDetails = ccipLocalSimulatorFork.getNetworkDetails(block.chainid);
         address[] memory allowlist = new address[](0);
         uint8 localTokenDecimals = 18;
 
         vm.startPrank(alice);
-        LockReleaseTokenPool lockReleaseTokenPoolEthSepolia = new LockReleaseTokenPool(
+        lockReleaseTokenPoolEthSepolia = new LockReleaseTokenPool(
             IERC20(address(mockERC20TokenEthSepolia)),
             localTokenDecimals,
             allowlist,
@@ -80,11 +84,10 @@ contract CCIPv1_5LockReleasePoolFork is Test {
 
         // Step 4) Deploy LockReleaseTokenPool on Base Sepolia
         vm.selectFork(baseSepoliaFork);
-        Register.NetworkDetails memory baseSepoliaNetworkDetails =
-            ccipLocalSimulatorFork.getNetworkDetails(block.chainid);
+        baseSepoliaNetworkDetails = ccipLocalSimulatorFork.getNetworkDetails(block.chainid);
 
         vm.startPrank(alice);
-        LockReleaseTokenPool lockReleaseTokenPoolBaseSepolia = new LockReleaseTokenPool(
+        lockReleaseTokenPoolBaseSepolia = new LockReleaseTokenPool(
             IERC20(address(mockERC20TokenBaseSepolia)),
             localTokenDecimals,
             allowlist,

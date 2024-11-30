@@ -63,7 +63,10 @@ contract CCIPv1_5BurnMintPoolFork is Test {
     CCIPLocalSimulatorFork public ccipLocalSimulatorFork;
     MockERC20BurnAndMintToken public mockERC20TokenEthSepolia;
     MockERC20BurnAndMintToken public mockERC20TokenBaseSepolia;
+    BurnMintTokenPool public burnMintTokenPoolEthSepolia;
+    BurnMintTokenPool public burnMintTokenPoolBaseSepolia;
 
+    Register.NetworkDetails ethSepoliaNetworkDetails;
     Register.NetworkDetails baseSepoliaNetworkDetails;
 
     uint256 ethSepoliaFork;
@@ -98,13 +101,12 @@ contract CCIPv1_5BurnMintPoolFork is Test {
     function test_forkSupportNewCCIPToken() public {
         // Step 3) Deploy BurnMintTokenPool on Ethereum Sepolia
         vm.selectFork(ethSepoliaFork);
-        Register.NetworkDetails memory ethSepoliaNetworkDetails =
-            ccipLocalSimulatorFork.getNetworkDetails(block.chainid);
+        ethSepoliaNetworkDetails = ccipLocalSimulatorFork.getNetworkDetails(block.chainid);
         address[] memory allowlist = new address[](0);
         uint8 localTokenDecimals = 18;
 
         vm.startPrank(alice);
-        BurnMintTokenPool burnMintTokenPoolEthSepolia = new BurnMintTokenPool(
+        burnMintTokenPoolEthSepolia = new BurnMintTokenPool(
             IBurnMintERC20(address(mockERC20TokenEthSepolia)),
             localTokenDecimals,
             allowlist,
@@ -118,7 +120,7 @@ contract CCIPv1_5BurnMintPoolFork is Test {
         baseSepoliaNetworkDetails = ccipLocalSimulatorFork.getNetworkDetails(block.chainid);
 
         vm.startPrank(alice);
-        BurnMintTokenPool burnMintTokenPoolBaseSepolia = new BurnMintTokenPool(
+        burnMintTokenPoolBaseSepolia = new BurnMintTokenPool(
             IBurnMintERC20(address(mockERC20TokenBaseSepolia)),
             localTokenDecimals,
             allowlist,
