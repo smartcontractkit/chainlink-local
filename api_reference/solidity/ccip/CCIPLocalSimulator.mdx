@@ -70,6 +70,12 @@ The list of supported token addresses
 error CCIPLocalSimulator__MsgSenderIsNotTokenOwner()
 ```
 
+### CCIPLocalSimulator\_\_RequiredRoleNotFound
+
+```solidity
+error CCIPLocalSimulator__RequiredRoleNotFound(address account, bytes32 role, address token)
+```
+
 ### constructor
 
 ```solidity
@@ -103,6 +109,23 @@ function supportNewTokenViaGetCCIPAdmin(address tokenAddress) external
 Allows user to support any new token, besides CCIP BnM and CCIP LnM, for
 cross-chain transfers. Reverts if token does not implement getCCIPAdmin()
 function. Reverts if the caller is not the token CCIPAdmin.
+
+#### Parameters
+
+| Name         | Type    | Description                                                        |
+| ------------ | ------- | ------------------------------------------------------------------ |
+| tokenAddress | address | - The address of the token to add to the list of supported tokens. |
+
+### supportNewTokenViaAccessControlDefaultAdmin
+
+```solidity
+function supportNewTokenViaAccessControlDefaultAdmin(address tokenAddress) external
+```
+
+Allows user to support any new token, besides CCIP BnM and CCIP LnM, for
+cross-chain transfers. The caller must have the DEFAULT_ADMIN_ROLE as defined by
+the contract itself. Reverts if the caller is not the admin of the token using
+OZ's AccessControl DEFAULT_ADMIN_ROLE.
 
 #### Parameters
 
