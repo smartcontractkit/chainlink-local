@@ -6,6 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.4-beta] - 10 December 2024
+
+### Dependencies
+
+| Package                   | Version      |
+| ------------------------- | ------------ |
+| @chainlink/contracts-ccip | 1.5.1-beta.0 |
+| @chainlink/contracts      | 1.1.1        |
+
+- [x] Chainlink CCIP
+- [x] Chainlink CCIP v1.5
+- [x] Chainlink Data Feeds
+- [x] Chainlink Data Streams
+- [ ] Chainlink Automation
+- [ ] Chainlink VRF 2
+- [ ] Chainlink VRF 2.5
+
+### Added
+
+- Added full support for Data Streams by adding `DataStreamsLocalSimulator.sol`
+  (Foundry/Hardhat/Remix IDE local mode), `DataStreamsLocalSimulatorFork.sol`
+  (Foundry forked mode), `DataStreamsLocalSimulatorFork.js` (Hardhat forked
+  mode) and `MockReportGenerator.sol` & `MockReportGenerator.js` to mock
+  generating unverified reports by Data Streams DON for local modes in Foundry
+  and Hardhat respectively.
+
 ## [0.2.3] - 30 November 2024
 
 ### Dependencies
@@ -299,3 +325,5 @@ and this project adheres to
   https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.2-beta.1
 [0.2.2]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.2
 [0.2.3]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.3
+[0.2.4-beta]:
+  https://github.com/smartcontractkit/chainlink-local/releases/tag/0.2.4-beta
