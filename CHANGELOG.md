@@ -6,6 +6,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3] - 30 November 2024
+
+### Dependencies
+
+| Package                   | Version      |
+| ------------------------- | ------------ |
+| @chainlink/contracts-ccip | 1.5.1-beta.0 |
+| @chainlink/contracts      | 1.1.1        |
+
+- [x] Chainlink CCIP
+- [x] Chainlink CCIP v1.5
+- [x] Chainlink Data Feeds
+- [ ] Chainlink Automation
+- [ ] Chainlink VRF 2
+- [ ] Chainlink VRF 2.5
+
+### Added
+
+- Added `supportNewTokenViaAccessControlDefaultAdmin` function to
+  `CCIPLocalSimulator.sol`
+- Bumped `@chainlink/contracts-ccip` to `1.5.1-beta.0` to reflect new changes in
+  the CCIP `TokenPool.sol` smart contract (check
+  [CCIPv1_5BurnMintPoolFork.t.sol](./test/e2e/ccip/CCIPv1_5ForkBurnMintPoolFork.t.sol)
+  and
+  [CCIPv1_5LockReleasePoolFork.t.sol](./test/e2e/ccip/CCIPv1_5ForkLockReleasePoolFork.t.sol)
+  tests) and to support `EVMExtraArgsV2` in `MockCCIPRouter.sol`
+
 ## [0.2.2] - 15 October 2024
 
 ### Dependencies
@@ -271,3 +298,4 @@ and this project adheres to
 [0.2.2-beta.1]:
   https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.2-beta.1
 [0.2.2]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.2
+[0.2.3]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.3

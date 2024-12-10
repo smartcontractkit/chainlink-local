@@ -12,6 +12,8 @@ import {SafeERC20} from
     "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IOwner} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IOwner.sol";
 import {IGetCCIPAdmin} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IGetCCIPAdmin.sol";
+import {AccessControl} from
+    "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v5.0.2/contracts/access/AccessControl.sol";
 
 /// @title CCIPLocalSimulator
 /// @notice This contract simulates local CCIP (Cross-Chain Interoperability Protocol) operations for testing and development purposes.
@@ -41,6 +43,7 @@ contract CCIPLocalSimulator {
     address[] internal s_supportedTokens;
 
     error CCIPLocalSimulator__MsgSenderIsNotTokenOwner();
+    error CCIPLocalSimulator__RequiredRoleNotFound(address account, bytes32 role, address token);
 
     /**
      * @notice Constructor to initialize the contract and pre-deployed token instances
@@ -80,6 +83,21 @@ contract CCIPLocalSimulator {
     function supportNewTokenViaGetCCIPAdmin(address tokenAddress) external {
         if (msg.sender != IGetCCIPAdmin(tokenAddress).getCCIPAdmin()) {
             revert CCIPLocalSimulator__MsgSenderIsNotTokenOwner();
+        }
+        s_supportedTokens.push(tokenAddress);
+    }
+
+    /**
+     * @notice Allows user to support any new token, besides CCIP BnM and CCIP LnM, for cross-chain transfers.
+     *         The caller must have the DEFAULT_ADMIN_ROLE as defined by the contract itself.
+     *         Reverts if the caller is not the admin of the token using OZ's AccessControl DEFAULT_ADMIN_ROLE.
+     *
+     * @param tokenAddress - The address of the token to add to the list of supported tokens.
+     */
+    function supportNewTokenViaAccessControlDefaultAdmin(address tokenAddress) external {
+        bytes32 defaultAdminRole = AccessControl(tokenAddress).DEFAULT_ADMIN_ROLE();
+        if (!AccessControl(tokenAddress).hasRole(defaultAdminRole, msg.sender)) {
+            revert CCIPLocalSimulator__RequiredRoleNotFound(msg.sender, defaultAdminRole, tokenAddress);
         }
         s_supportedTokens.push(tokenAddress);
     }

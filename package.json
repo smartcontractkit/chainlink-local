@@ -2,7 +2,7 @@
   "name": "@chainlink/local",
   "description": "Chainlink Local Simulator",
   "license": "MIT",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "files": [
     "src/**/*.sol",
     "!src/test/**/*",
@@ -43,6 +43,6 @@
   },
   "dependencies": {
     "@chainlink/contracts": "^1.1.1",
-    "@chainlink/contracts-ccip": "^1.5.0"
+    "@chainlink/contracts-ccip": "^1.5.1-beta.0"
   }
 }
