@@ -1,0 +1,30 @@
+# Solidity API
+
+## IRewardManager
+
+### onFeePaid
+
+```solidity
+function onFeePaid(struct IRewardManager.FeePayment[] payments, address payee) external
+```
+
+### claimRewards
+
+```solidity
+function claimRewards(bytes32[] poolIds) external
+```
+
+### setFeeManager
+
+```solidity
+function setFeeManager(address newFeeManager) external
+```
+
+### FeePayment
+
+```solidity
+struct FeePayment {
+  bytes32 poolId;
+  uint192 amount;
+}
+```

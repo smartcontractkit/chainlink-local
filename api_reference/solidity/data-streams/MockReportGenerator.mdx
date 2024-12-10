@@ -1,0 +1,171 @@
+# Solidity API
+
+## MockReportGenerator
+
+### i_donAddress
+
+```solidity
+address i_donAddress
+```
+
+### i_donDigest
+
+```solidity
+uint256 i_donDigest
+```
+
+### i_reportV2MockFeedId
+
+```solidity
+bytes32 i_reportV2MockFeedId
+```
+
+### i_reportV3MockFeedId
+
+```solidity
+bytes32 i_reportV3MockFeedId
+```
+
+### i_reportV4MockFeedId
+
+```solidity
+bytes32 i_reportV4MockFeedId
+```
+
+### s_price
+
+```solidity
+int192 s_price
+```
+
+### s_bid
+
+```solidity
+int192 s_bid
+```
+
+### s_ask
+
+```solidity
+int192 s_ask
+```
+
+### s_expiresPeriod
+
+```solidity
+uint32 s_expiresPeriod
+```
+
+### s_marketStatus
+
+```solidity
+uint32 s_marketStatus
+```
+
+### s_nativeFee
+
+```solidity
+uint192 s_nativeFee
+```
+
+### s_linkFee
+
+```solidity
+uint192 s_linkFee
+```
+
+### MockReportGenerator\_\_InvalidBid
+
+```solidity
+error MockReportGenerator__InvalidBid()
+```
+
+### MockReportGenerator\_\_InvalidAsk
+
+```solidity
+error MockReportGenerator__InvalidAsk()
+```
+
+### MockReportGenerator\_\_CastOverflow
+
+```solidity
+error MockReportGenerator__CastOverflow()
+```
+
+### constructor
+
+```solidity
+constructor(int192 initialPrice) public
+```
+
+### generateReport
+
+```solidity
+function generateReport(struct ReportVersions.ReportV2 report) external returns (bytes signedReport)
+```
+
+### generateReport
+
+```solidity
+function generateReport(struct ReportVersions.ReportV3 report) external returns (bytes signedReport)
+```
+
+### generateReport
+
+```solidity
+function generateReport(struct ReportVersions.ReportV4 report) external returns (bytes signedReport)
+```
+
+### generateReportV2
+
+```solidity
+function generateReportV2() external returns (bytes signedReport)
+```
+
+### generateReportV3
+
+```solidity
+function generateReportV3() external returns (bytes signedReport)
+```
+
+### generateReportV4
+
+```solidity
+function generateReportV4() external returns (bytes signedReport)
+```
+
+### updatePrice
+
+```solidity
+function updatePrice(int192 price) public
+```
+
+### updatePriceBidAndAsk
+
+```solidity
+function updatePriceBidAndAsk(int192 price, int192 bid, int192 ask) external
+```
+
+### updateExpiresPeriod
+
+```solidity
+function updateExpiresPeriod(uint32 period) external
+```
+
+### updateMarketStatus
+
+```solidity
+function updateMarketStatus(uint32 status) external
+```
+
+### updateFees
+
+```solidity
+function updateFees(uint192 nativeFee, uint192 linkFee) external
+```
+
+### getMockDonAddress
+
+```solidity
+function getMockDonAddress() external view returns (address)
+```

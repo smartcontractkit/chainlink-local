@@ -1,0 +1,159 @@
+# Solidity API
+
+## Common
+
+### Asset
+
+```solidity
+struct Asset {
+  address assetAddress;
+  uint256 amount;
+}
+```
+
+## MockFeeManager
+
+### Unauthorized
+
+```solidity
+error Unauthorized()
+```
+
+### InvalidAddress
+
+```solidity
+error InvalidAddress()
+```
+
+### InvalidQuote
+
+```solidity
+error InvalidQuote()
+```
+
+### ExpiredReport
+
+```solidity
+error ExpiredReport()
+```
+
+### InvalidDiscount
+
+```solidity
+error InvalidDiscount()
+```
+
+### InvalidSurcharge
+
+```solidity
+error InvalidSurcharge()
+```
+
+### InvalidDeposit
+
+```solidity
+error InvalidDeposit()
+```
+
+### i_linkAddress
+
+```solidity
+address i_linkAddress
+```
+
+### i_nativeAddress
+
+```solidity
+address i_nativeAddress
+```
+
+### i_proxyAddress
+
+```solidity
+address i_proxyAddress
+```
+
+### i_rewardManager
+
+```solidity
+contract IRewardManager i_rewardManager
+```
+
+### s_nativeSurcharge
+
+```solidity
+uint256 s_nativeSurcharge
+```
+
+### s_mockDiscounts
+
+```solidity
+mapping(address => uint256) s_mockDiscounts
+```
+
+### onlyProxy
+
+```solidity
+modifier onlyProxy()
+```
+
+### constructor
+
+```solidity
+constructor(address linkAddress, address nativeAddress, address proxyAddress, address rewardManager) public
+```
+
+### processFee
+
+```solidity
+function processFee(bytes payload, bytes parameterPayload, address subscriber) external payable
+```
+
+### processFeeBulk
+
+```solidity
+function processFeeBulk(bytes[] payloads, bytes parameterPayload, address subscriber) external payable
+```
+
+### getFeeAndReward
+
+```solidity
+function getFeeAndReward(address subscriber, bytes report, address quoteAddress) public view returns (struct Common.Asset, struct Common.Asset, uint256)
+```
+
+### \_processFee
+
+```solidity
+function _processFee(bytes payload, bytes parameterPayload, address subscriber) internal
+```
+
+### setNativeSurcharge
+
+```solidity
+function setNativeSurcharge(uint64 surcharge) external
+```
+
+### setMockDiscount
+
+```solidity
+function setMockDiscount(address subscriber, uint256 discount) external
+```
+
+### getMockDiscount
+
+```solidity
+function getMockDiscount(address subscriber) external view returns (uint256)
+```
+
+### supportsInterface
+
+```solidity
+function supportsInterface(bytes4 interfaceId) external pure returns (bool)
+```
+
+\_Returns true if this contract implements the interface defined by
+`interfaceId`. See the corresponding
+https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[EIP
+section] to learn more about how these ids are created.
+
+This function call must use less than 30 000 gas.\_

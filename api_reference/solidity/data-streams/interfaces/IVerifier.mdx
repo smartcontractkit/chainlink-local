@@ -1,0 +1,33 @@
+# Solidity API
+
+## IVerifier
+
+### verify
+
+```solidity
+function verify(bytes signedReport, address sender) external returns (bytes verifierResponse)
+```
+
+### activateConfig
+
+```solidity
+function activateConfig(bytes32 feedId, bytes32 configDigest) external
+```
+
+### deactivateConfig
+
+```solidity
+function deactivateConfig(bytes32 feedId, bytes32 configDigest) external
+```
+
+### activateFeed
+
+```solidity
+function activateFeed(bytes32 feedId) external
+```
+
+### deactivateFeed
+
+```solidity
+function deactivateFeed(bytes32 feedId) external
+```

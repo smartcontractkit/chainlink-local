@@ -1,0 +1,81 @@
+# Solidity API
+
+## MockVerifierProxy
+
+### ZeroAddress
+
+```solidity
+error ZeroAddress()
+```
+
+### VerifierInvalid
+
+```solidity
+error VerifierInvalid()
+```
+
+### VerifierNotFound
+
+```solidity
+error VerifierNotFound()
+```
+
+### s_verifier
+
+```solidity
+address s_verifier
+```
+
+### s_feeManager
+
+```solidity
+contract IVerifierFeeManager s_feeManager
+```
+
+### VerifierInitialized
+
+```solidity
+event VerifierInitialized(address verifierAddress)
+```
+
+### onlyValidVerifier
+
+```solidity
+modifier onlyValidVerifier(address verifierAddress)
+```
+
+### verify
+
+```solidity
+function verify(bytes payload, bytes parameterPayload) external payable returns (bytes)
+```
+
+### verifyBulk
+
+```solidity
+function verifyBulk(bytes[] payloads, bytes parameterPayload) external payable returns (bytes[] verifiedReports)
+```
+
+### \_verify
+
+```solidity
+function _verify(bytes payload) internal returns (bytes)
+```
+
+### initializeVerifier
+
+```solidity
+function initializeVerifier(address verifierAddress) external
+```
+
+### getVerifier
+
+```solidity
+function getVerifier(bytes32) external view returns (address)
+```
+
+### setFeeManager
+
+```solidity
+function setFeeManager(contract IVerifierFeeManager feeManager) external
+```

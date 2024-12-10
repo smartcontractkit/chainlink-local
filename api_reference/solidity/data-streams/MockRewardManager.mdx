@@ -1,0 +1,70 @@
+# Solidity API
+
+## MockRewardManager
+
+### Unauthorized
+
+```solidity
+error Unauthorized()
+```
+
+### i_linkAddress
+
+```solidity
+address i_linkAddress
+```
+
+### s_feeManagerAddress
+
+```solidity
+address s_feeManagerAddress
+```
+
+### FeePaid
+
+```solidity
+event FeePaid(struct IRewardManager.FeePayment[] payments, address payer)
+```
+
+### onlyFeeManager
+
+```solidity
+modifier onlyFeeManager()
+```
+
+### constructor
+
+```solidity
+constructor(address linkAddress) public
+```
+
+### onFeePaid
+
+```solidity
+function onFeePaid(struct IRewardManager.FeePayment[] payments, address payer) external
+```
+
+### claimRewards
+
+```solidity
+function claimRewards(bytes32[]) external pure
+```
+
+### setFeeManager
+
+```solidity
+function setFeeManager(address newFeeManager) external
+```
+
+### supportsInterface
+
+```solidity
+function supportsInterface(bytes4 interfaceId) external pure returns (bool)
+```
+
+\_Returns true if this contract implements the interface defined by
+`interfaceId`. See the corresponding
+https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[EIP
+section] to learn more about how these ids are created.
+
+This function call must use less than 30 000 gas.\_
