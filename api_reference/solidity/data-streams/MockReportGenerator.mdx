@@ -119,19 +119,19 @@ function generateReport(struct ReportVersions.ReportV4 report) external returns 
 ### generateReportV2
 
 ```solidity
-function generateReportV2() external returns (bytes signedReport)
+function generateReportV2() external returns (bytes signedReport, struct ReportVersions.ReportV2 report)
 ```
 
 ### generateReportV3
 
 ```solidity
-function generateReportV3() external returns (bytes signedReport)
+function generateReportV3() external returns (bytes signedReport, struct ReportVersions.ReportV3 report)
 ```
 
 ### generateReportV4
 
 ```solidity
-function generateReportV4() external returns (bytes signedReport)
+function generateReportV4() external returns (bytes signedReport, struct ReportVersions.ReportV4 report)
 ```
 
 ### updatePrice
