@@ -46,7 +46,7 @@ class MockReportGenerator {
         const latestBlock = await ethers.provider.getBlock("latest");
         const currentTimestamp = latestBlock.timestamp;
 
-        return this.generateReportV2WithData(new ReportV2({
+        const report = new ReportV2({
             feedId: this.i_reportV2MockFeedId,
             validFromTimestamp: currentTimestamp,
             observationsTimestamp: currentTimestamp,
@@ -54,14 +54,18 @@ class MockReportGenerator {
             linkFee: this.s_linkFee,
             expiresAt: currentTimestamp + this.s_expiresPeriod,
             benchmarkPrice: this.s_price,
-        }));
+        });
+
+        const signedReport = this.generateReportV2WithData(report);
+
+        return { signedReport, report };
     }
 
     async generateReportV3() {
         const latestBlock = await ethers.provider.getBlock("latest");
         const currentTimestamp = latestBlock.timestamp;
 
-        return this.generateReportV3WithData(new ReportV3({
+        const report = new ReportV3({
             feedId: this.i_reportV3MockFeedId,
             validFromTimestamp: currentTimestamp,
             observationsTimestamp: currentTimestamp,
@@ -71,14 +75,18 @@ class MockReportGenerator {
             price: this.s_price,
             bid: this.s_bid,
             ask: this.s_ask,
-        }));
+        });
+
+        const signedReport = this.generateReportV3WithData(report);
+
+        return { signedReport, report };
     }
 
     async generateReportV4() {
         const latestBlock = await ethers.provider.getBlock("latest");
         const currentTimestamp = latestBlock.timestamp;
 
-        return this.generateReportV4WithData(new ReportV4({
+        const report = new ReportV4({
             feedId: this.i_reportV4MockFeedId,
             validFromTimestamp: currentTimestamp,
             observationsTimestamp: currentTimestamp,
@@ -87,7 +95,11 @@ class MockReportGenerator {
             expiresAt: currentTimestamp + this.s_expiresPeriod,
             price: this.s_price,
             marketStatus: this.s_marketStatus,
-        }));
+        });
+
+        const signedReport = this.generateReportV4WithData(report);
+
+        return { signedReport, report };
     }
 
     updatePrice(price) {

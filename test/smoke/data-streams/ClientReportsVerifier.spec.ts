@@ -37,9 +37,9 @@ describe("ClientReportsVerifier", function () {
     it("should verify Data Streams report", async function () {
         const { consumer, initialPrice, mockReportGenerator } = await loadFixture(deploy);
 
-        const unverifiedReport = await mockReportGenerator.generateReportV3();
+        const { signedReport, report } = await mockReportGenerator.generateReportV3();
 
-        await consumer.verifyReport(unverifiedReport);
+        await consumer.verifyReport(signedReport);
 
         const lastDecodedPrice = await consumer.lastDecodedPrice();
         assert(lastDecodedPrice === initialPrice);

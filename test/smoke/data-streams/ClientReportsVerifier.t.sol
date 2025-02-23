@@ -29,7 +29,7 @@ contract ClientReportsVerifierTest is Test {
 
     function test_smoke() public {
         mockReportGenerator.updateFees(1 ether, 0.5 ether);
-        bytes memory signedReportV3 = mockReportGenerator.generateReportV3();
+        (bytes memory signedReportV3,) = mockReportGenerator.generateReportV3();
 
         dataStreamsLocalSimulator.requestLinkFromFaucet(address(consumer), 1 ether);
 

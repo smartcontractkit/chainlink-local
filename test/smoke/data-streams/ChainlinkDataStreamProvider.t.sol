@@ -45,7 +45,7 @@ contract ChainlinkDataStreamProviderTest is Test {
         address token = 0x7777777777777777777777777777777777777777;
         consumer.setBytes32(token, feedId);
 
-        bytes memory signedReportV3 = mockReportGenerator.generateReportV3();
+        (bytes memory signedReportV3,) = mockReportGenerator.generateReportV3();
 
         (address gotToken, int192 gotBid, int192 gotAsk, /*uint32 gotObservationsTimestamp*/ ) =
             consumer.getOraclePrice(token, signedReportV3);

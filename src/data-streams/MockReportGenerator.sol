@@ -49,8 +49,8 @@ contract MockReportGenerator is Test, ReportVersions {
         signedReport = signReport(reportData);
     }
 
-    function generateReportV2() external returns (bytes memory signedReport) {
-        ReportV2 memory report = ReportV2({
+    function generateReportV2() external returns (bytes memory signedReport, ReportV2 memory report) {
+        report = ReportV2({
             feedId: i_reportV2MockFeedId,
             validFromTimestamp: toUint32(block.timestamp),
             observationsTimestamp: toUint32(block.timestamp),
@@ -63,8 +63,8 @@ contract MockReportGenerator is Test, ReportVersions {
         signedReport = signReport(reportData);
     }
 
-    function generateReportV3() external returns (bytes memory signedReport) {
-        ReportV3 memory report = ReportV3({
+    function generateReportV3() external returns (bytes memory signedReport, ReportV3 memory report) {
+        report = ReportV3({
             feedId: i_reportV3MockFeedId,
             validFromTimestamp: toUint32(block.timestamp),
             observationsTimestamp: toUint32(block.timestamp),
@@ -79,8 +79,8 @@ contract MockReportGenerator is Test, ReportVersions {
         signedReport = signReport(reportData);
     }
 
-    function generateReportV4() external returns (bytes memory signedReport) {
-        ReportV4 memory report = ReportV4({
+    function generateReportV4() external returns (bytes memory signedReport, ReportV4 memory report) {
+        report = ReportV4({
             feedId: i_reportV4MockFeedId,
             validFromTimestamp: toUint32(block.timestamp),
             observationsTimestamp: toUint32(block.timestamp),

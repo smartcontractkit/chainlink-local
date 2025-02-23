@@ -51,7 +51,7 @@ contract ERC7412CompatibleTest is Test {
                 (, bytes32 revertedFeedId,,,) = abi.decode(oracleQuery, (string, bytes32, string, uint256, string));
                 assertEq(feedId, revertedFeedId);
 
-                bytes memory signedReportV2 = mockReportGenerator.generateReportV2();
+                (bytes memory signedReportV2,) = mockReportGenerator.generateReportV2();
 
                 consumer.fulfillOracleQuery(signedReportV2);
             }
