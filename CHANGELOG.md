@@ -6,6 +6,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.4-beta.1] - 24 February 2025
+
+### Dependencies
+
+| Package                   | Version      |
+| ------------------------- | ------------ |
+| @chainlink/contracts-ccip | 1.5.1-beta.0 |
+| @chainlink/contracts      | 1.3.0        |
+
+### Services
+
+- [x] Chainlink CCIP
+- [x] Chainlink CCIP v1.5
+- [x] Chainlink Data Feeds
+- [x] Chainlink Data Streams
+- [ ] Chainlink Automation
+- [ ] Chainlink VRF 2
+- [ ] Chainlink VRF 2.5
+
+### Changed
+
+- Fixed incorrect import path for `Math.sol` in `MockFeeManager.sol`
+
 ## [0.2.4-beta.0] - 23 February 2025
 
 ### Dependencies
@@ -361,3 +384,5 @@ and this project adheres to
   https://github.com/smartcontractkit/chainlink-local/releases/tag/0.2.4-beta
 [0.2.4-beta.0]:
   https://github.com/smartcontractkit/chainlink-local/releases/tag/0.2.4-beta.0
+[0.2.4-beta.1]:
+  https://github.com/smartcontractkit/chainlink-local/releases/tag/0.2.4-beta.1
