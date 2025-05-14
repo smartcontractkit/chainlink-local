@@ -94,7 +94,8 @@ function getEvm2EvmMessage(receipt) {
                 return evm2EvmMessage;
             }
         } catch (error) {
-            return null;
+            console.error("Error parsing log:", e);
+            continue;
         }
     }
 
@@ -170,7 +171,8 @@ function getEvm2AnyRampMessage(receipt) {
                 };
             }
         } catch (e) {
-            return null;
+            console.error("Error parsing log:", e);
+            continue;
         }
     }
 

@@ -289,7 +289,7 @@ contract CCIPLocalSimulatorFork is Test {
         bytes4 extraArgsTag = bytes4(extraArgs);
         bytes memory gasLimit = new bytes(extraArgs.length - 4);
         for (uint256 i = 4; i < extraArgs.length; ++i) {
-            gasLimit[i] = extraArgs[i];
+            gasLimit[i - 4] = extraArgs[i];
         }
 
         if (extraArgsTag == Client.GENERIC_EXTRA_ARGS_V2_TAG) {
