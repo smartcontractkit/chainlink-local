@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {DataStreamsLocalSimulatorFork, Register} from "../../../src/data-streams/DataStreamsLocalSimulatorFork.sol";
 import {ReportVersions} from "../../../src/data-streams/ReportVersions.sol";
-import {IERC20} from "@chainlink/contracts/src/v0.8/vendor/openzeppelin-solidity/v4.8.0/contracts/interfaces/IERC20.sol";
+import {IERC20} from "@chainlink/contracts/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/interfaces/IERC20.sol";
 
 interface IVerifierProxy {
     function verify(bytes calldata payload, bytes calldata parameterPayload)

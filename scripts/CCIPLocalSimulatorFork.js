@@ -5,6 +5,7 @@ const RouterAbi = require("../abi/Router.json");
 const LinkTokenAbi = require("../abi/LinkToken.json");
 const EVM2EVMOnRampAbi = require("../abi/EVM2EVMOnRamp.json");
 const EVM2EVMOffRampAbi = require("../abi/EVM2EVMOffRamp.json");
+const OnRampAbi = require("../abi/OnRamp.json");
 
 /**
  * Requests LINK tokens from the faucet and returns the transaction hash
@@ -93,7 +94,85 @@ function getEvm2EvmMessage(receipt) {
                 return evm2EvmMessage;
             }
         } catch (error) {
-            return null;
+            console.error("Error parsing log:", e);
+            continue;
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Parses a transaction receipt to extract the sent message from CCIPMessageSent
+ *
+ * @param {object} receipt – The tx receipt from the on-ramp contract
+ * @returns {object | null} Returns { destChainSelector, sequenceNumber, EVM2AnyRampMessage message } or null
+ */
+function getEvm2AnyRampMessage(receipt) {
+    const onRampInterface = new ethers.Interface(OnRampAbi);
+
+    for (const log of receipt.logs) {
+        try {
+            const parsedLog = onRampInterface.parseLog(log);
+            if (parsedLog.name === "CCIPMessageSent") {
+                // event CCIPMessageSent(uint64 indexed destChainSelector, uint64 indexed sequenceNumber, Internal.EVM2AnyRampMessage message);
+                const [destChainSelector, sequenceNumber, messageRaw] = parsedLog.args;
+
+                const [
+                    headerRaw,
+                    sender,
+                    data,
+                    receiver,
+                    extraArgs,
+                    feeToken,
+                    feeTokenAmount,
+                    feeValueJuels,
+                    tokenTransfersRaw
+                ] = messageRaw;
+
+                const [
+                    messageId,
+                    sourceChainSelector,
+                    destChainSelectorHdr,
+                    sequenceNumberHdr,
+                    nonce
+                ] = headerRaw;
+
+                const tokenAmounts = tokenTransfersRaw.map((
+                    [sourcePoolAddress, destTokenAddress, extraData, amount, destExecData]
+                ) => ({
+                    sourcePoolAddress,
+                    destTokenAddress,
+                    extraData,
+                    amount,
+                    destExecData
+                }));
+
+                return {
+                    destChainSelector,
+                    sequenceNumber,
+                    message: {
+                        header: {
+                            messageId,
+                            sourceChainSelector,
+                            destChainSelector: destChainSelectorHdr,
+                            sequenceNumber: sequenceNumberHdr,
+                            nonce
+                        },
+                        sender,
+                        data,
+                        receiver,
+                        extraArgs,
+                        feeToken,
+                        feeTokenAmount,
+                        feeValueJuels,
+                        tokenAmounts
+                    }
+                };
+            }
+        } catch (e) {
+            console.error("Error parsing log:", e);
+            continue;
         }
     }
 

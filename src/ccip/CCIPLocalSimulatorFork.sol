@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.19;
 
-import {Test, Vm} from "forge-std/Test.sol";
+import {Test, Vm, console2} from "forge-std/Test.sol";
 import {Register} from "./Register.sol";
-import {Internal} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Internal.sol";
+import {ITypeAndVersion} from "../shared/ITypeAndVersion.sol";
+import {Internal} from "@chainlink/contracts-ccip/contracts/libraries/Internal.sol";
+import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
 import {IERC20} from
-    "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/IERC20.sol";
+    "@chainlink/contracts/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/IERC20.sol";
 
 /// @title IRouterFork Interface
 interface IRouterFork {
@@ -19,6 +21,13 @@ interface IRouterFork {
         uint64 sourceChainSelector;
         address offRamp;
     }
+
+    /**
+     * @notice Return the configured onramp for specific a destination chain.
+     *  @param destChainSelector The destination chain Id to get the onRamp for.
+     * @return The address of the onRamp.
+     */
+    function getOnRamp(uint64 destChainSelector) external view returns (address);
 
     /**
      * @notice Gets the list of offRamps
@@ -37,7 +46,33 @@ interface IEVM2EVMOffRampFork {
      * @param offchainTokenData - Additional offchain token data
      */
     function executeSingleMessage(
-        Internal.EVM2EVMMessage memory message,
+        Internal.Any2EVMRampMessage memory message,
+        bytes[] calldata offchainTokenData,
+        uint32[] calldata tokenGasOverrides
+    ) external;
+}
+
+interface InternalPreV1dot6 {
+    struct EVM2EVMMessage {
+        uint64 sourceChainSelector; // ────────╮ the chain selector of the source chain, note: not chainId
+        address sender; // ────────────────────╯ sender address on the source chain
+        address receiver; // ──────────────────╮ receiver address on the destination chain
+        uint64 sequenceNumber; // ─────────────╯ sequence number, not unique across lanes
+        uint256 gasLimit; //                     user supplied maximum gas amount available for dest chain execution
+        bool strict; // ───────────────────────╮ DEPRECATED
+        uint64 nonce; //                       │ nonce for this lane for this sender, not unique across senders/lanes
+        address feeToken; // ──────────────────╯ fee token
+        uint256 feeTokenAmount; //               fee token amount
+        bytes data; //                           arbitrary data payload supplied by the message sender
+        Client.EVMTokenAmount[] tokenAmounts; // array of tokens and amounts to transfer
+        bytes[] sourceTokenData; //              array of token data, one per token
+        bytes32 messageId; //                    a hash of the message data
+    }
+}
+
+interface IEVM2EVMOffRampPreV1dot6Fork {
+    function executeSingleMessage(
+        InternalPreV1dot6.EVM2EVMMessage memory message,
         bytes[] memory offchainTokenData,
         uint32[] memory tokenGasOverrides
     ) external;
@@ -47,11 +82,16 @@ interface IEVM2EVMOffRampFork {
 /// @notice Works with Foundry only
 contract CCIPLocalSimulatorFork is Test {
     /**
-     * @notice Event emitted when a CCIP send request is made
-     *
-     * @param message - The EVM2EVM message that was sent
+     * @notice Events emitted when a CCIP send request is made
      */
-    event CCIPSendRequested(Internal.EVM2EVMMessage message);
+    event CCIPSendRequested(InternalPreV1dot6.EVM2EVMMessage message);
+    event CCIPMessageSent(
+        uint64 indexed destChainSelector, uint64 indexed sequenceNumber, Internal.EVM2AnyRampMessage message
+    );
+
+    error InvalidExtraArgsTag();
+
+    uint32 public constant DEFAULT_GAS_LIMIT = 200_000;
 
     /// @notice The immutable register instance
     Register immutable i_register;
@@ -77,12 +117,29 @@ contract CCIPLocalSimulatorFork is Test {
      * @param forkId - The ID of the destination network fork. This is the returned value of `createFork()` or `createSelectFork()`
      */
     function switchChainAndRouteMessage(uint256 forkId) external {
-        Internal.EVM2EVMMessage memory message;
+        uint256 currentForkId = vm.activeFork();
+        address routerAddress = i_register.getNetworkDetails(block.chainid).routerAddress;
+        vm.selectFork(forkId);
+        uint64 destinationChainSelector = i_register.getNetworkDetails(block.chainid).chainSelector;
+        vm.selectFork(currentForkId);
+        address onRampContract = IRouterFork(routerAddress).getOnRamp(destinationChainSelector);
+        bytes memory typeAndVersion = bytes(ITypeAndVersion(onRampContract).typeAndVersion());
+        bytes1 minorVersion = typeAndVersion[typeAndVersion.length - 3];
+        // 0x36 is ASCII for "6"
+        if (minorVersion >= 0x36) {
+            _routePostV1dot6Message(forkId);
+        } else {
+            _routePreV1dot6Message(forkId);
+        }
+    }
+
+    function _routePreV1dot6Message(uint256 forkId) internal {
+        InternalPreV1dot6.EVM2EVMMessage memory message;
         Vm.Log[] memory entries = vm.getRecordedLogs();
         uint256 length = entries.length;
         for (uint256 i; i < length; ++i) {
             if (entries[i].topics[0] == CCIPSendRequested.selector) {
-                message = abi.decode(entries[i].data, (Internal.EVM2EVMMessage));
+                message = abi.decode(entries[i].data, (InternalPreV1dot6.EVM2EVMMessage));
                 if (!s_processedMessages[message.messageId]) {
                     s_processedMessages[message.messageId] = true;
                     break;
@@ -106,8 +163,68 @@ contract CCIPLocalSimulatorFork is Test {
                 for (uint256 j; j < numberOfTokens; ++j) {
                     tokenGasOverrides[j] = uint32(message.gasLimit);
                 }
-                IEVM2EVMOffRampFork(offRamps[i - 1].offRamp).executeSingleMessage(
+                IEVM2EVMOffRampPreV1dot6Fork(offRamps[i - 1].offRamp).executeSingleMessage(
                     message, offchainTokenData, tokenGasOverrides
+                );
+                vm.stopPrank();
+                break;
+            }
+        }
+    }
+
+    function _routePostV1dot6Message(uint256 forkId) internal {
+        Internal.EVM2AnyRampMessage memory message;
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        uint256 length = entries.length;
+        for (uint256 i; i < length; ++i) {
+            console2.logBytes32(entries[i].topics[0]);
+            if (entries[i].topics[0] == CCIPMessageSent.selector) {
+                message = abi.decode(entries[i].data, (Internal.EVM2AnyRampMessage));
+                if (!s_processedMessages[message.header.messageId]) {
+                    s_processedMessages[message.header.messageId] = true;
+                    break;
+                }
+            }
+        }
+
+        vm.selectFork(forkId);
+        assertEq(vm.activeFork(), forkId);
+
+        IRouterFork.OffRamp[] memory offRamps =
+            IRouterFork(i_register.getNetworkDetails(block.chainid).routerAddress).getOffRamps();
+        length = offRamps.length;
+
+        for (uint256 i = length; i > 0; --i) {
+            if (offRamps[i - 1].sourceChainSelector == message.header.sourceChainSelector) {
+                vm.startPrank(offRamps[i - 1].offRamp);
+                uint256 gasLimit = _fromBytes(message.extraArgs).gasLimit;
+                uint256 numberOfTokens = message.tokenAmounts.length;
+                Internal.Any2EVMTokenTransfer[] memory tokenAmounts =
+                    new Internal.Any2EVMTokenTransfer[](numberOfTokens);
+                for (uint256 j; j < numberOfTokens; ++j) {
+                    tokenAmounts[j] = Internal.Any2EVMTokenTransfer({
+                        sourcePoolAddress: abi.encodePacked(message.tokenAmounts[j].sourcePoolAddress),
+                        destTokenAddress: address(uint160(bytes20(message.tokenAmounts[j].destTokenAddress))),
+                        destGasAmount: abi.decode(message.tokenAmounts[j].destExecData, (uint32)),
+                        extraData: message.tokenAmounts[j].extraData,
+                        amount: message.tokenAmounts[j].amount
+                    });
+                }
+                Internal.Any2EVMRampMessage memory any2EVMRampMessage = Internal.Any2EVMRampMessage({
+                    header: message.header,
+                    sender: abi.encodePacked(message.sender),
+                    data: message.data,
+                    receiver: address(uint160(bytes20(message.receiver))),
+                    gasLimit: gasLimit,
+                    tokenAmounts: tokenAmounts
+                });
+                bytes[] memory offchainTokenData = new bytes[](numberOfTokens);
+                uint32[] memory tokenGasOverrides = new uint32[](numberOfTokens);
+                for (uint256 j; j < numberOfTokens; ++j) {
+                    tokenGasOverrides[j] = uint32(gasLimit);
+                }
+                IEVM2EVMOffRampFork(offRamps[i - 1].offRamp).executeSingleMessage(
+                    any2EVMRampMessage, offchainTokenData, tokenGasOverrides
                 );
                 vm.stopPrank();
                 break;
@@ -162,5 +279,26 @@ contract CCIPLocalSimulatorFork is Test {
         vm.startPrank(LINK_FAUCET);
         success = IERC20(linkAddress).transfer(to, amount);
         vm.stopPrank();
+    }
+
+    function _fromBytes(bytes memory extraArgs) internal pure returns (Client.GenericExtraArgsV2 memory) {
+        if (extraArgs.length == 0) {
+            return Client.GenericExtraArgsV2({gasLimit: DEFAULT_GAS_LIMIT, allowOutOfOrderExecution: false});
+        }
+
+        bytes4 extraArgsTag = bytes4(extraArgs);
+        bytes memory gasLimit = new bytes(extraArgs.length - 4);
+        for (uint256 i = 4; i < extraArgs.length; ++i) {
+            gasLimit[i - 4] = extraArgs[i];
+        }
+
+        if (extraArgsTag == Client.GENERIC_EXTRA_ARGS_V2_TAG) {
+            return abi.decode(gasLimit, (Client.GenericExtraArgsV2));
+        } else if (extraArgsTag == Client.EVM_EXTRA_ARGS_V1_TAG) {
+            return
+                Client.GenericExtraArgsV2({gasLimit: abi.decode(gasLimit, (uint256)), allowOutOfOrderExecution: false});
+        }
+
+        revert InvalidExtraArgsTag();
     }
 }
