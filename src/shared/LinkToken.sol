@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.19;
 
-import {ERC677} from "@chainlink/contracts-ccip/src/v0.8/shared/token/ERC677/ERC677.sol";
+import {ERC677} from "@chainlink/contracts/src/v0.8/shared/token/ERC677/ERC677.sol";
 
 /// @title LinkToken
 /// @notice This contract implements the ChainLink Token (LINK) using the ERC677 standard.
 /// @dev Inherits from the ERC677 token contract and initializes with a fixed total supply and standard token details.
 contract LinkToken is ERC677 {
     /// @notice The total supply of LINK tokens.
-    uint private constant TOTAL_SUPPLY = 10 ** 27;
+    uint256 private constant TOTAL_SUPPLY = 10 ** 27;
 
     /// @notice The name of the LINK token.
     string private constant NAME = "ChainLink Token";

@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.5-beta] - 14 May 2025
+
+### Dependencies
+
+| Package                   | Version      |
+| ------------------------- | ------------ |
+| @chainlink/contracts-ccip | 1.6.0-beta.3 |
+| @chainlink/contracts      | 1.4.0-beta.0 |
+
+### Services
+
+- [x] Chainlink CCIP v1.6
+
+### Added
+
+- Added support for Chainlink CCIP v1.6
+
 ## [0.2.4] - 25 March 2025
 
 ### Dependencies
@@ -423,3 +440,5 @@ and this project adheres to
 [0.2.4-beta.1]:
   https://github.com/smartcontractkit/chainlink-local/releases/tag/0.2.4-beta.1
 [0.2.4]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.4
+[0.2.5-beta]:
+  https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.5-beta

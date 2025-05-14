@@ -6,7 +6,7 @@ import {BasicTokenSender} from "../../../src/test/ccip/BasicTokenSender.sol";
 import {
     CCIPLocalSimulator, IRouterClient, BurnMintERC677Helper
 } from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
-import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
+import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
 
 contract PayWithNativeTest is Test {
     CCIPLocalSimulator public ccipLocalSimulator;

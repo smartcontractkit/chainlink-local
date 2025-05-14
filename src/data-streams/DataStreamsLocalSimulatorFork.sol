@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import {Test, Vm} from "forge-std/Test.sol";
 import {Register} from "./Register.sol";
-import {IERC20} from "@chainlink/contracts/src/v0.8/vendor/openzeppelin-solidity/v4.8.0/contracts/interfaces/IERC20.sol";
+import {IERC20} from "@chainlink/contracts/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/interfaces/IERC20.sol";
 
 contract DataStreamsLocalSimulatorFork is Test {
     /// @notice The immutable register instance

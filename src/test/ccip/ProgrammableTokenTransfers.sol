@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import {IRouterClient} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IRouterClient.sol";
-import {OwnerIsCreator} from "@chainlink/contracts-ccip/src/v0.8/shared/access/OwnerIsCreator.sol";
-import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
-import {CCIPReceiver} from "@chainlink/contracts-ccip/src/v0.8/ccip/applications/CCIPReceiver.sol";
+import {IRouterClient} from "@chainlink/contracts-ccip/contracts/interfaces/IRouterClient.sol";
+import {OwnerIsCreator} from "@chainlink/contracts/src/v0.8/shared/access/OwnerIsCreator.sol";
+import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
+import {CCIPReceiver} from "@chainlink/contracts-ccip/contracts/applications/CCIPReceiver.sol";
 import {IERC20} from
-    "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/IERC20.sol";
+    "@chainlink/contracts/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/IERC20.sol";
 
 /**
  * THIS IS AN EXAMPLE CONTRACT THAT USES HARDCODED VALUES FOR CLARITY.
@@ -26,14 +26,14 @@ contract ProgrammableTokenTransfers is CCIPReceiver, OwnerIsCreator {
     error InvalidReceiverAddress(); // Used when the receiver address is 0.
 
     // Event emitted when a message is sent to another chain.
+    // The chain selector of the destination chain.
+    // The address of the receiver on the destination chain.
+    // The text being sent.
+    // The token address that was transferred.
+    // The token amount that was transferred.
+    // the token address used to pay CCIP fees.
+    // The fees paid for sending the message.
     event MessageSent( // The unique ID of the CCIP message.
-        // The chain selector of the destination chain.
-        // The address of the receiver on the destination chain.
-        // The text being sent.
-        // The token address that was transferred.
-        // The token amount that was transferred.
-        // the token address used to pay CCIP fees.
-        // The fees paid for sending the message.
         bytes32 indexed messageId,
         uint64 indexed destinationChainSelector,
         address receiver,
@@ -45,12 +45,12 @@ contract ProgrammableTokenTransfers is CCIPReceiver, OwnerIsCreator {
     );
 
     // Event emitted when a message is received from another chain.
+    // The chain selector of the source chain.
+    // The address of the sender from the source chain.
+    // The text that was received.
+    // The token address that was transferred.
+    // The token amount that was transferred.
     event MessageReceived( // The unique ID of the CCIP message.
-        // The chain selector of the source chain.
-        // The address of the sender from the source chain.
-        // The text that was received.
-        // The token address that was transferred.
-        // The token amount that was transferred.
         bytes32 indexed messageId,
         uint64 indexed sourceChainSelector,
         address sender,
