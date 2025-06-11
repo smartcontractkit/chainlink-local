@@ -159,7 +159,7 @@ contract CCIPLocalSimulatorFork is Test {
                             uint256 numberOfTokens = message.tokenAmounts.length;
                             bytes[] memory offchainTokenData = new bytes[](numberOfTokens);
                             uint32[] memory tokenGasOverrides = new uint32[](numberOfTokens);
-                            for (uint256 k; j < numberOfTokens; ++k) {
+                            for (uint256 k; k < numberOfTokens; ++k) {
                                 tokenGasOverrides[k] = uint32(message.gasLimit);
                             }
                             IEVM2EVMOffRampPreV1dot6Fork(offRamps[j - 1].offRamp).executeSingleMessage(
