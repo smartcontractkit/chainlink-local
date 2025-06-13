@@ -1,0 +1,23 @@
+name: Node setup and Install Dependencies
+
+inputs:
+  npm-token:
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Use Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: "20.x"
+        registry-url: "https://registry.npmjs.org"
+        always-auth: true
+
+    - name: Setup npm authentication
+      run: echo "//registry.npmjs.org/:_authToken=${{ inputs.npm-token }}" > ~/.npmrc
+      shell: bash
+
+    - name: Install dependencies
+      run: npm ci
+      shell: bash
