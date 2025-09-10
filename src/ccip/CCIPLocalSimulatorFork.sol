@@ -235,6 +235,66 @@ contract CCIPLocalSimulatorFork is Test {
         }
     }
 
+    function _routePostV1dot6Message(uint256 forkId) internal {
+        Internal.EVM2AnyRampMessage memory message;
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        uint256 length = entries.length;
+        for (uint256 i; i < length; ++i) {
+            console2.logBytes32(entries[i].topics[0]);
+            if (entries[i].topics[0] == CCIPMessageSent.selector) {
+                message = abi.decode(entries[i].data, (Internal.EVM2AnyRampMessage));
+                if (!s_processedMessages[message.header.messageId]) {
+                    s_processedMessages[message.header.messageId] = true;
+                    break;
+                }
+            }
+        }
+
+        vm.selectFork(forkId);
+        assertEq(vm.activeFork(), forkId);
+
+        IRouterFork.OffRamp[] memory offRamps =
+            IRouterFork(i_register.getNetworkDetails(block.chainid).routerAddress).getOffRamps();
+        length = offRamps.length;
+
+        for (uint256 i = length; i > 0; --i) {
+            if (offRamps[i - 1].sourceChainSelector == message.header.sourceChainSelector) {
+                vm.startPrank(offRamps[i - 1].offRamp);
+                uint256 gasLimit = _fromBytes(message.extraArgs).gasLimit;
+                uint256 numberOfTokens = message.tokenAmounts.length;
+                Internal.Any2EVMTokenTransfer[] memory tokenAmounts =
+                    new Internal.Any2EVMTokenTransfer[](numberOfTokens);
+                for (uint256 j; j < numberOfTokens; ++j) {
+                    tokenAmounts[j] = Internal.Any2EVMTokenTransfer({
+                        sourcePoolAddress: abi.encodePacked(message.tokenAmounts[j].sourcePoolAddress),
+                        destTokenAddress: address(uint160(bytes20(message.tokenAmounts[j].destTokenAddress))),
+                        destGasAmount: abi.decode(message.tokenAmounts[j].destExecData, (uint32)),
+                        extraData: message.tokenAmounts[j].extraData,
+                        amount: message.tokenAmounts[j].amount
+                    });
+                }
+                Internal.Any2EVMRampMessage memory any2EVMRampMessage = Internal.Any2EVMRampMessage({
+                    header: message.header,
+                    sender: abi.encodePacked(message.sender),
+                    data: message.data,
+                    receiver: address(uint160(bytes20(message.receiver))),
+                    gasLimit: gasLimit,
+                    tokenAmounts: tokenAmounts
+                });
+                bytes[] memory offchainTokenData = new bytes[](numberOfTokens);
+                uint32[] memory tokenGasOverrides = new uint32[](numberOfTokens);
+                for (uint256 j; j < numberOfTokens; ++j) {
+                    tokenGasOverrides[j] = uint32(gasLimit);
+                }
+                IEVM2EVMOffRampFork(offRamps[i - 1].offRamp).executeSingleMessage(
+                    any2EVMRampMessage, offchainTokenData, tokenGasOverrides
+                );
+                vm.stopPrank();
+                break;
+            }
+        }
+    }
+
     /**
      * @notice Returns the default values for currently CCIP supported networks. If network is not present or some of the values are changed, user can manually add new network details using the `setNetworkDetails` function.
      *
