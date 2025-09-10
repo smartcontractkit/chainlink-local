@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.6-beta.0] - 10 September 2025
+
+### Dependencies
+
+| Package                   | Version |
+| ------------------------- | ------- |
+| @chainlink/contracts-ccip | 1.6.0   |
+| @chainlink/contracts      | 1.4.0   |
+
+### Services
+
+- [x] Chainlink CCIP v1.6
+
+### Changed
+
+- Refactored `CCIPLocalSimulatorFork.sol` to deliver more than one message to more than one chain in a same call
+
 ## [0.2.6-beta] - 11 June 2025
 
 ### Dependencies
@@ -505,3 +522,5 @@ and this project adheres to
 [0.2.5]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.5
 [0.2.6-beta]:
   https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.6-beta
+[0.2.6-beta.0]:
+  https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.6-beta.0

@@ -25,6 +25,16 @@
     </p>
   </dd>
   <dt>
+    <a href="#getEvm2AnyRampMessage">getEvm2AnyRampMessage(receipt)</a> ⇒{' '}
+    <code>object</code> | <code>null</code>
+  </dt>
+  <dd>
+    <p>
+      Parses a transaction receipt to extract the sent message from
+      CCIPMessageSent
+    </p>
+  </dd>
+  <dt>
     <a href="#routeMessage">routeMessage(routerAddress, evm2EvmMessage)</a> ⇒{' '}
     <code>Promise.&lt;void&gt;</code>
   </dt>
@@ -77,6 +87,20 @@ does not contain `CCIPSendRequested` log
 | Param   | Type                | Description                                      |
 | ------- | ------------------- | ------------------------------------------------ |
 | receipt | <code>object</code> | The transaction receipt from the `ccipSend` call |
+
+<a name="getEvm2AnyRampMessage"></a>
+
+## getEvm2AnyRampMessage(receipt) ⇒ <code>object</code> \| <code>null</code>
+
+Parses a transaction receipt to extract the sent message from CCIPMessageSent
+
+**Kind**: global function  
+**Returns**: <code>object</code> \| <code>null</code> - Returns {
+destChainSelector, sequenceNumber, EVM2AnyRampMessage message } or null
+
+| Param   | Type                | Description                                |
+| ------- | ------------------- | ------------------------------------------ |
+| receipt | <code>object</code> | – The tx receipt from the on-ramp contract |
 
 <a name="routeMessage"></a>
 
