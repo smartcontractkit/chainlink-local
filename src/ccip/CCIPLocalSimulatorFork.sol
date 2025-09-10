@@ -3,7 +3,6 @@ pragma solidity ^0.8.19;
 
 import {Test, Vm, console2} from "forge-std/Test.sol";
 import {Register} from "./Register.sol";
-import {ITypeAndVersion} from "../shared/ITypeAndVersion.sol";
 import {Internal} from "@chainlink/contracts-ccip/contracts/libraries/Internal.sol";
 import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
 import {IERC20} from
@@ -112,187 +111,38 @@ contract CCIPLocalSimulatorFork is Test {
     }
 
     /**
-     * @notice To be called after the sending of the cross-chain message (`ccipSend`). Goes through the list of past logs and looks for the `CCIPSendRequested` event. Switches to a destination network fork. Routes the sent cross-chain message on the destination network.
+     * @notice  To be called after the sending of the cross-chain message (`ccipSend`).
+     *          Goes through the list of past logs and looks for the `CCIPSendRequested` and `CCIPMessageSent` events.
+     *          Switches to a destination network fork. Routes the sent cross-chain message on the destination network.
+     *          If you sent more than one message, it will try to route all of them to `forkId`.
      *
      * @param forkId - The ID of the destination network fork. This is the returned value of `createFork()` or `createSelectFork()`
      */
     function switchChainAndRouteMessage(uint256 forkId) external {
-        uint256 currentForkId = vm.activeFork();
-        address routerAddress = i_register.getNetworkDetails(block.chainid).routerAddress;
-        vm.selectFork(forkId);
-        uint64 destinationChainSelector = i_register.getNetworkDetails(block.chainid).chainSelector;
-        vm.selectFork(currentForkId);
-        address onRampContract = IRouterFork(routerAddress).getOnRamp(destinationChainSelector);
-        bytes memory typeAndVersion = bytes(ITypeAndVersion(onRampContract).typeAndVersion());
-        bytes1 minorVersion = typeAndVersion[typeAndVersion.length - 3];
-        // 0x36 is ASCII for "6"
-        if (minorVersion >= 0x36) {
-            _routePostV1dot6Message(forkId);
-        } else {
-            _routePreV1dot6Message(forkId);
-        }
+        uint256 sourceForkId = vm.activeFork();
+        address sourceRouterAddress = i_register.getNetworkDetails(block.chainid).routerAddress;
+
+        uint256[] memory forkIds = new uint256[](1);
+        forkIds[0] = forkId;
+
+        _routeCapturedMessages(forkIds, sourceForkId, sourceRouterAddress);
     }
 
-    function _routePreV1dot6Message(uint256 forkId) internal {
-        uint256 currentForkId = vm.activeFork();
+    /**
+     * @notice  To be called after the sending of the cross-chain message (`ccipSend`).
+     *          Override variant of the `switchChainAndRouteMessage(uint256 forkId)` function in case of multiple destination forks.
+     *          Goes through the list of past logs and looks for the `CCIPSendRequested` and `CCIPMessageSent` events.
+     *          Loops through provided `forkIds` and tries to route the message to correct destination.
+     *          If you haven't provide correct `forkId`, the message will get lost.
+     *          If you sent more than one message, it will try to route all of them to correct destinations.
+     *
+     * @param forkIds - The IDs of the destination network forks. These are the returned values of `createFork()` or `createSelectFork()`
+     */
+    function switchChainAndRouteMessage(uint256[] memory forkIds) external {
+        uint256 sourceForkId = vm.activeFork();
+        address sourceRouterAddress = i_register.getNetworkDetails(block.chainid).routerAddress;
 
-        vm.selectFork(forkId);
-        assertEq(vm.activeFork(), forkId);
-        IRouterFork.OffRamp[] memory offRamps =
-            IRouterFork(i_register.getNetworkDetails(block.chainid).routerAddress).getOffRamps();
-        uint256 offRampsLength = offRamps.length;
-
-        vm.selectFork(currentForkId);
-        Vm.Log[] memory entries = vm.getRecordedLogs();
-        uint256 logsLength = entries.length;
-        for (uint256 i; i < logsLength; ++i) {
-            if (entries[i].topics[0] == CCIPSendRequested.selector) {
-                InternalPreV1dot6.EVM2EVMMessage memory message =
-                    abi.decode(entries[i].data, (InternalPreV1dot6.EVM2EVMMessage));
-                if (!s_processedMessages[message.messageId]) {
-                    s_processedMessages[message.messageId] = true;
-                    vm.selectFork(forkId);
-
-                    for (uint256 j = offRampsLength; j > 0; --j) {
-                        if (offRamps[j - 1].sourceChainSelector == message.sourceChainSelector) {
-                            vm.startPrank(offRamps[j - 1].offRamp);
-                            uint256 numberOfTokens = message.tokenAmounts.length;
-                            bytes[] memory offchainTokenData = new bytes[](numberOfTokens);
-                            uint32[] memory tokenGasOverrides = new uint32[](numberOfTokens);
-                            for (uint256 k; k < numberOfTokens; ++k) {
-                                tokenGasOverrides[k] = uint32(message.gasLimit);
-                            }
-                            IEVM2EVMOffRampPreV1dot6Fork(offRamps[j - 1].offRamp).executeSingleMessage(
-                                message, offchainTokenData, tokenGasOverrides
-                            );
-                            vm.stopPrank();
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    function _routePostV1dot6Message(uint256 forkId) internal {
-        uint256 currentForkId = vm.activeFork();
-
-        vm.selectFork(forkId);
-        assertEq(vm.activeFork(), forkId);
-
-        IRouterFork.OffRamp[] memory offRamps =
-            IRouterFork(i_register.getNetworkDetails(block.chainid).routerAddress).getOffRamps();
-        uint256 offRampsLength = offRamps.length;
-
-        vm.selectFork(currentForkId);
-        Vm.Log[] memory entries = vm.getRecordedLogs();
-        uint256 logsLength = entries.length;
-        for (uint256 i; i < logsLength; ++i) {
-            console2.logBytes32(entries[i].topics[0]);
-            if (entries[i].topics[0] == CCIPMessageSent.selector) {
-                Internal.EVM2AnyRampMessage memory message = abi.decode(entries[i].data, (Internal.EVM2AnyRampMessage));
-                if (!s_processedMessages[message.header.messageId]) {
-                    s_processedMessages[message.header.messageId] = true;
-
-                    for (uint256 j = offRampsLength; j > 0; --j) {
-                        if (offRamps[j - 1].sourceChainSelector == message.header.sourceChainSelector) {
-                            vm.startPrank(offRamps[j - 1].offRamp);
-                            uint256 gasLimit = _fromBytes(message.extraArgs).gasLimit;
-                            uint256 numberOfTokens = message.tokenAmounts.length;
-                            Internal.Any2EVMTokenTransfer[] memory tokenAmounts =
-                                new Internal.Any2EVMTokenTransfer[](numberOfTokens);
-                            for (uint256 k; k < numberOfTokens; ++k) {
-                                tokenAmounts[k] = Internal.Any2EVMTokenTransfer({
-                                    sourcePoolAddress: abi.encodePacked(message.tokenAmounts[k].sourcePoolAddress),
-                                    destTokenAddress: address(uint160(bytes20(message.tokenAmounts[k].destTokenAddress))),
-                                    destGasAmount: abi.decode(message.tokenAmounts[k].destExecData, (uint32)),
-                                    extraData: message.tokenAmounts[k].extraData,
-                                    amount: message.tokenAmounts[k].amount
-                                });
-                            }
-                            Internal.Any2EVMRampMessage memory any2EVMRampMessage = Internal.Any2EVMRampMessage({
-                                header: message.header,
-                                sender: abi.encodePacked(message.sender),
-                                data: message.data,
-                                receiver: address(uint160(bytes20(message.receiver))),
-                                gasLimit: gasLimit,
-                                tokenAmounts: tokenAmounts
-                            });
-                            bytes[] memory offchainTokenData = new bytes[](numberOfTokens);
-                            uint32[] memory tokenGasOverrides = new uint32[](numberOfTokens);
-                            for (uint256 k; k < numberOfTokens; ++k) {
-                                tokenGasOverrides[k] = uint32(gasLimit);
-                            }
-                            IEVM2EVMOffRampFork(offRamps[j - 1].offRamp).executeSingleMessage(
-                                any2EVMRampMessage, offchainTokenData, tokenGasOverrides
-                            );
-                            vm.stopPrank();
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    function _routePostV1dot6Message(uint256 forkId) internal {
-        Internal.EVM2AnyRampMessage memory message;
-        Vm.Log[] memory entries = vm.getRecordedLogs();
-        uint256 length = entries.length;
-        for (uint256 i; i < length; ++i) {
-            console2.logBytes32(entries[i].topics[0]);
-            if (entries[i].topics[0] == CCIPMessageSent.selector) {
-                message = abi.decode(entries[i].data, (Internal.EVM2AnyRampMessage));
-                if (!s_processedMessages[message.header.messageId]) {
-                    s_processedMessages[message.header.messageId] = true;
-                    break;
-                }
-            }
-        }
-
-        vm.selectFork(forkId);
-        assertEq(vm.activeFork(), forkId);
-
-        IRouterFork.OffRamp[] memory offRamps =
-            IRouterFork(i_register.getNetworkDetails(block.chainid).routerAddress).getOffRamps();
-        length = offRamps.length;
-
-        for (uint256 i = length; i > 0; --i) {
-            if (offRamps[i - 1].sourceChainSelector == message.header.sourceChainSelector) {
-                vm.startPrank(offRamps[i - 1].offRamp);
-                uint256 gasLimit = _fromBytes(message.extraArgs).gasLimit;
-                uint256 numberOfTokens = message.tokenAmounts.length;
-                Internal.Any2EVMTokenTransfer[] memory tokenAmounts =
-                    new Internal.Any2EVMTokenTransfer[](numberOfTokens);
-                for (uint256 j; j < numberOfTokens; ++j) {
-                    tokenAmounts[j] = Internal.Any2EVMTokenTransfer({
-                        sourcePoolAddress: abi.encodePacked(message.tokenAmounts[j].sourcePoolAddress),
-                        destTokenAddress: address(uint160(bytes20(message.tokenAmounts[j].destTokenAddress))),
-                        destGasAmount: abi.decode(message.tokenAmounts[j].destExecData, (uint32)),
-                        extraData: message.tokenAmounts[j].extraData,
-                        amount: message.tokenAmounts[j].amount
-                    });
-                }
-                Internal.Any2EVMRampMessage memory any2EVMRampMessage = Internal.Any2EVMRampMessage({
-                    header: message.header,
-                    sender: abi.encodePacked(message.sender),
-                    data: message.data,
-                    receiver: address(uint160(bytes20(message.receiver))),
-                    gasLimit: gasLimit,
-                    tokenAmounts: tokenAmounts
-                });
-                bytes[] memory offchainTokenData = new bytes[](numberOfTokens);
-                uint32[] memory tokenGasOverrides = new uint32[](numberOfTokens);
-                for (uint256 j; j < numberOfTokens; ++j) {
-                    tokenGasOverrides[j] = uint32(gasLimit);
-                }
-                IEVM2EVMOffRampFork(offRamps[i - 1].offRamp).executeSingleMessage(
-                    any2EVMRampMessage, offchainTokenData, tokenGasOverrides
-                );
-                vm.stopPrank();
-                break;
-            }
-        }
+        _routeCapturedMessages(forkIds, sourceForkId, sourceRouterAddress);
     }
 
     /**
@@ -344,6 +194,148 @@ contract CCIPLocalSimulatorFork is Test {
         vm.stopPrank();
     }
 
+    /**
+     * @notice Internal function to route captured messages to their respective destination forks.
+     *
+     * @param forkIds - The IDs of the destination network forks. These are the returned values of `createFork()` or `createSelectFork()`, not chainIds.
+     * @param sourceForkId - The ID of the source network fork. This is the returned value of `createFork()` or `createSelectFork()`, not chainId.
+     * @param sourceRouterAddress - The address of the Router on the source chain.
+     */
+    function _routeCapturedMessages(uint256[] memory forkIds, uint256 sourceForkId, address sourceRouterAddress)
+        internal
+    {
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        uint256 logsLength = entries.length;
+
+        for (uint256 i; i < logsLength; ++i) {
+            // Try Routing pre v1.6 message
+            if (entries[i].topics[0] == CCIPSendRequested.selector) {
+                InternalPreV1dot6.EVM2EVMMessage memory message =
+                    abi.decode(entries[i].data, (InternalPreV1dot6.EVM2EVMMessage));
+
+                if (!s_processedMessages[message.messageId]) {
+                    for (uint256 j; j < forkIds.length; ++j) {
+                        vm.selectFork(forkIds[j]);
+                        uint64 destinationChainSelector = i_register.getNetworkDetails(block.chainid).chainSelector;
+
+                        vm.selectFork(sourceForkId);
+                        address onRampContract = IRouterFork(sourceRouterAddress).getOnRamp(destinationChainSelector);
+
+                        // Deliver message
+                        if (entries[i].emitter == onRampContract) {
+                            vm.selectFork(forkIds[j]);
+
+                            IRouterFork.OffRamp[] memory offRamps =
+                                IRouterFork(i_register.getNetworkDetails(block.chainid).routerAddress).getOffRamps();
+                            uint256 offRampsLength = offRamps.length;
+
+                            for (uint256 k = offRampsLength; k > 0; --k) {
+                                if (offRamps[k - 1].sourceChainSelector == message.sourceChainSelector) {
+                                    vm.startPrank(offRamps[k - 1].offRamp);
+                                    uint256 numberOfTokens = message.tokenAmounts.length;
+                                    bytes[] memory offchainTokenData = new bytes[](numberOfTokens);
+                                    uint32[] memory tokenGasOverrides = new uint32[](numberOfTokens);
+                                    for (uint256 l; l < numberOfTokens; ++l) {
+                                        tokenGasOverrides[l] = uint32(message.gasLimit);
+                                    }
+                                    try IEVM2EVMOffRampPreV1dot6Fork(offRamps[k - 1].offRamp).executeSingleMessage(
+                                        message, offchainTokenData, tokenGasOverrides
+                                    ) {
+                                        vm.stopPrank();
+                                        s_processedMessages[message.messageId] = true;
+                                    } catch (bytes memory err) {
+                                        vm.stopPrank();
+                                        // Solidity does not support yet catching custom errors, so this is the best we can do for now
+                                        console2.logBytes(err);
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Try Routing post v1.6 message
+            if (entries[i].topics[0] == CCIPMessageSent.selector) {
+                Internal.EVM2AnyRampMessage memory message = abi.decode(entries[i].data, (Internal.EVM2AnyRampMessage));
+
+                if (!s_processedMessages[message.header.messageId]) {
+                    s_processedMessages[message.header.messageId] = true;
+
+                    for (uint256 j; j < forkIds.length; ++j) {
+                        vm.selectFork(forkIds[j]);
+                        uint64 destinationChainSelector = i_register.getNetworkDetails(block.chainid).chainSelector;
+
+                        vm.selectFork(sourceForkId);
+                        address onRampContract = IRouterFork(sourceRouterAddress).getOnRamp(destinationChainSelector);
+
+                        // Deliver message
+                        if (entries[i].emitter == onRampContract) {
+                            vm.selectFork(forkIds[j]);
+
+                            IRouterFork.OffRamp[] memory offRamps =
+                                IRouterFork(i_register.getNetworkDetails(block.chainid).routerAddress).getOffRamps();
+                            uint256 offRampsLength = offRamps.length;
+
+                            for (uint256 k = offRampsLength; k > 0; --k) {
+                                if (offRamps[k - 1].sourceChainSelector == message.header.sourceChainSelector) {
+                                    vm.startPrank(offRamps[k - 1].offRamp);
+                                    uint256 gasLimit = _fromBytes(message.extraArgs).gasLimit;
+                                    uint256 numberOfTokens = message.tokenAmounts.length;
+                                    Internal.Any2EVMTokenTransfer[] memory tokenAmounts =
+                                        new Internal.Any2EVMTokenTransfer[](numberOfTokens);
+                                    for (uint256 l; l < numberOfTokens; ++l) {
+                                        tokenAmounts[l] = Internal.Any2EVMTokenTransfer({
+                                            sourcePoolAddress: abi.encodePacked(message.tokenAmounts[l].sourcePoolAddress),
+                                            destTokenAddress: address(
+                                                uint160(bytes20(message.tokenAmounts[l].destTokenAddress))
+                                            ),
+                                            destGasAmount: abi.decode(message.tokenAmounts[l].destExecData, (uint32)),
+                                            extraData: message.tokenAmounts[l].extraData,
+                                            amount: message.tokenAmounts[l].amount
+                                        });
+                                    }
+                                    Internal.Any2EVMRampMessage memory any2EVMRampMessage = Internal.Any2EVMRampMessage({
+                                        header: message.header,
+                                        sender: abi.encodePacked(message.sender),
+                                        data: message.data,
+                                        receiver: address(uint160(bytes20(message.receiver))),
+                                        gasLimit: gasLimit,
+                                        tokenAmounts: tokenAmounts
+                                    });
+                                    bytes[] memory offchainTokenData = new bytes[](numberOfTokens);
+                                    uint32[] memory tokenGasOverrides = new uint32[](numberOfTokens);
+                                    for (uint256 l; l < numberOfTokens; ++l) {
+                                        tokenGasOverrides[l] = uint32(gasLimit);
+                                    }
+                                    try IEVM2EVMOffRampFork(offRamps[j - 1].offRamp).executeSingleMessage(
+                                        any2EVMRampMessage, offchainTokenData, tokenGasOverrides
+                                    ) {
+                                        vm.stopPrank();
+                                    } catch (bytes memory err) {
+                                        vm.stopPrank();
+                                        // Solidity does not support yet catching custom errors, so this is the best we can do for now
+                                        console2.logBytes(err);
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * @notice Internal helper function to decode extraArgs bytes to GenericExtraArgsV2 struct.
+     *         Supports decoding of both GenericExtraArgsV2 and EVMExtraArgsV1 structs.
+     *
+     * @param extraArgs - The bytes representing the extra arguments.
+     *
+     * @return genericExtraArgs - The decoded GenericExtraArgsV2 struct.
+     */
     function _fromBytes(bytes memory extraArgs) internal pure returns (Client.GenericExtraArgsV2 memory) {
         if (extraArgs.length == 0) {
             return Client.GenericExtraArgsV2({gasLimit: DEFAULT_GAS_LIMIT, allowOutOfOrderExecution: false});

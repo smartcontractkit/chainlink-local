@@ -20,7 +20,7 @@ contract Looper is CCIPReceiver {
         i_link = link;
     }
 
-    function send(address to, uint64 destinationChainSelector, uint256 numberOfMessages) public {
+    function sendNMessages(address to, uint64 destinationChainSelector, uint256 numberOfMessages) public {
         Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
             receiver: abi.encode(to),
             data: abi.encode("Hello, World!"),
@@ -36,6 +36,46 @@ contract Looper is CCIPReceiver {
         }
     }
 
+    function send(address destinationArb, address destinationOp, uint64 chainSelectorArb, uint64 chainSelectorOp)
+        public
+    {
+        Client.EVM2AnyMessage memory messageA = Client.EVM2AnyMessage({
+            receiver: abi.encode(destinationArb),
+            data: abi.encode("Hello, World!"),
+            tokenAmounts: new Client.EVMTokenAmount[](0),
+            extraArgs: "",
+            feeToken: i_link
+        });
+
+        Client.EVM2AnyMessage memory messageB = Client.EVM2AnyMessage({
+            receiver: abi.encode(destinationOp),
+            data: abi.encode("Hello, World!"),
+            tokenAmounts: new Client.EVMTokenAmount[](0),
+            extraArgs: "",
+            feeToken: i_link
+        });
+
+        Client.EVM2AnyMessage memory messageC = Client.EVM2AnyMessage({
+            receiver: abi.encode(destinationArb),
+            data: abi.encode("Hello, World!"),
+            tokenAmounts: new Client.EVMTokenAmount[](0),
+            extraArgs: "",
+            feeToken: i_link
+        });
+
+        uint256 feeA = IRouterClient(i_router).getFee(chainSelectorArb, messageA);
+        IERC20(i_link).approve(address(i_router), feeA);
+        IRouterClient(i_router).ccipSend(chainSelectorArb, messageA);
+
+        uint256 feeB = IRouterClient(i_router).getFee(chainSelectorOp, messageB);
+        IERC20(i_link).approve(address(i_router), feeB);
+        IRouterClient(i_router).ccipSend(chainSelectorOp, messageB);
+
+        uint256 feeC = IRouterClient(i_router).getFee(chainSelectorArb, messageC);
+        IERC20(i_link).approve(address(i_router), feeC);
+        IRouterClient(i_router).ccipSend(chainSelectorArb, messageC);
+    }
+
     function _ccipReceive(Client.Any2EVMMessage memory /*message*/ ) internal override {
         s_messagesReceived++;
     }
@@ -44,41 +84,75 @@ contract Looper is CCIPReceiver {
 contract LooperFork is Test {
     CCIPLocalSimulatorFork public ccipLocalSimulatorFork;
     Looper source;
-    Looper destination;
+    Looper destinationArb;
+    Looper destinationOp;
 
     Register.NetworkDetails sepoliaNetworkDetails;
     Register.NetworkDetails arbSepoliaNetworkDetails;
+    Register.NetworkDetails optimismSepoliaNetworkDetails;
 
     uint256 sepoliaFork;
     uint256 arbSepoliaFork;
+    uint256 optimismSepoliaFork;
 
     function setUp() public {
         string memory ETHEREUM_SEPOLIA_RPC_URL = vm.envString("ETHEREUM_SEPOLIA_RPC_URL");
         string memory ARBITRUM_SEPOLIA_RPC_URL = vm.envString("ARBITRUM_SEPOLIA_RPC_URL");
+        string memory OPTIMISM_SEPOLIA_RPC_URL = vm.envString("OPTIMISM_SEPOLIA_RPC_URL");
         sepoliaFork = vm.createSelectFork(ETHEREUM_SEPOLIA_RPC_URL);
         arbSepoliaFork = vm.createFork(ARBITRUM_SEPOLIA_RPC_URL);
+        optimismSepoliaFork = vm.createFork(OPTIMISM_SEPOLIA_RPC_URL);
 
         ccipLocalSimulatorFork = new CCIPLocalSimulatorFork();
         vm.makePersistent(address(ccipLocalSimulatorFork));
         sepoliaNetworkDetails = ccipLocalSimulatorFork.getNetworkDetails(block.chainid);
 
         source = new Looper(sepoliaNetworkDetails.routerAddress, sepoliaNetworkDetails.linkAddress);
-
         ccipLocalSimulatorFork.requestLinkFromFaucet(address(source), 10 ether);
 
         vm.selectFork(arbSepoliaFork);
         arbSepoliaNetworkDetails = ccipLocalSimulatorFork.getNetworkDetails(block.chainid);
+        destinationArb = new Looper(arbSepoliaNetworkDetails.routerAddress, arbSepoliaNetworkDetails.linkAddress);
 
-        destination = new Looper(arbSepoliaNetworkDetails.routerAddress, arbSepoliaNetworkDetails.linkAddress);
+        vm.selectFork(optimismSepoliaFork);
+        optimismSepoliaNetworkDetails = ccipLocalSimulatorFork.getNetworkDetails(block.chainid);
+        destinationOp =
+            new Looper(optimismSepoliaNetworkDetails.routerAddress, optimismSepoliaNetworkDetails.linkAddress);
     }
 
-    function test_ForkLooper() public {
+    function test_sendNMessagesToSingleChain() public {
         vm.selectFork(sepoliaFork);
-        uint256 numberOfMessages = 3;
 
-        source.send(address(destination), arbSepoliaNetworkDetails.chainSelector, numberOfMessages);
+        uint256 numberOfMessagesToSend = 3;
+        source.sendNMessages(address(destinationArb), arbSepoliaNetworkDetails.chainSelector, numberOfMessagesToSend);
+
         ccipLocalSimulatorFork.switchChainAndRouteMessage(arbSepoliaFork);
+        vm.selectFork(arbSepoliaFork);
+        uint256 numberOfMessagesReceived = destinationArb.s_messagesReceived();
+        assertEq(numberOfMessagesReceived, numberOfMessagesToSend);
+    }
 
-        assertEq(destination.s_messagesReceived(), numberOfMessages);
+    function test_sendNMessagesToMultipleChains() public {
+        vm.selectFork(sepoliaFork);
+
+        source.send(
+            address(destinationArb),
+            address(destinationOp),
+            arbSepoliaNetworkDetails.chainSelector,
+            optimismSepoliaNetworkDetails.chainSelector
+        );
+
+        uint256[] memory forks = new uint256[](2);
+        forks[0] = arbSepoliaFork;
+        forks[1] = optimismSepoliaFork;
+        ccipLocalSimulatorFork.switchChainAndRouteMessage(forks);
+
+        vm.selectFork(arbSepoliaFork);
+        uint256 numberOfMessagesReceived = destinationArb.s_messagesReceived();
+        assertEq(numberOfMessagesReceived, 2);
+
+        vm.selectFork(optimismSepoliaFork);
+        numberOfMessagesReceived = destinationOp.s_messagesReceived();
+        assertEq(numberOfMessagesReceived, 1);
     }
 }
