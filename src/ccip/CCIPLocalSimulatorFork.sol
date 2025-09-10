@@ -309,7 +309,7 @@ contract CCIPLocalSimulatorFork is Test {
                                     for (uint256 l; l < numberOfTokens; ++l) {
                                         tokenGasOverrides[l] = uint32(gasLimit);
                                     }
-                                    try IEVM2EVMOffRampFork(offRamps[j - 1].offRamp).executeSingleMessage(
+                                    try IEVM2EVMOffRampFork(offRamps[k - 1].offRamp).executeSingleMessage(
                                         any2EVMRampMessage, offchainTokenData, tokenGasOverrides
                                     ) {
                                         vm.stopPrank();
