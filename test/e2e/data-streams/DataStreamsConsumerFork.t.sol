@@ -65,7 +65,7 @@ contract DataStreamsConsumerForkTest is Test {
         dataStreamsLocalSimulatorFork = new DataStreamsLocalSimulatorFork();
     }
 
-    function preTestHook() public returns (IVerifierProxy, IFeeManager, address, bytes memory) {
+    function preTestHook() public view returns (IVerifierProxy, IFeeManager, address, bytes memory) {
         assertEq(vm.activeFork(), arbitrumSepoliaForkId);
 
         Register.NetworkDetails memory networkDetails = dataStreamsLocalSimulatorFork.getNetworkDetails(block.chainid);
@@ -79,7 +79,7 @@ contract DataStreamsConsumerForkTest is Test {
         return (verifierProxy, feeManager, rewardManager, reportData);
     }
 
-    function postTestHook(ReportVersions.ReportV3 memory verifiedReport) public {
+    function postTestHook(ReportVersions.ReportV3 memory verifiedReport) public view {
         assertEq(verifiedReport.feedId, EXPECTED_REPORT.feedId);
         assertEq(verifiedReport.validFromTimestamp, EXPECTED_REPORT.validFromTimestamp);
         assertEq(verifiedReport.observationsTimestamp, EXPECTED_REPORT.observationsTimestamp);

@@ -20,7 +20,7 @@ contract BasicDataConsumerV3Test is Test {
         consumer = new BasicDataConsumerV3(address(mockEthUsdAggregator));
     }
 
-    function test_smoke() public {
+    function test_smoke() public view {
         int256 answer = consumer.getChainlinkDataFeedLatestAnswer();
         assertEq(answer, initialAnswer, "answer should be equal to initialAnswer");
     }

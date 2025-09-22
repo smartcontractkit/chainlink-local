@@ -20,7 +20,7 @@ contract BasicDataConsumerV3Test is Test {
         consumer = new BasicDataConsumerV3(ETH_USD_AGGREGATOR_ADDRESS);
     }
 
-    function test_forkSmoke() public {
+    function test_forkSmoke() public view {
         assertEq(vm.activeFork(), ethereumMainnetForkId);
 
         int256 answer = consumer.getChainlinkDataFeedLatestAnswer();
