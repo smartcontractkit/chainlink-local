@@ -64,6 +64,14 @@ contract DataStreamsLocalSimulator {
     }
 
     /**
+     * @notice Returns the current billing mechanism type
+     * @return billingType "on-chain" if fee manager is enabled, "off-chain" if disabled
+     */
+    function getBillingMechanism() external view returns (string memory billingType) {
+        return feeManagerEnabled ? "on-chain" : "off-chain";
+    }
+
+    /**
      * @notice Internal function to deploy fee manager and reward manager
      */
     function _deployFeeManager() private {
