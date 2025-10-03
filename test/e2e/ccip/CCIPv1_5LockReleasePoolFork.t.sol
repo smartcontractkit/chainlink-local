@@ -11,10 +11,7 @@ import {RateLimiter} from "@chainlink/contracts-ccip/contracts/libraries/RateLim
 import {IRouterClient} from "@chainlink/contracts-ccip/contracts/interfaces/IRouterClient.sol";
 import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
 
-import {
-    ERC20,
-    IERC20
-} from "@chainlink/contracts/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/ERC20.sol";
+import {ERC20, IERC20} from "../../../src/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/ERC20.sol";
 import {OwnerIsCreator} from "@chainlink/contracts/src/v0.8/shared/access/OwnerIsCreator.sol";
 
 contract MockERC20TokenOwner is ERC20, OwnerIsCreator {
@@ -77,7 +74,6 @@ contract CCIPv1_5LockReleasePoolFork is Test {
             localTokenDecimals,
             allowlist,
             ethSepoliaNetworkDetails.rmnProxyAddress,
-            true, // acceptLiquidity
             ethSepoliaNetworkDetails.routerAddress
         );
         vm.stopPrank();
@@ -92,7 +88,6 @@ contract CCIPv1_5LockReleasePoolFork is Test {
             localTokenDecimals,
             allowlist,
             baseSepoliaNetworkDetails.rmnProxyAddress,
-            true, // acceptLiquidity
             baseSepoliaNetworkDetails.routerAddress
         );
         vm.stopPrank();
