@@ -5,10 +5,9 @@ import {Test} from "forge-std/Test.sol";
 import {CCIPLocalSimulator, IRouterClient} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
 
 import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
-import {ERC20} from "@chainlink/contracts/src/v0.8/vendor/openzeppelin-solidity/v5.0.2/contracts/token/ERC20/ERC20.sol";
+import {ERC20} from "../../../src/vendor/openzeppelin-solidity/v5.0.2/contracts/token/ERC20/ERC20.sol";
 import {OwnerIsCreator} from "@chainlink/contracts/src/v0.8/shared/access/OwnerIsCreator.sol";
-import {AccessControl} from
-    "@chainlink/contracts/src/v0.8/vendor/openzeppelin-solidity/v5.0.2/contracts/access/AccessControl.sol";
+import {AccessControl} from "../../../src/vendor/openzeppelin-solidity/v5.0.2/contracts/access/AccessControl.sol";
 
 contract MockERC20TokenOwner is ERC20, OwnerIsCreator {
     constructor() ERC20("MockERC20Token", "MTK") {}

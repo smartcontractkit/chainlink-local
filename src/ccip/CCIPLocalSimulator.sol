@@ -6,14 +6,11 @@ import {LinkToken} from "../shared/LinkToken.sol";
 import {BurnMintERC677Helper} from "./BurnMintERC677Helper.sol";
 import {MockCCIPRouter} from "@chainlink/contracts-ccip/contracts/test/mocks/MockRouter.sol";
 import {IRouterClient} from "@chainlink/contracts-ccip/contracts/interfaces/IRouterClient.sol";
-import {IERC20} from
-    "@chainlink/contracts/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from
-    "@chainlink/contracts/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "../vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "../vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IOwner} from "@chainlink/contracts-ccip/contracts/interfaces/IOwner.sol";
 import {IGetCCIPAdmin} from "@chainlink/contracts-ccip/contracts/interfaces/IGetCCIPAdmin.sol";
-import {AccessControl} from
-    "@chainlink/contracts/src/v0.8/vendor/openzeppelin-solidity/v5.0.2/contracts/access/AccessControl.sol";
+import {AccessControl} from "../vendor/openzeppelin-solidity/v5.0.2/contracts/access/AccessControl.sol";
 
 /// @title CCIPLocalSimulator
 /// @notice This contract simulates local CCIP (Cross-Chain Interoperability Protocol) operations for testing and development purposes.

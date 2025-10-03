@@ -17,10 +17,8 @@ import {
     ERC20,
     ERC20Burnable,
     IERC20
-} from
-    "@chainlink/contracts/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/extensions/ERC20Burnable.sol";
-import {AccessControl} from
-    "@chainlink/contracts/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/access/AccessControl.sol";
+} from "../../../src/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import {AccessControl} from "../../../src/vendor/openzeppelin-solidity/v4.8.3/contracts/access/AccessControl.sol";
 
 contract MockERC20BurnAndMintToken is IBurnMintERC20, ERC20Burnable, AccessControl {
     address internal immutable i_CCIPAdmin;
