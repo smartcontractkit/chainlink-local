@@ -24,7 +24,7 @@ const config: HardhatUserConfig = {
   docgen: {
     pages: "files",
     pageExtension: ".mdx",
-    exclude: ["test"],
+    exclude: ["test", "vendor"],
     outputDir: "api_reference/solidity",
   },
 };
