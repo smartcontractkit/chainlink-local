@@ -1,7 +1,23 @@
-name: Manual NPM Publish
+name: Publish Package
 
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type'
+        required: true
+        default: 'stable'
+        type: choice
+        options:
+          - stable
+          - beta
+
+permissions:
+  id-token: write  # Required for OIDC
+  contents: read
 
 jobs:
   publish:
@@ -10,22 +26,104 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Use Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: "20.x"
-          registry-url: "https://registry.npmjs.org"
-          always-auth: true
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
 
-      - name: Setup npm authentication
-        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_CHAINLINK_LOCAL }}" > ~/.npmrc
+      # Ensure npm 11.5.1 or later is installed
+      - name: Update npm
+        run: npm install -g npm@latest
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Publish
+      - name: Validate version consistency
+        run: |
+          # Extract version from tag (e.g., v0.2.7-beta -> 0.2.7-beta)
+          TAG_VERSION="${{ github.ref_name }}"
+          if [[ "$TAG_VERSION" == v* ]]; then
+            TAG_VERSION="${TAG_VERSION#v}"
+          fi
+          
+          # Get version from package.json
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          
+          echo "Tag version: $TAG_VERSION"
+          echo "Package.json version: $PACKAGE_VERSION"
+          
+          # Check if versions match
+          if [[ "$TAG_VERSION" != "$PACKAGE_VERSION" ]]; then
+            echo "❌ Version mismatch detected!"
+            echo "Tag version: $TAG_VERSION"
+            echo "Package.json version: $PACKAGE_VERSION"
+            echo "Please ensure the tag version matches package.json version"
+            exit 1
+          fi
+          
+          echo "✅ Version consistency validated"
+
+      - name: Determine release type and validate branch
+        id: release-type
+        run: |
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" =~ ^refs/tags/v.* ]]; then
+            # Get the branch that was tagged (usually the default branch of the tag)
+            BRANCH_NAME="${{ github.ref_name }}"
+            
+            # Check if tag contains 'beta' to determine release type
+            if [[ "${{ github.ref_name }}" == *"beta"* ]]; then
+              echo "type=beta" >> $GITHUB_OUTPUT
+              echo "expected_branch=develop" >> $GITHUB_OUTPUT
+            else
+              echo "type=stable" >> $GITHUB_OUTPUT
+              echo "expected_branch=main" >> $GITHUB_OUTPUT
+            fi
+          else
+            # Manual dispatch - use input
+            echo "type=${{ github.event.inputs.release_type }}" >> $GITHUB_OUTPUT
+            if [[ "${{ github.event.inputs.release_type }}" == "beta" ]]; then
+              echo "expected_branch=develop" >> $GITHUB_OUTPUT
+            else
+              echo "expected_branch=main" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Validate branch for release type
+        run: |
+          CURRENT_BRANCH="${{ github.ref_name }}"
+          EXPECTED_BRANCH="${{ steps.release-type.outputs.expected_branch }}"
+          RELEASE_TYPE="${{ steps.release-type.outputs.type }}"
+          
+          echo "Current branch: $CURRENT_BRANCH"
+          echo "Expected branch for $RELEASE_TYPE release: $EXPECTED_BRANCH"
+          
+          # For manual dispatch, we can't validate branch, so skip
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "⚠️ Manual dispatch detected - skipping branch validation"
+            echo "Please ensure you're running from the correct branch:"
+            echo "- Beta releases should be from 'develop' branch"
+            echo "- Stable releases should be from 'main' branch"
+            exit 0
+          fi
+          
+          # For tag pushes, validate branch
+          if [[ "$CURRENT_BRANCH" != "$EXPECTED_BRANCH" ]]; then
+            echo "❌ Branch validation failed!"
+            echo "Current branch: $CURRENT_BRANCH"
+            echo "Expected branch for $RELEASE_TYPE release: $EXPECTED_BRANCH"
+            echo "Please create the tag from the correct branch"
+            exit 1
+          fi
+          
+          echo "✅ Branch validation passed"
+
+      - name: Publish stable release
+        if: steps.release-type.outputs.type == 'stable'
         run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_CHAINLINK_LOCAL }}
+
+      - name: Publish beta release
+        if: steps.release-type.outputs.type == 'beta'
+        run: npm publish --tag beta
