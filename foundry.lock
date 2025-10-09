@@ -1,11 +1,17 @@
 {
-  "lib/chainlink-evm": {
-    "rev": "63559812f68891f67e42d633c7c15be1b65c3b82"
-  },
-  "lib/chainlink-ccip": {
-    "rev": "cb02e90f9d6d1dd65f534c60a77bb1e3384a42cb"
-  },
   "lib/forge-std": {
     "rev": "77041d2ce690e692d6e03cc812b57d1ddaa4d505"
+  },
+  "lib/chainlink-evm": {
+    "tag": {
+      "name": "contracts-v1.5.0",
+      "rev": "86aa5a1d34b20eda8d18fe6eb0e4882948e545ba"
+    }
+  },
+  "lib/chainlink-ccip": {
+    "tag": {
+      "name": "contracts-ccip-v1.6.2",
+      "rev": "0e3e0fc5c0f70f0d50dca66b139142ddf3009294"
+    }
   }
 }

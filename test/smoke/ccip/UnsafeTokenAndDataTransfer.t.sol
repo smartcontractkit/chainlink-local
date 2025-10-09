@@ -4,7 +4,12 @@ pragma solidity ^0.8.19;
 import {Test, console2} from "forge-std/Test.sol";
 import {CCIPSender_Unsafe} from "../../../src/test/ccip/CCIPSender_Unsafe.sol";
 import {CCIPReceiver_Unsafe} from "../../../src/test/ccip/CCIPReceiver_Unsafe.sol";
-import {CCIPLocalSimulator, IRouterClient, LinkToken, BurnMintERC677Helper} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
+import {
+    CCIPLocalSimulator,
+    IRouterClient,
+    LinkToken,
+    BurnMintERC677Helper
+} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
 
 contract UnsafeTokenAndDataTransferTest is Test {
     CCIPSender_Unsafe public sender;
@@ -23,7 +28,6 @@ contract UnsafeTokenAndDataTransferTest is Test {
             ,
             LinkToken linkToken_,
             BurnMintERC677Helper ccipBnM_,
-
         ) = ccipLocalSimulator.configuration();
 
         chainSelector = chainSelector_;
@@ -43,13 +47,7 @@ contract UnsafeTokenAndDataTransferTest is Test {
         string memory textToSend = "Hello World";
         uint256 amountToSend = 100;
 
-        bytes32 messageId = sender.send(
-            address(receiver),
-            textToSend,
-            chainSelector,
-            address(ccipBnM),
-            amountToSend
-        );
+        bytes32 messageId = sender.send(address(receiver), textToSend, chainSelector, address(ccipBnM), amountToSend);
         console2.logBytes32(messageId);
 
         string memory receivedText = receiver.text();

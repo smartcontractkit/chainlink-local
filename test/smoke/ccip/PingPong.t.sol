@@ -16,15 +16,8 @@ contract PingPongTest is Test {
 
     function setUp() public {
         ccipLocalSimulator = new CCIPLocalSimulator();
-        (
-            uint64 chainSelector_,
-            IRouterClient sourceRouter,
-            IRouterClient destinationRouter,
-            ,
-            LinkToken linkToken,
-            ,
-
-        ) = ccipLocalSimulator.configuration();
+        (uint64 chainSelector_, IRouterClient sourceRouter, IRouterClient destinationRouter,, LinkToken linkToken,,) =
+            ccipLocalSimulator.configuration();
 
         ping = new Ping(address(linkToken), address(sourceRouter));
         pong = new Pong(address(linkToken), address(destinationRouter));

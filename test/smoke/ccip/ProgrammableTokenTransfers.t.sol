@@ -3,7 +3,12 @@ pragma solidity ^0.8.19;
 
 import {Test, console2} from "forge-std/Test.sol";
 import {ProgrammableTokenTransfers} from "../../../src/test/ccip/ProgrammableTokenTransfers.sol";
-import {CCIPLocalSimulator, IRouterClient, LinkToken, BurnMintERC677Helper} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
+import {
+    CCIPLocalSimulator,
+    IRouterClient,
+    LinkToken,
+    BurnMintERC677Helper
+} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
 
 contract ProgrammableTokenTransfersTest is Test {
     ProgrammableTokenTransfers public sender;
@@ -22,18 +27,11 @@ contract ProgrammableTokenTransfersTest is Test {
             ,
             LinkToken linkToken,
             BurnMintERC677Helper ccipBnM_,
-
         ) = ccipLocalSimulator.configuration();
 
-        sender = new ProgrammableTokenTransfers(
-            address(sourceRouter),
-            address(linkToken)
-        );
+        sender = new ProgrammableTokenTransfers(address(sourceRouter), address(linkToken));
 
-        receiver = new ProgrammableTokenTransfers(
-            address(destinationRouter),
-            address(linkToken)
-        );
+        receiver = new ProgrammableTokenTransfers(address(destinationRouter), address(linkToken));
 
         chainSelector = chainSelector_;
         ccipBnM = ccipBnM_;
@@ -46,10 +44,7 @@ contract ProgrammableTokenTransfersTest is Test {
 
         ccipBnM.drip(address(sender));
 
-        ccipLocalSimulator.requestLinkFromFaucet(
-            address(sender),
-            amountForFees
-        );
+        ccipLocalSimulator.requestLinkFromFaucet(address(sender), amountForFees);
 
         sender.allowlistDestinationChain(chainSelector, true);
 
@@ -59,20 +54,11 @@ contract ProgrammableTokenTransfersTest is Test {
         uint256 senderBalanceBefore = ccipBnM.balanceOf(address(sender));
         uint256 receiverBalanceBefore = ccipBnM.balanceOf(address(receiver));
 
-        bytes32 messageId = sender.sendMessagePayLINK(
-            chainSelector,
-            address(receiver),
-            textToSend,
-            address(ccipBnM),
-            amountToSend
-        );
+        bytes32 messageId =
+            sender.sendMessagePayLINK(chainSelector, address(receiver), textToSend, address(ccipBnM), amountToSend);
 
-        (
-            bytes32 _messageId,
-            string memory _text,
-            address _tokenAddress,
-            uint256 _tokenAmount
-        ) = receiver.getLastReceivedMessageDetails();
+        (bytes32 _messageId, string memory _text, address _tokenAddress, uint256 _tokenAmount) =
+            receiver.getLastReceivedMessageDetails();
 
         assertEq(_messageId, messageId);
         assertEq(_text, textToSend);
