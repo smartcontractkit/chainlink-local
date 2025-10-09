@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.19;
 
-import {ERC677} from "@chainlink/contracts/src/v0.8/shared/token/ERC677/ERC677.sol";
+import {ERC677} from "../vendor/chainlink/shared/token/ERC677/ERC677.sol";
 
 /// @title LinkToken
 /// @notice This contract implements the ChainLink Token (LINK) using the ERC677 standard.
