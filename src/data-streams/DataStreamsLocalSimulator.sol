@@ -20,7 +20,13 @@ contract DataStreamsLocalSimulator {
     /// @notice The LINK token instance
     LinkToken internal immutable i_linkToken;
 
+    /// @notice Whether fee manager is enabled (can be toggled after deployment)
+    bool public feeManagerEnabled;
+
     constructor() {
+        // Default to on-chain billing for backward compatibility
+        feeManagerEnabled = true;
+        
         i_wrappedNative = new WETH9();
         i_linkToken = new LinkToken();
 
@@ -28,6 +34,47 @@ contract DataStreamsLocalSimulator {
         s_mockVerifier = new MockVerifier(address(s_mockVerifierProxy));
         s_mockVerifierProxy.initializeVerifier(address(s_mockVerifier));
 
+        // Deploy fee manager by default (existing behavior)
+        _deployFeeManager();
+    }
+
+    /**
+     * @notice Enables off-chain billing mechanism by removing fee manager
+     * @dev This simulates chains that don't have FeeManager contracts deployed
+     */
+    function enableOffChainBilling() external {
+        if (feeManagerEnabled) {
+            feeManagerEnabled = false;
+            s_mockVerifierProxy.setFeeManager(MockFeeManager(address(0)));
+        }
+    }
+
+    /**
+     * @notice Enables on-chain billing mechanism by deploying/setting fee manager
+     * @dev This simulates chains that have FeeManager contracts deployed
+     */
+    function enableOnChainBilling() external {
+        if (!feeManagerEnabled) {
+            feeManagerEnabled = true;
+            if (address(s_mockFeeManager) == address(0)) {
+                _deployFeeManager();
+            }
+            s_mockVerifierProxy.setFeeManager(s_mockFeeManager);
+        }
+    }
+
+    /**
+     * @notice Returns the current billing mechanism type
+     * @return billingType "on-chain" if fee manager is enabled, "off-chain" if disabled
+     */
+    function getBillingMechanism() external view returns (string memory billingType) {
+        return feeManagerEnabled ? "on-chain" : "off-chain";
+    }
+
+    /**
+     * @notice Internal function to deploy fee manager and reward manager
+     */
+    function _deployFeeManager() private {
         s_mockRewardManager = new MockRewardManager(address(i_linkToken));
 
         s_mockFeeManager = new MockFeeManager(
@@ -57,8 +104,8 @@ contract DataStreamsLocalSimulator {
      * @return linkToken_ - The LINK token.
      * @return mockVerifier_ - The mock verifier contract.
      * @return mockVerifierProxy_ - The mock verifier proxy contract.
-     * @return mockFeeManager_ - The mock fee manager contract.
-     * @return mockRewardManager_ - The mock reward manager contract.
+     * @return mockFeeManager_ - The mock fee manager contract (returns what's currently set on verifier proxy).
+     * @return mockRewardManager_ - The mock reward manager contract (address(0) if fee manager is disabled).
      */
     function configuration()
         public
@@ -72,7 +119,11 @@ contract DataStreamsLocalSimulator {
             MockRewardManager mockRewardManager_
         )
     {
+        // Return the current fee manager from verifier proxy (reflects current billing state)
+        MockFeeManager currentFeeManager = MockFeeManager(address(s_mockVerifierProxy.s_feeManager()));
+        
         return
-            (i_wrappedNative, i_linkToken, s_mockVerifier, s_mockVerifierProxy, s_mockFeeManager, s_mockRewardManager);
+            (i_wrappedNative, i_linkToken, s_mockVerifier, s_mockVerifierProxy, currentFeeManager, 
+             feeManagerEnabled ? s_mockRewardManager : MockRewardManager(address(0)));
     }
 }

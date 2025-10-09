@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.19;
 
-import {BurnMintERC677} from "@chainlink/contracts/src/v0.8/shared/token/ERC677/BurnMintERC677.sol";
+import {BurnMintERC677} from "../vendor/chainlink/shared/token/ERC677/BurnMintERC677.sol";
 
 /// @title BurnMintERC677Helper
 /// @notice This contract extends the functionality of the BurnMintERC677 token contract to include a `drip` function that mints one full token to a specified address.

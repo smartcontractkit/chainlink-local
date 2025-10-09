@@ -6,6 +6,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.7-beta.0] - 9 October 2025
+
+### Dependencies
+
+| Package                   | Version |
+| ------------------------- | ------- |
+| @chainlink/contracts-ccip | 1.6.2   |
+| @chainlink/contracts      | 1.5.0   |
+
+### Added
+
+- Data Streams billing mechanism toggle in `DataStreamsLocalSimulator.sol`
+- `enableOffChainBilling()` and `enableOnChainBilling()` functions
+- `getBillingMechanism()` helper function
+- Developer-friendly error messages for billing mechanism mismatches
+- Comprehensive test suite for billing mechanisms
+- Trusted publishing workflow with OIDC authentication
+- Automatic version and branch validation in CI/CD
+
+### Changed
+
+- Bumped `@chainlink/contracts-ccip` to `1.6.2` version
+- Bumped `@chainlink/contracts` to `1.5.0` version
+- Updated import paths to use vendored OpenZeppelin contracts
+- Enhanced `configuration()` function to return current fee manager state
+- Unified publish workflows into single automated workflow
+
+### Fixed
+
+- Fixed Hardhat 2 compilation issues by vendoring OpenZeppelin contracts
+- Fixed import path issues that occurred with updated dependency versions
+
 ## [0.2.6] - 18 September 2025
 
 ### Dependencies
@@ -542,3 +574,4 @@ and this project adheres to
 [0.2.6-beta.0]:
   https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.6-beta.0
 [0.2.6]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.6
+[0.2.7-beta.0]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.7-beta.0
