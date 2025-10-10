@@ -31,7 +31,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           registry-url: 'https://registry.npmjs.org'
 
       # Ensure npm 11.5.1 or later is installed
@@ -43,28 +43,34 @@ jobs:
 
       - name: Validate version consistency
         run: |
-          # Extract version from tag (e.g., v0.2.7-beta -> 0.2.7-beta)
-          TAG_VERSION="${{ github.ref_name }}"
-          if [[ "$TAG_VERSION" == v* ]]; then
-            TAG_VERSION="${TAG_VERSION#v}"
-          fi
-          
-          # Get version from package.json
-          PACKAGE_VERSION=$(node -p "require('./package.json').version")
-          
-          echo "Tag version: $TAG_VERSION"
-          echo "Package.json version: $PACKAGE_VERSION"
-          
-          # Check if versions match
-          if [[ "$TAG_VERSION" != "$PACKAGE_VERSION" ]]; then
-            echo "❌ Version mismatch detected!"
+          # Only validate version consistency for tag-based triggers
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" =~ ^refs/tags/v.* ]]; then
+            # Extract version from tag (e.g., v0.2.7-beta -> 0.2.7-beta)
+            TAG_VERSION="${{ github.ref_name }}"
+            if [[ "$TAG_VERSION" == v* ]]; then
+              TAG_VERSION="${TAG_VERSION#v}"
+            fi
+            
+            # Get version from package.json
+            PACKAGE_VERSION=$(node -p "require('./package.json').version")
+            
             echo "Tag version: $TAG_VERSION"
             echo "Package.json version: $PACKAGE_VERSION"
-            echo "Please ensure the tag version matches package.json version"
-            exit 1
+            
+            # Check if versions match
+            if [[ "$TAG_VERSION" != "$PACKAGE_VERSION" ]]; then
+              echo "❌ Version mismatch detected!"
+              echo "Tag version: $TAG_VERSION"
+              echo "Package.json version: $PACKAGE_VERSION"
+              echo "Please ensure the tag version matches package.json version"
+              exit 1
+            fi
+            
+            echo "✅ Version consistency validated"
+          else
+            echo "⚠️ Manual dispatch detected - skipping version validation"
+            echo "Using package.json version: $(node -p "require('./package.json').version")"
           fi
-          
-          echo "✅ Version consistency validated"
 
       - name: Determine release type and validate branch
         id: release-type
