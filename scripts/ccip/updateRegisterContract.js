@@ -1,0 +1,185 @@
+/**
+ * @fileoverview Script to fetch and generate Register.sol with CCIP network details from Chainlink's API.
+ * 
+ * This script queries Chainlink's CCIP API endpoints to retrieve network configuration
+ * details for all supported EVM chains. It fetches chain information (routers, selectors,
+ * fee tokens) and token information (CCIP-BnM and CCIP-LnM addresses) for either testnet
+ * or mainnet environments, then generates Register.sol with hardcoded network details
+ * in the constructor.
+ * 
+ * Usage:
+ *   node scripts/ccip/latestNetworkDetails.js [testnet|mainnet]
+ * 
+ * If no environment is specified, defaults to "testnet".
+ */
+
+const fs = require("fs");
+const path = require("path");
+
+/**
+ * Generates Register.sol with hardcoded network details in the constructor.
+ * This makes the Register contract work in Hardhat and Remix without requiring
+ * Foundry's vm functions or runtime JSON file reading.
+ * 
+ * @param {string} outputPath - Path to output Register.sol. Defaults to src/ccip/Register.sol
+ * @param {Object} networkDetails - Network details object to generate from.
+ */
+function generateRegister(outputPath, networkDetails) {
+    // Default output path
+    const defaultOutputPath = path.join(__dirname, "../../src/ccip/Register.sol");
+    const outputFilePath = outputPath || defaultOutputPath;
+    
+    // Generate Solidity code
+    let constructorBody = "";
+    
+    // Sort chain IDs for consistent output
+    const chainIds = Object.keys(networkDetails).sort((a, b) => Number(a) - Number(b));
+    
+    for (const chainId of chainIds) {
+        const details = networkDetails[chainId];
+        const name = details.name || `Chain ${chainId}`;
+        
+        // Handle empty strings for optional addresses
+        const ccipBnMAddress = details.ccipBnMAddress === "" 
+            ? "address(0)" 
+            : `address(${details.ccipBnMAddress})`;
+        const ccipLnMAddress = details.ccipLnMAddress === "" 
+            ? "address(0)" 
+            : `address(${details.ccipLnMAddress})`;
+        
+        constructorBody += `        // ${name}\n`;
+        constructorBody += `        s_networkDetails[${chainId}] = NetworkDetails({\n`;
+        constructorBody += `            chainSelector: ${details.chainSelector},\n`;
+        constructorBody += `            routerAddress: address(${details.routerAddress}),\n`;
+        constructorBody += `            linkAddress: address(${details.linkAddress}),\n`;
+        constructorBody += `            wrappedNativeAddress: address(${details.wrappedNativeAddress}),\n`;
+        constructorBody += `            ccipBnMAddress: ${ccipBnMAddress},\n`;
+        constructorBody += `            ccipLnMAddress: ${ccipLnMAddress},\n`;
+        constructorBody += `            rmnProxyAddress: address(${details.rmnProxyAddress}),\n`;
+        constructorBody += `            registryModuleOwnerCustomAddress: address(${details.registryModuleOwnerCustomAddress}),\n`;
+        constructorBody += `            tokenAdminRegistryAddress: address(${details.tokenAdminRegistryAddress})\n`;
+        constructorBody += `        });\n\n`;
+    }
+    
+    // Full constructor code for empty constructor case
+    const fullConstructorCode = "    /// @notice Constructor to initialize network details for various chains.\n    constructor() {\n" + constructorBody + "    }";
+    
+    // Read the Register.sol file
+    const registerPath = path.join(__dirname, "../../src/ccip/Register.sol");
+    let registerCode = fs.readFileSync(registerPath, "utf8");
+    
+    // Replace the constructor with the generated one
+    // Match either empty constructor or populated constructor
+    const emptyConstructorRegex = /    \/\/\/ @notice Empty constructor\.\n    constructor\(\) \{\}/s;
+    
+    // Match populated constructor - match from the comment through the closing brace
+    // The comment text is "Constructor to initialize the network details for various chains."
+    const populatedConstructorRegex = /(    \/\/\/ @notice Constructor to initialize the network details for various chains\.\n    constructor\(\) \{)[\s\S]*?(\n    \})/;
+    
+    if (emptyConstructorRegex.test(registerCode)) {
+        // Replace empty constructor
+        registerCode = registerCode.replace(emptyConstructorRegex, fullConstructorCode);
+    } else if (populatedConstructorRegex.test(registerCode)) {
+        // Replace populated constructor - keep the comment, constructor declaration, and closing brace
+        // Replace only the body (everything between "constructor() {" and the closing "}")
+        // constructorBody already has proper indentation and ends with content (no trailing newlines after trim)
+        registerCode = registerCode.replace(populatedConstructorRegex, (match, p1, p2) => {
+            // p1 = comment + "constructor() {"
+            // constructorBody = body content (trimmed to remove trailing whitespace)
+            // p2 = "\n    }" (the closing brace with proper indentation)
+            return p1 + '\n' + constructorBody.trimEnd() + p2;
+        });
+    } else {
+        throw new Error("Could not find constructor in Register.sol. Expected either empty constructor or populated constructor with comment 'Constructor to initialize the network details for various chains.'");
+    }
+    
+    // Write the generated file
+    console.log(`Writing generated Register.sol to: ${outputFilePath}`);
+    fs.writeFileSync(outputFilePath, registerCode, "utf8");
+    
+    console.log(`  Successfully generated Register.sol with ${chainIds.length} networks`);
+    console.log(`  Output: ${outputFilePath}`);
+}
+
+/**
+ * Fetches CCIP network details from Chainlink's API and generates Register.sol with hardcoded values.
+ * 
+ * @param {string} environment - The environment to fetch data for ("testnet" or "mainnet")
+ */
+async function fetchAndGenerate(environment) {
+  try {
+    // Validate environment parameter
+    if (environment !== "testnet" && environment !== "mainnet") {
+      throw new Error(`Invalid environment: ${environment}. Must be "testnet" or "mainnet"`);
+    }
+
+    // Call Endpoint #1: chains
+    const chainsRes = await fetch(`https://docs.chain.link/api/ccip/v1/chains?environment=${environment}&outputKey=chainId&enrichFeeTokens=true`, { 
+      headers: { Accept: "application/json" } 
+    });
+    if (!chainsRes.ok) {
+      const body = await chainsRes.text();
+      throw new Error(`Chains API HTTP ${chainsRes.status} ${chainsRes.statusText}\n${body}`);
+    }
+    const chainsData = await chainsRes.json();
+
+    // Call Endpoint #2: tokens
+    const tokensRes = await fetch(`https://docs.chain.link/api/ccip/v1/tokens?environment=${environment}&outputKey=chainId`, { 
+      headers: { Accept: "application/json" } 
+    });
+    if (!tokensRes.ok) {
+      const body = await tokensRes.text();
+      throw new Error(`Tokens API HTTP ${tokensRes.status} ${tokensRes.statusText}\n${body}`);
+    }
+    const tokensData = await tokensRes.json();
+
+    // Process the data
+    const networkDetails = {};
+    const evmChains = chainsData.data.evm || {};
+    const ccipBnM = tokensData.data["CCIP-BnM"] || {};
+    const ccipLnM = tokensData.data["CCIP-LnM"] || {};
+
+    // Iterate through all EVM chains
+    for (const [chainId, chainInfo] of Object.entries(evmChains)) {
+      // Find LINK token and wrapped native token from feeTokens
+      const linkToken = chainInfo.feeTokens?.find(token => token.symbol === "LINK");
+      const wrappedNativeToken = chainInfo.feeTokens?.find(token => token.symbol !== "LINK");
+
+      // Get CCIP token addresses from tokens endpoint
+      const bnMInfo = ccipBnM[chainId];
+      const lnMInfo = ccipLnM[chainId];
+
+      // Only include chains that have all required data
+      if (linkToken && wrappedNativeToken && chainInfo.router && chainInfo.rmn && 
+          chainInfo.registryModule && chainInfo.tokenAdminRegistry) {
+        networkDetails[chainId] = {
+          name: chainInfo.displayName,
+          chainSelector: chainInfo.selector,
+          routerAddress: chainInfo.router,
+          linkAddress: linkToken.address,
+          wrappedNativeAddress: wrappedNativeToken.address,
+          ccipBnMAddress: bnMInfo?.tokenAddress || "",
+          ccipLnMAddress: lnMInfo?.tokenAddress || "",
+          rmnProxyAddress: chainInfo.rmn,
+          registryModuleOwnerCustomAddress: chainInfo.registryModule,
+          tokenAdminRegistryAddress: chainInfo.tokenAdminRegistry
+        };
+      }
+    }
+
+    // Generate Register.sol directly from API data
+    console.log(`\nGenerating Register.sol with ${Object.keys(networkDetails).length} networks for ${environment}...`);
+    generateRegister(null, networkDetails);
+    
+    console.log("\n  Register.sol generated successfully!");
+  } catch (err) {
+    console.error("Error:", err.message);
+    process.exit(1);
+  }
+}
+
+// Get environment from command line arguments or default to testnet
+const environment = process.argv[2] || "testnet";
+
+// Run the function
+fetchAndGenerate(environment);
