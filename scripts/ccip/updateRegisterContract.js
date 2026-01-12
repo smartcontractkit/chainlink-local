@@ -3,14 +3,14 @@
  * 
  * This script queries Chainlink's CCIP API endpoints to retrieve network configuration
  * details for all supported EVM chains. It fetches chain information (routers, selectors,
- * fee tokens) and token information (CCIP-BnM and CCIP-LnM addresses) for either testnet
- * or mainnet environments, then generates Register.sol with hardcoded network details
+ * fee tokens) and token information (CCIP-BnM and CCIP-LnM addresses) for both testnet
+ * and mainnet environments, then generates Register.sol with hardcoded network details
  * in the constructor.
  * 
  * Usage:
- *   node scripts/ccip/latestNetworkDetails.js [testnet|mainnet]
- * 
- * If no environment is specified, defaults to "testnet".
+ *    npm run update-register
+ *    node scripts/ccip/updateRegisterContract.js
+ *   
  */
 
 const fs = require("fs");
@@ -102,73 +102,100 @@ function generateRegister(outputPath, networkDetails) {
 }
 
 /**
- * Fetches CCIP network details from Chainlink's API and generates Register.sol with hardcoded values.
+ * Fetches CCIP network details for a single environment from Chainlink's API.
  * 
  * @param {string} environment - The environment to fetch data for ("testnet" or "mainnet")
+ * @returns {Promise<Object>} Network details object keyed by chain ID
  */
-async function fetchAndGenerate(environment) {
+async function fetchNetworkDetails(environment) {
+  // Call Endpoint #1: chains
+  const chainsRes = await fetch(`https://docs.chain.link/api/ccip/v1/chains?environment=${environment}&outputKey=chainId&enrichFeeTokens=true`, { 
+    headers: { Accept: "application/json" } 
+  });
+  if (!chainsRes.ok) {
+    const body = await chainsRes.text();
+    throw new Error(`Chains API HTTP ${chainsRes.status} ${chainsRes.statusText} for ${environment}\n${body}`);
+  }
+  const chainsData = await chainsRes.json();
+
+  // Call Endpoint #2: tokens
+  const tokensRes = await fetch(`https://docs.chain.link/api/ccip/v1/tokens?environment=${environment}&outputKey=chainId`, { 
+    headers: { Accept: "application/json" } 
+  });
+  if (!tokensRes.ok) {
+    const body = await tokensRes.text();
+    throw new Error(`Tokens API HTTP ${tokensRes.status} ${tokensRes.statusText} for ${environment}\n${body}`);
+  }
+  const tokensData = await tokensRes.json();
+
+  // Process the data
+  const networkDetails = {};
+  const evmChains = chainsData.data.evm || {};
+  const ccipBnM = tokensData.data["CCIP-BnM"] || {};
+  const ccipLnM = tokensData.data["CCIP-LnM"] || {};
+
+  // Iterate through all EVM chains
+  for (const [chainId, chainInfo] of Object.entries(evmChains)) {
+    // Find LINK token and wrapped native token from feeTokens
+    const linkToken = chainInfo.feeTokens?.find(token => token.symbol === "LINK");
+    const wrappedNativeToken = chainInfo.feeTokens?.find(token => token.symbol !== "LINK");
+
+    // Get CCIP token addresses from tokens endpoint
+    const bnMInfo = ccipBnM[chainId];
+    const lnMInfo = ccipLnM[chainId];
+
+    // Only include chains that have all required data
+    if (linkToken && wrappedNativeToken && chainInfo.router && chainInfo.rmn && 
+        chainInfo.registryModule && chainInfo.tokenAdminRegistry) {
+      networkDetails[chainId] = {
+        name: chainInfo.displayName,
+        chainSelector: chainInfo.selector,
+        routerAddress: chainInfo.router,
+        linkAddress: linkToken.address,
+        wrappedNativeAddress: wrappedNativeToken.address,
+        ccipBnMAddress: bnMInfo?.tokenAddress || "",
+        ccipLnMAddress: lnMInfo?.tokenAddress || "",
+        rmnProxyAddress: chainInfo.rmn,
+        registryModuleOwnerCustomAddress: chainInfo.registryModule,
+        tokenAdminRegistryAddress: chainInfo.tokenAdminRegistry
+      };
+    }
+  }
+
+  return networkDetails;
+}
+
+/**
+ * Fetches CCIP network details from Chainlink's API and generates Register.sol with hardcoded values.
+ * Always fetches both testnet and mainnet network details.
+ */
+async function fetchAndGenerate() {
   try {
-    // Validate environment parameter
-    if (environment !== "testnet" && environment !== "mainnet") {
-      throw new Error(`Invalid environment: ${environment}. Must be "testnet" or "mainnet"`);
-    }
+    let networkDetails = {};
+    const environments = ["testnet", "mainnet"];
 
-    // Call Endpoint #1: chains
-    const chainsRes = await fetch(`https://docs.chain.link/api/ccip/v1/chains?environment=${environment}&outputKey=chainId&enrichFeeTokens=true`, { 
-      headers: { Accept: "application/json" } 
-    });
-    if (!chainsRes.ok) {
-      const body = await chainsRes.text();
-      throw new Error(`Chains API HTTP ${chainsRes.status} ${chainsRes.statusText}\n${body}`);
-    }
-    const chainsData = await chainsRes.json();
+    // Fetch data for both environments in parallel
+    console.log(`Fetching network details for: ${environments.join(", ")}...`);
+    const fetchPromises = environments.map(env => fetchNetworkDetails(env));
+    const results = await Promise.all(fetchPromises);
 
-    // Call Endpoint #2: tokens
-    const tokensRes = await fetch(`https://docs.chain.link/api/ccip/v1/tokens?environment=${environment}&outputKey=chainId`, { 
-      headers: { Accept: "application/json" } 
-    });
-    if (!tokensRes.ok) {
-      const body = await tokensRes.text();
-      throw new Error(`Tokens API HTTP ${tokensRes.status} ${tokensRes.statusText}\n${body}`);
-    }
-    const tokensData = await tokensRes.json();
-
-    // Process the data
-    const networkDetails = {};
-    const evmChains = chainsData.data.evm || {};
-    const ccipBnM = tokensData.data["CCIP-BnM"] || {};
-    const ccipLnM = tokensData.data["CCIP-LnM"] || {};
-
-    // Iterate through all EVM chains
-    for (const [chainId, chainInfo] of Object.entries(evmChains)) {
-      // Find LINK token and wrapped native token from feeTokens
-      const linkToken = chainInfo.feeTokens?.find(token => token.symbol === "LINK");
-      const wrappedNativeToken = chainInfo.feeTokens?.find(token => token.symbol !== "LINK");
-
-      // Get CCIP token addresses from tokens endpoint
-      const bnMInfo = ccipBnM[chainId];
-      const lnMInfo = ccipLnM[chainId];
-
-      // Only include chains that have all required data
-      if (linkToken && wrappedNativeToken && chainInfo.router && chainInfo.rmn && 
-          chainInfo.registryModule && chainInfo.tokenAdminRegistry) {
-        networkDetails[chainId] = {
-          name: chainInfo.displayName,
-          chainSelector: chainInfo.selector,
-          routerAddress: chainInfo.router,
-          linkAddress: linkToken.address,
-          wrappedNativeAddress: wrappedNativeToken.address,
-          ccipBnMAddress: bnMInfo?.tokenAddress || "",
-          ccipLnMAddress: lnMInfo?.tokenAddress || "",
-          rmnProxyAddress: chainInfo.rmn,
-          registryModuleOwnerCustomAddress: chainInfo.registryModule,
-          tokenAdminRegistryAddress: chainInfo.tokenAdminRegistry
-        };
+    // Merge network details from both environments
+    // If there are duplicate chain IDs, mainnet takes precedence
+    for (let i = 0; i < environments.length; i++) {
+      const env = environments[i];
+      const details = results[i];
+      const envCount = Object.keys(details).length;
+      console.log(`  ${env}: ${envCount} networks`);
+      
+      // Merge details, with later environments (mainnet) taking precedence
+      for (const [chainId, chainDetails] of Object.entries(details)) {
+        networkDetails[chainId] = chainDetails;
       }
     }
 
     // Generate Register.sol directly from API data
-    console.log(`\nGenerating Register.sol with ${Object.keys(networkDetails).length} networks for ${environment}...`);
+    const totalNetworks = Object.keys(networkDetails).length;
+    console.log(`\nGenerating Register.sol with ${totalNetworks} total networks...`);
     generateRegister(null, networkDetails);
     
     console.log("\n  Register.sol generated successfully!");
@@ -178,8 +205,5 @@ async function fetchAndGenerate(environment) {
   }
 }
 
-// Get environment from command line arguments or default to testnet
-const environment = process.argv[2] || "testnet";
-
 // Run the function
-fetchAndGenerate(environment);
+fetchAndGenerate();

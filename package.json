@@ -27,11 +27,9 @@
     "generate-solidity": "rimraf api_reference/solidity && npm run hardhat-compile && npm run forge-compile && npx hardhat docgen",
     "generate-jsdoc": "rimraf api_reference/javascript && npx ts-node helper_doc/generate-jsdoc.ts",
     "generate-index": "npx ts-node helper_doc/generate-index-files.ts",
-    "pregenerate-docs": "npm run update-register:testnet",
+    "pregenerate-docs": "npm run update-register",
     "generate-docs": "npm run generate-solidity && npm run generate-jsdoc && npm run generate-index && npm run prettier",
-    "update-register": "node scripts/ccip/updateRegisterContract.js",
-    "update-register:testnet": "node scripts/ccip/updateRegisterContract.js testnet",
-    "update-register:mainnet": "node scripts/ccip/updateRegisterContract.js mainnet"
+    "update-register": "node scripts/ccip/updateRegisterContract.js"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-foundry": "^1.1.1",
