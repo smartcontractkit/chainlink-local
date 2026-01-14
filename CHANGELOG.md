@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.8-beta] - 14 January 2026
+
+### Dependencies
+
+| Package                   | Version |
+| ------------------------- | ------- |
+| @chainlink/contracts-ccip | 1.6.2   |
+| @chainlink/contracts      | 1.5.0   |
+
+### Added
+
+- CCIP Network Details Update Script to fetch and update CCIP network details from Chainlink's API
+
 ## [0.2.7] - 9 November 2025
 
 ### Dependencies
@@ -608,3 +621,4 @@ and this project adheres to
 [0.2.6]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.6
 [0.2.7-beta.0]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.7-beta.0
 [0.2.7]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.7
+[0.2.8-beta]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.8-beta

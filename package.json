@@ -2,7 +2,7 @@
   "name": "@chainlink/local",
   "description": "Chainlink Local Simulator",
   "license": "MIT",
-  "version": "0.2.7",
+  "version": "0.2.8-beta",
   "files": [
     "src/**/*.sol",
     "!src/test/**/*",
@@ -18,7 +18,7 @@
     "chainlink"
   ],
   "scripts": {
-    "hardhat-compile": "npx hardhat compile",
+    "hardhat-compile": "npx hardhat compile",    
     "forge-compile": "forge build",
     "hardhat-test": "npx hardhat test",
     "forge-test": "forge test",
@@ -27,7 +27,9 @@
     "generate-solidity": "rimraf api_reference/solidity && npm run hardhat-compile && npm run forge-compile && npx hardhat docgen",
     "generate-jsdoc": "rimraf api_reference/javascript && npx ts-node helper_doc/generate-jsdoc.ts",
     "generate-index": "npx ts-node helper_doc/generate-index-files.ts",
-    "generate-docs": "npm run generate-solidity && npm run generate-jsdoc && npm run generate-index && npm run prettier"
+    "pregenerate-docs": "npm run update-register",
+    "generate-docs": "npm run generate-solidity && npm run generate-jsdoc && npm run generate-index && npm run prettier",
+    "update-register": "node scripts/ccip/updateRegisterContract.js"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-foundry": "^1.1.1",
