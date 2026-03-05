@@ -57,7 +57,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0xd22A59e9b4eA2af16e66487411204224F5003351),
-            registryModuleOwnerCustomAddress: address(0xaA9982275B9b806908e377BB744362Cf96a67Fc3),
+            registryModuleOwnerCustomAddress: address(0x36293c0fbF1872Be5b6cBc65704fB22d41405388),
             tokenAdminRegistryAddress: address(0x32c4634338f1386fdD18E0bD6dF51Ca2Fa56f762)
         });
 
@@ -70,7 +70,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x54E38BFA3584415C28228Ed4865Ed4FA5cDD013A),
-            registryModuleOwnerCustomAddress: address(0x18C441785B0052C45724fa56d00F08dd6ba01375),
+            registryModuleOwnerCustomAddress: address(0x51e2A24742Db77604B881d6781Ee16B5b8fcBE29),
             tokenAdminRegistryAddress: address(0xad71ac82aCFCbDD27BBd3F3eD2fA24E26E49CBE2)
         });
 
@@ -83,7 +83,7 @@ contract Register {
             ccipBnMAddress: address(0xEc9c9E6A862BA7aee87731110a01A2f087EC7ECc),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x2c78A454169241ddCa342BED991B5E4222C0bd0D),
-            registryModuleOwnerCustomAddress: address(0xdC6D648C595619FF1ef07fFa62ECc916F1D708d6),
+            registryModuleOwnerCustomAddress: address(0xaDFb7b14a3eB752b392b69a68bfDD21eAF27466E),
             tokenAdminRegistryAddress: address(0x18825F888230922CdAdA6C7c4AaE70bDbfdF01Ab)
         });
 
@@ -135,7 +135,7 @@ contract Register {
             ccipBnMAddress: address(0xc49ec0eB4beb48B8Da4cceC51AA9A5bD0D0A4c43),
             ccipLnMAddress: address(0xB9d4e1141E67ECFedC8A8139b5229b7FF2BF16F5),
             rmnProxyAddress: address(0xc96ac0533F240ad52694391583267ACAbc479C07),
-            registryModuleOwnerCustomAddress: address(0xc5F62dF12F09dd4a0Ff3Ec85D54a28Be87759c9d),
+            registryModuleOwnerCustomAddress: address(0xB6bD6e3e56a8E28CCbE44b6442cA8b586B964Af8),
             tokenAdminRegistryAddress: address(0x54eBB8F7E81305E1bBdDD03860A9a5D41312bB35)
         });
 
@@ -148,7 +148,7 @@ contract Register {
             ccipBnMAddress: address(0xbFA2ACd33ED6EEc0ed3Cc06bF1ac38d22b36B9e9),
             ccipLnMAddress: address(0x79a4Fc27f69323660f5Bfc12dEe21c3cC14f5901),
             rmnProxyAddress: address(0xA8C0c11bf64AF62CDCA6f93D3769B88BdD7cb93D),
-            registryModuleOwnerCustomAddress: address(0x763685240370758c5ac6C5F7c22AB36684c0570E),
+            registryModuleOwnerCustomAddress: address(0x8Cd87FeAC14D69D770E67Bedf029e6fd3F33D0C7),
             tokenAdminRegistryAddress: address(0xF8f2A4466039Ac8adf9944fD67DBb3bb13888f2B)
         });
 
@@ -187,7 +187,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x2c8De9677b07Cc256228069109D9842f0cB96291),
-            registryModuleOwnerCustomAddress: address(0x4fFb05FE51682c331D3778dc6C0A1122e68773EB),
+            registryModuleOwnerCustomAddress: address(0xd8F5e7FAc317c638d2Fe4d07ab3f436ca6b5e5c7),
             tokenAdminRegistryAddress: address(0xAB3Ee2e897cf23c10e76d26aB4674fEFA376bc0d)
         });
 
@@ -222,11 +222,11 @@ contract Register {
             chainSelector: 8481857512324358265,
             routerAddress: address(0x33566fE5976AAa420F3d5C64996641Fc3858CaDB),
             linkAddress: address(0x76f257B1DDA5cC71bee4eF637Fbdde4C801310A9),
-            wrappedNativeAddress: address(0x3A704ad3E4784b935AE029171AdCF57ee7988198),
+            wrappedNativeAddress: address(0x3bd359C1119dA7Da1D913D1C4D2B7c461115433A),
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x99dFCa5d88f4D9C023531F4403966b8d61562AcD),
-            registryModuleOwnerCustomAddress: address(0x4AfC00570596d172595A4E38384289b880263006),
+            registryModuleOwnerCustomAddress: address(0xB71513B6c80Adf35B43eACC24DA7A08A806a7f2C),
             tokenAdminRegistryAddress: address(0x11ACd984DD680363117B310f6ebdf78fD6c0195f)
         });
 
@@ -249,10 +249,10 @@ contract Register {
             routerAddress: address(0x449E234FEDF3F907b9E9Dd6BAf1ddc36664097E5),
             linkAddress: address(0x44637eEfD71A090990f89faEC7022fc74B2969aD),
             wrappedNativeAddress: address(0x41c3F37587EBcD46C0F85eF43E38BcfE1E70Ab56),
-            ccipBnMAddress: address(0x81249b4bD91A8706eE67a2f422DB82258D4947ad),
+            ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x8d677784DA3707e57aC0306464552560E05dBCD7),
-            registryModuleOwnerCustomAddress: address(0xf6B25A05333C4B8Eb108758d306f28B99324A1bf),
+            registryModuleOwnerCustomAddress: address(0xBB54D6097Ed013eB49509404efA665ee17f247c4),
             tokenAdminRegistryAddress: address(0x5B3BA3d2Dbe9565c2905fbB81776E332a59b6F05)
         });
 
@@ -278,21 +278,8 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0xA84f7c3E7d1025EF1F991110B1956c024bb6Ac99),
-            registryModuleOwnerCustomAddress: address(0xE32c85F1A8154EBa06486F12d9639f1c2dcd240a),
+            registryModuleOwnerCustomAddress: address(0x3869fE7e385554978Eff78423Fd16B5f0974D260),
             tokenAdminRegistryAddress: address(0xfAb243379A10D8090B32BC706288c2187dbe495C)
-        });
-
-        // X Layer Testnet
-        s_networkDetails[195] = NetworkDetails({
-            chainSelector: 2066098519157881736,
-            routerAddress: address(0xc5F5330C4793AF46872a9eC15b76a007A96a4152),
-            linkAddress: address(0x724593f6FCb0De4E6902d4C55D7C74DaA2AF0E55),
-            wrappedNativeAddress: address(0xa7b9C3a116b20bEDDdBE4d90ff97157f67F0bD97),
-            ccipBnMAddress: address(0),
-            ccipLnMAddress: address(0xd70f29744f03F10b7EC2443Bd294B7E62D654c5b),
-            rmnProxyAddress: address(0xdE9f213a88F5ef96a99E75c1ff4fD363e9F48762),
-            registryModuleOwnerCustomAddress: address(0x59b17C30Ec5470499d3DA9Af2B0b24B0Ea3FFC98),
-            tokenAdminRegistryAddress: address(0x5feC18341A1A5C33803633Af79182d7619a2cb63)
         });
 
         // X Layer
@@ -317,7 +304,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0xf7adFeB4433E09d4f652EC2c55d39e505F7c8b75),
-            registryModuleOwnerCustomAddress: address(0xe76d080Bc727EE62bCF53c8Cc891417357529CA1),
+            registryModuleOwnerCustomAddress: address(0xC2eAfBAD518849e9A5Acd33E687EeAc7306C1dea),
             tokenAdminRegistryAddress: address(0xEfF5D2147F9cAcdedF80C2ee1F5320B01C664bE5)
         });
 
@@ -343,7 +330,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x4F26203d04A57A73df795DBed362d3A8d5C34D0c),
-            registryModuleOwnerCustomAddress: address(0x023a9E50C6D807D786FC5c5D7ACAe4DaB63544f0),
+            registryModuleOwnerCustomAddress: address(0x7bc6fB227983Ad829dF8b210407A589F2EB34f64),
             tokenAdminRegistryAddress: address(0x469169915210462F5e01EFBE0822Cf7079F9306b)
         });
 
@@ -356,7 +343,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0xE187a792bbf76232A307d8E44615973C849E25A0),
-            registryModuleOwnerCustomAddress: address(0x6A68CD17c1D1DA8bC15c2B3A9B0557B8Dc99853E),
+            registryModuleOwnerCustomAddress: address(0xfCe3246A7Cc4Ae9E529836F584843fcCB73F736D),
             tokenAdminRegistryAddress: address(0xdD98482Ec0cfEFfe14EAb750A9c484F9D5d07380)
         });
 
@@ -382,7 +369,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0xb776AF2E561Dd8720148D56C7316fDA56B56b9C8),
-            registryModuleOwnerCustomAddress: address(0x363e6641e20EeDAfe945a9289bF83c88d66c93bB),
+            registryModuleOwnerCustomAddress: address(0xbF7Fa3d397a92cE20Cd6Aa5376F0A4e41eD3f1b4),
             tokenAdminRegistryAddress: address(0x314B7a51b7472B7F3A998AeA30Cc4Aab731063C8)
         });
 
@@ -395,7 +382,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x889b5Ada2Ce451ED68C5e1b40B8236C3448ff681),
-            registryModuleOwnerCustomAddress: address(0xAa7257D6E68A3CBb356AcA9845C33102bEB9a54c),
+            registryModuleOwnerCustomAddress: address(0xdd8aF6046349EDFD40123E0b616286cEC08010ed),
             tokenAdminRegistryAddress: address(0x6724621d8A560A84E4B6012c4bAA0eA6fF47B9DF)
         });
 
@@ -408,7 +395,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x09d9c9a2Ba147654fB40e217B68f2874775271b9),
-            registryModuleOwnerCustomAddress: address(0xC767e1d990e847E1737Fb21D24f4B94e0E2F193D),
+            registryModuleOwnerCustomAddress: address(0x1d952d2f6eE86Ef4940Fa648aA7477c8fF175F09),
             tokenAdminRegistryAddress: address(0xC9efBD4f73C37aE1573806030A4146e1E72EADc1)
         });
 
@@ -421,7 +408,7 @@ contract Register {
             ccipBnMAddress: address(0x01Ac06943d2B8327a7845235Ef034741eC1Da352),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x0Df355104424BABfb2404600A4258CfE140a78Cf),
-            registryModuleOwnerCustomAddress: address(0xbF4395f647940758D9d5f6bCD8e9de97D5Aa8608),
+            registryModuleOwnerCustomAddress: address(0xf76cE612250eeEb8889F49FBCB11f1c2705305F6),
             tokenAdminRegistryAddress: address(0xA6643e4f53ceABad16970e8592D4eF7fea49260a)
         });
 
@@ -434,7 +421,7 @@ contract Register {
             ccipBnMAddress: address(0xFf6d0c1518A8104611f482eb2801CaF4f13c9dEb),
             ccipLnMAddress: address(0xBf8eA19505ab7Eb266aeD435B11bd56321BFB5c5),
             rmnProxyAddress: address(0x3DA20FD3D8a8f8c1f1A5fD03648147143608C467),
-            registryModuleOwnerCustomAddress: address(0x3139687Ee9938422F57933C3CDB3E21EE43c4d0F),
+            registryModuleOwnerCustomAddress: address(0x57Fe4Ed8DF1c044f7E6860415A8aa61eE7597657),
             tokenAdminRegistryAddress: address(0xc7777f12258014866c677Bdb679D0b007405b7DF)
         });
 
@@ -447,7 +434,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x2aBB46A2D32220b8801CE96CAbC32dd2dA7b7B20),
-            registryModuleOwnerCustomAddress: address(0xab0731056C23b85eDd62F12E716fC75fc1fB1219),
+            registryModuleOwnerCustomAddress: address(0x55231e520F09D53ef836CE9477011C7057a70bd6),
             tokenAdminRegistryAddress: address(0x100a47C9DB342884E3314B91cec076BbAC8e619c)
         });
 
@@ -460,7 +447,7 @@ contract Register {
             ccipBnMAddress: address(0x028E1B6f424c5A96E4bD5e1bbaB8b3C9088e5D39),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x967C605BFF8B9f7a4866ac9d1Ecc660F9CAd08Af),
-            registryModuleOwnerCustomAddress: address(0x7b4dD0535eC347B63E523b66558Cc870dcad57a2),
+            registryModuleOwnerCustomAddress: address(0xAA3450998528E43322698a914D0b756B98292A3b),
             tokenAdminRegistryAddress: address(0x58A89590d10BA6553760ca81E66Ce06dfB70429a)
         });
 
@@ -473,7 +460,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0xA6f2662523693CFA3Ff2e36e3550ea432864c7DA),
-            registryModuleOwnerCustomAddress: address(0x7A53A26B6c089Ad8ecCD1CbD03ddb7516044a281),
+            registryModuleOwnerCustomAddress: address(0x5Fa0fa2f1dE61BddD68dc8902b59Eaa028BE6F57),
             tokenAdminRegistryAddress: address(0x94Fa8b263dEb66fA3e160D408Cd200be8b030609)
         });
 
@@ -525,7 +512,7 @@ contract Register {
             ccipBnMAddress: address(0xB9d4e1141E67ECFedC8A8139b5229b7FF2BF16F5),
             ccipLnMAddress: address(0x86f9Eed8EAD1534D87d23FbAB247D764fC725D49),
             rmnProxyAddress: address(0xcbFD5e55619B4EE3E6e7fe3CEb0E78fDf7d82dfc),
-            registryModuleOwnerCustomAddress: address(0x4f4fe77A9dBEDe8c4EbFe51932C2E08A37c890ED),
+            registryModuleOwnerCustomAddress: address(0xd7b86ed053806177718B9e03c63c4Bc501825C00),
             tokenAdminRegistryAddress: address(0xc89d4ff0cb206677a7555e52500879bfab73cC68)
         });
 
@@ -547,7 +534,7 @@ contract Register {
             chainSelector: 16978377838628290997,
             routerAddress: address(0xECFF67559c0583027A5fbd85136E33bC4D66eeA0),
             linkAddress: address(0x985FB0821Eef0056ec26DD8b33dC61b9415B7F4b),
-            wrappedNativeAddress: address(0x817997Ca8394E26CCE3dE3A076a4889b27DbF9dE),
+            wrappedNativeAddress: address(0xB23540d08122C634a839F0143267BeA9936Dd466),
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x8A76fe7fA6da27f85a626c5C53730B38D13603d7),
@@ -564,7 +551,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x07f15e9813FBd007d38CF534133C0838f449ecFA),
-            registryModuleOwnerCustomAddress: address(0xbAb3aBB5F29275065F2814F1f4B10Ffc1284fFEf),
+            registryModuleOwnerCustomAddress: address(0xe2712A0C09DfB8031857Adb8D73Eb04997D271bA),
             tokenAdminRegistryAddress: address(0xcE44363496ABc3a9e53B3F404a740F992D977bDF)
         });
 
@@ -590,7 +577,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0xd99cc1d64027E07Cd2AaE871E16bb32b8F401998),
-            registryModuleOwnerCustomAddress: address(0xE4B147224Db9B6E3776E4B3CEda31b3cE232e2FA),
+            registryModuleOwnerCustomAddress: address(0xE939C02E92e9E66d1F0D8E4F099E7d3d269a8a11),
             tokenAdminRegistryAddress: address(0x3af897541eB03927c7431bF68884A6C2C23b683f)
         });
 
@@ -629,7 +616,7 @@ contract Register {
             ccipBnMAddress: address(0xF4E4057FbBc86915F4b2d63EEFFe641C03294ffc),
             ccipLnMAddress: address(0xcb342aE3D65E3fEDF8F912B0432e2B8F88514d5D),
             rmnProxyAddress: address(0xA930c1E0fF1E1005E8Ef569Aa81e6EEbf466b1c3),
-            registryModuleOwnerCustomAddress: address(0x7050BD352A5Aacf774CF883f9345a0C10BdF3cD2),
+            registryModuleOwnerCustomAddress: address(0x76c00B055414de203B79B4955E28119BF459033e),
             tokenAdminRegistryAddress: address(0xecf484BFcC51F24fcB31056c262A021bAf688D9B)
         });
 
@@ -642,7 +629,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0xF39a1260F4E3345D810e1b8aA569200e1D27A998),
-            registryModuleOwnerCustomAddress: address(0xfaE626f209B036B03D18d4f16ad3D599f90AF22c),
+            registryModuleOwnerCustomAddress: address(0x13d13E0BBf0387c0e9C6beb73D0593d2FFc1F24d),
             tokenAdminRegistryAddress: address(0x2c99403fDB26F654c410D81264033faE289fa7Ea)
         });
 
@@ -655,7 +642,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x1e9B034c67B6eA4cB819aA8BE4E84cff2d5417fb),
-            registryModuleOwnerCustomAddress: address(0x6d10fF9a987d3C05e373cCbcb17f38287318c50e),
+            registryModuleOwnerCustomAddress: address(0x50056397CF6ccF50D1748e95c32EC361951ee6F9),
             tokenAdminRegistryAddress: address(0x4D2B43c60f3e476Ee94637C4e3be844FC9a70012)
         });
 
@@ -681,7 +668,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x193e4f6c1A2FD8fa167c8a6e8E05564402DF6890),
-            registryModuleOwnerCustomAddress: address(0xb8A0D2aF11852E910fB9EBbA99E5233D29c483DA),
+            registryModuleOwnerCustomAddress: address(0x15C03488B29e27d62BAf10E30b0c474bf60E0264),
             tokenAdminRegistryAddress: address(0x98acD723D0E9C13d09Df4619Abec729F3434a10a)
         });
 
@@ -694,7 +681,7 @@ contract Register {
             ccipBnMAddress: address(0x6122841A203d34Cd3087c3C19d04d101F6FaF8e8),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x6dFD89Ff6bDa2EA420Dfe6Cc57E7e1F9cf610925),
-            registryModuleOwnerCustomAddress: address(0x504f424F6eFe984d16B7ff2A1a4edf0Efe0D6A49),
+            registryModuleOwnerCustomAddress: address(0x07d59512C970D0Df9D7d82AfC5996e822E000539),
             tokenAdminRegistryAddress: address(0xf2d17820416B692c52515A828B8A26d2f22cafce)
         });
 
@@ -707,7 +694,7 @@ contract Register {
             ccipBnMAddress: address(0x271F22d029c6edFc9469faE189C4F43E457F257C),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x754aBd2496Bea05ceDE80Df8bE530f6132208c41),
-            registryModuleOwnerCustomAddress: address(0x8538DE2a0Ba5C3db87B2Dc3d391Cc0Dd147dd827),
+            registryModuleOwnerCustomAddress: address(0x28217C5dd0718e9f8EB301b28E32eFd13D71308A),
             tokenAdminRegistryAddress: address(0xDF27EE0050C2D3831089B14aCC465aBF9fD12C64)
         });
 
@@ -720,8 +707,21 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x32C67585dA17839245c75D80d36c8CBD7d35E1a5),
-            registryModuleOwnerCustomAddress: address(0xd7327405609E3f9566830b1aCF79E25AC0a9DA4B),
+            registryModuleOwnerCustomAddress: address(0x258Fc917b8de98b4aA0d38776E95dcce9e7EC8aC),
             tokenAdminRegistryAddress: address(0x910a46cA93E8086BF1d7D65190eE6AEe5256Bd61)
+        });
+
+        // Pharos Mainnet
+        s_networkDetails[1672] = NetworkDetails({
+            chainSelector: 7801139999541420232,
+            routerAddress: address(0x4e52dD94e9BCfeFE3C78153bDfB0AB1d30687297),
+            linkAddress: address(0x51e2A24742Db77604B881d6781Ee16B5b8fcBE29),
+            wrappedNativeAddress: address(0x52C48d4213107b20bC583832b0d951FB9CA8F0B0),
+            ccipBnMAddress: address(0),
+            ccipLnMAddress: address(0),
+            rmnProxyAddress: address(0xF4486d70EBED800204898Ec99C812661551471dC),
+            registryModuleOwnerCustomAddress: address(0xE27dd9BF01B55ce6803c0d81386A04212c718b95),
+            tokenAdminRegistryAddress: address(0xB79791184973589c38e114D43Eb8E4588C283A18)
         });
 
         // Mint Sepolia
@@ -746,7 +746,7 @@ contract Register {
             ccipBnMAddress: address(0xbD6F12f358D8ee3b35B0AD612450a186bA866B72),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x587e5Db25504ed21Fac9D1aED52e48467d4B71Fe),
-            registryModuleOwnerCustomAddress: address(0xbe1744FBdBAa450c1A1CC8aaE68B46D2bA8e73C7),
+            registryModuleOwnerCustomAddress: address(0x09ED6dC4d7cF091A1f9579FACA0d3f485A1c367B),
             tokenAdminRegistryAddress: address(0x2FEAeE6E125791ef86d8b07DBf3ede1680434ea6)
         });
 
@@ -759,7 +759,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x87E84fc7cBD63D7e8653C660De09Fe48AB0276a8),
-            registryModuleOwnerCustomAddress: address(0xe34002C0d93E7B4DC84205dF6f4daD98CE44Fc89),
+            registryModuleOwnerCustomAddress: address(0x258Fc917b8de98b4aA0d38776E95dcce9e7EC8aC),
             tokenAdminRegistryAddress: address(0xc41640B959Ca2A62b9293509202D8615dC293634)
         });
 
@@ -798,21 +798,8 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0xceA253a8c2BB995054524d071498281E89aACD59),
-            registryModuleOwnerCustomAddress: address(0x5055DA89A16b71fEF91D1af323b139ceDe2d8320),
+            registryModuleOwnerCustomAddress: address(0xC6a4854eeB493224d5f9485E12Dd3A81f22EEE14),
             tokenAdminRegistryAddress: address(0x90e83d532A4aD13940139c8ACE0B93b0DdbD323a)
-        });
-
-        // Ronin Saigon
-        s_networkDetails[2021] = NetworkDetails({
-            chainSelector: 13116810400804392105,
-            routerAddress: address(0x0aCAe4e51D3DA12Dd3F45A66e8b660f740e6b820),
-            linkAddress: address(0x5bB50A6888ee6a67E22afFDFD9513be7740F1c15),
-            wrappedNativeAddress: address(0xA959726154953bAe111746E265E6d754F48570E6),
-            ccipBnMAddress: address(0x88DD2416699Bad3AeC58f535BC66F7f62DE2B2EC),
-            ccipLnMAddress: address(0x04B1F917a3ba69Fa252564414DdAFc82fA1B5178),
-            rmnProxyAddress: address(0xf206c6D3f3810eBbD75e7B4684291b5e51023D2f),
-            registryModuleOwnerCustomAddress: address(0xE31827cd24d7D419fC17E7Ff889BaF62A17991A0),
-            tokenAdminRegistryAddress: address(0x057879f376041D527a98327DE2Ec00F201c9cA25)
         });
 
         // Memento Testnet
@@ -863,7 +850,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0xA4C9e2108ca478DE0B91c7D9Ba034bbc93C22Ecc),
             rmnProxyAddress: address(0x174813BA5102bD363924bABBeEcE4865FBC426BF),
-            registryModuleOwnerCustomAddress: address(0xB1e2E19eb04baC13D8FF9398f412367ba640cf1e),
+            registryModuleOwnerCustomAddress: address(0xb7E0D638cE82ba6AdC88D7FeBD5E06e549bAC4b6),
             tokenAdminRegistryAddress: address(0x6bdFA65ccd2Aba2913De2c0a588C317Dc651d9C3)
         });
 
@@ -889,7 +876,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x2edAc8B8928c4e1Ed559e619b6A8a4aaCe9Ef18A),
-            registryModuleOwnerCustomAddress: address(0x56c4b06A0F59AcFAAb58FEA0d7Ca4090695F683f),
+            registryModuleOwnerCustomAddress: address(0xB79791184973589c38e114D43Eb8E4588C283A18),
             tokenAdminRegistryAddress: address(0x7EEdf2DBC74924Cb1f23fC8845CD35bF18b697de)
         });
 
@@ -928,7 +915,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x073B0329bEdD96E95462A8d446E8FC3F5A959105),
-            registryModuleOwnerCustomAddress: address(0x9c3734EA8EbF2A587Bd7110Fe830ec0665bE17d7),
+            registryModuleOwnerCustomAddress: address(0x3C6a0de9aF7051344aAE8b78a0ee4E43e050c7Dd),
             tokenAdminRegistryAddress: address(0xd86b92de626aD63db80AF78B54e5739b6aC8b099)
         });
 
@@ -941,7 +928,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x7f1310420E197B491311Ac75bF44e852f796779a),
-            registryModuleOwnerCustomAddress: address(0x862e2885Ae4B2790d15A5F19bdb47bc6Bd31aaD1),
+            registryModuleOwnerCustomAddress: address(0xbDCb06538A5f4F5aCC69bb0B7548d314d3c1A8Fd),
             tokenAdminRegistryAddress: address(0x3eD4752266fF42FECe47dB8BA1249fF3978f3E5E)
         });
 
@@ -954,7 +941,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x225c0187d88e5E42455c4B46078D15283551930B),
-            registryModuleOwnerCustomAddress: address(0xB3e5f1F4aeF00402091605b96D0440657c8B9978),
+            registryModuleOwnerCustomAddress: address(0xE27dd9BF01B55ce6803c0d81386A04212c718b95),
             tokenAdminRegistryAddress: address(0xA51Cdb9154bB0c9Bc3CE25dBf7DE3331B3A1C8E7)
         });
 
@@ -967,8 +954,21 @@ contract Register {
             ccipBnMAddress: address(0x03B2F16FC12010d2e35055092055674645C38378),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x1e4a4432d4d278992BE84695C3cc20E1e4bD99A0),
-            registryModuleOwnerCustomAddress: address(0x446BAe0a2c2c558d11883D778476E1E9607Cb0cc),
+            registryModuleOwnerCustomAddress: address(0xd54205E00835B63Db005ADEF8d99E4984601ACAf),
             tokenAdminRegistryAddress: address(0x8e09D700c1246a0e2Eb6169D67fc51c2f618a21A)
+        });
+
+        // MegaETH Mainnet
+        s_networkDetails[4326] = NetworkDetails({
+            chainSelector: 6093540873831549674,
+            routerAddress: address(0xfa546248C54939AA6C48279CdC1EAf9A1125c411),
+            linkAddress: address(0xee85aEfb15b9489563A6a29891ebe0750AA1A7Ae),
+            wrappedNativeAddress: address(0x4200000000000000000000000000000000000006),
+            ccipBnMAddress: address(0),
+            ccipLnMAddress: address(0),
+            rmnProxyAddress: address(0xA27056438FfA1f286AB197488808692F0db93F8B),
+            registryModuleOwnerCustomAddress: address(0x1E11bAB3f07fa72312182fFDc460AE45400E6e7b),
+            tokenAdminRegistryAddress: address(0xf4a170A36D4C656F614d44453f73308Bdb275196)
         });
 
         // World Chain Sepolia
@@ -980,7 +980,7 @@ contract Register {
             ccipBnMAddress: address(0x8fdE0C794fDA5a7A303Ce216f79B9695a7714EcB),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x469f402B75c7679eccac0Afab43aB60A292f1976),
-            registryModuleOwnerCustomAddress: address(0x4CDAe69497e06781A42D28285aDf88Ef065aa40b),
+            registryModuleOwnerCustomAddress: address(0xBD04B1B560A30cB3DA471574bB38F069F9C97399),
             tokenAdminRegistryAddress: address(0x5A02ce533FF13f2A069CfACEe49431c017e17aBC)
         });
 
@@ -989,7 +989,7 @@ contract Register {
             chainSelector: 1556008542357238666,
             routerAddress: address(0x670052635a9850bb45882Cb2eCcF66bCff0F41B7),
             linkAddress: address(0xfe36cF0B43aAe49fBc5cFC5c0AF22a623114E043),
-            wrappedNativeAddress: address(0x78c1b0C915c4FAA5FffA6CAbf0219DA63d7f4cb8),
+            wrappedNativeAddress: address(0xfc421aD3C883Bf9E7C4f42dE845C4e4405799e73),
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x91E2186E93F0ECeDDCdf9850078F104daB085E79),
@@ -1006,7 +1006,7 @@ contract Register {
             ccipBnMAddress: address(0xEA8cA8AE1c54faB8D185FC1fd7C2d70Bee8a417e),
             ccipLnMAddress: address(0xCdeE7708A96479f6D029741144f458B7FA807A6C),
             rmnProxyAddress: address(0xcCB84Ec3F6AFdD2052134f74aaAc95Ae41A7B333),
-            registryModuleOwnerCustomAddress: address(0xd239f46A197ef6657af8b1C1d025410992B44771),
+            registryModuleOwnerCustomAddress: address(0xf76cE612250eeEb8889F49FBCB11f1c2705305F6),
             tokenAdminRegistryAddress: address(0x0F1eE88A582f31d92510E300fc1330AA5a525D51)
         });
 
@@ -1019,7 +1019,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x1A99FF887e5bb3962dA97F409487663B5F539799),
-            registryModuleOwnerCustomAddress: address(0x72Bc4c733f86b14cf1614AEFF99ed3611fCa1B46),
+            registryModuleOwnerCustomAddress: address(0x1d952d2f6eE86Ef4940Fa648aA7477c8fF175F09),
             tokenAdminRegistryAddress: address(0x7a1874cBc865580c6cbE09af25509dF12A6b4F58)
         });
 
@@ -1032,7 +1032,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0xfd203BE5303939fA8514A3D9CDe38e31877317B7),
-            registryModuleOwnerCustomAddress: address(0xa100aE3f139c388D06665B9f883faB52b9e0027E),
+            registryModuleOwnerCustomAddress: address(0x9F367a290B4Cc64d0F85B3783d332256b26143B9),
             tokenAdminRegistryAddress: address(0x1fF7474b42f8e9B7353dd90F8C020f738f7Fc452)
         });
 
@@ -1067,7 +1067,7 @@ contract Register {
             chainSelector: 9335212494177455608,
             routerAddress: address(0xcDca5D374e46A6DDDab50bD2D9acB8c796eC35C3),
             linkAddress: address(0x76a443768A5e3B8d1AED0105FC250877841Deb40),
-            wrappedNativeAddress: address(0x6100E367285b01F48D07953803A2d8dCA5D19873),
+            wrappedNativeAddress: address(0xb77E872A68C62CfC0dFb02C067Ecc3DA23B4bbf3),
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0xAEf7A922931848d2e731D5914f428b4E851d1Ad5),
@@ -1091,14 +1091,14 @@ contract Register {
         // Monad Testnet
         s_networkDetails[10143] = NetworkDetails({
             chainSelector: 2183018362218727504,
-            routerAddress: address(0x5f16e51e3Dcb255480F090157DD01bA962a53E54),
-            linkAddress: address(0x6fE981Dbd557f81ff66836af0932cba535Cbc343),
-            wrappedNativeAddress: address(0x760AfE86e5de5fa0Ee542fc7B7B713e1c5425701),
-            ccipBnMAddress: address(0),
+            routerAddress: address(0x5aD0A67f4Da0E8665a3fbf15E4215A780407Cf33),
+            linkAddress: address(0xe5e3a4fF1773d043a387b16Ceb3c91cC49bAFD54),
+            wrappedNativeAddress: address(0xdE4E7FED43FAC37EB21aA0643d9852f75332eab8),
+            ccipBnMAddress: address(0xb3B832Acd77fd31aCA5Bd7159d34e5063EC4c09f),
             ccipLnMAddress: address(0),
-            rmnProxyAddress: address(0xaBe6C62737539bEA929647187C3bF13455B33c84),
-            registryModuleOwnerCustomAddress: address(0x4b90270eAca902fBb9B3bbFd185F82A137a29739),
-            tokenAdminRegistryAddress: address(0x9f4fa39d257cBe5A69F4E4A22a3E8bf62CAF5218)
+            rmnProxyAddress: address(0xD610B8f58689de7755947C05342A2DFaC30ebD57),
+            registryModuleOwnerCustomAddress: address(0x524B83ae8208490151339c626fd0E35b964483e3),
+            tokenAdminRegistryAddress: address(0xd3e461C55676B10634a5F81b747c324B85686Dd1)
         });
 
         // Gnosis Chiado
@@ -1110,7 +1110,7 @@ contract Register {
             ccipBnMAddress: address(0xA189971a2c5AcA0DFC5Ee7a2C44a2Ae27b3CF389),
             ccipLnMAddress: address(0x30DeCD269277b8094c00B0bacC3aCaF3fF4Da7fB),
             rmnProxyAddress: address(0x1be106fd3b104275B1e56BcAca554B8cbc5a2577),
-            registryModuleOwnerCustomAddress: address(0x02a254c97Ca097Fb09792bfe331E3FBE61f6aF6A),
+            registryModuleOwnerCustomAddress: address(0x6A9670741411dBf0c284E69BB1FF4aB482421d38),
             tokenAdminRegistryAddress: address(0x75ada0256Bea7956824B190419b52ba6660f9CF9)
         });
 
@@ -1123,21 +1123,21 @@ contract Register {
             ccipBnMAddress: address(0x596b8A0A2A63E5B4b2c0e201c4C27078642c8509),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0xDcF391514C1ede0B8629A45Da710d3D7228B543C),
-            registryModuleOwnerCustomAddress: address(0x8c61dEE1531FB35Cb4Cc6A15b5B7D0b5e7C49645),
+            registryModuleOwnerCustomAddress: address(0x41a11E4955A8bAEC73e2c679db7EA21ffa1807e0),
             tokenAdminRegistryAddress: address(0x828bDf5427A79a1A4cC17d8e2aD0fDe72499ae4F)
         });
 
-        // 0G Galileo Testnet
-        s_networkDetails[16601] = NetworkDetails({
-            chainSelector: 2131427466778448014,
-            routerAddress: address(0x5c21Bb4Bd151Bd6Fa2E6d7d1b63B83485529Cdb4),
-            linkAddress: address(0xd211Bd4ff8fd68C16016C5c7a66b6e10F6227C49),
-            wrappedNativeAddress: address(0x1Cd0690fF9a693f5EF2dD976660a8dAFc81A109c),
-            ccipBnMAddress: address(0),
+        // Sonic Testnet
+        s_networkDetails[14601] = NetworkDetails({
+            chainSelector: 1763698235108410440,
+            routerAddress: address(0x5bB5906e88ED789032Cd007D37da60291846E2A3),
+            linkAddress: address(0x19e696e75ccbB3155EEbB579BFa555Fab22293bA),
+            wrappedNativeAddress: address(0x4C344A0E257bF949D67A89be8B4516306D90E23E),
+            ccipBnMAddress: address(0xBc393E3499047B24213338C24B8E8185250dc1Cb),
             ccipLnMAddress: address(0),
-            rmnProxyAddress: address(0x83eBE7Ceb4916C3Cb86662f65b353E4324390059),
-            registryModuleOwnerCustomAddress: address(0xf1C53C1f9d0e5872a454Da43E6dbC93d019325e1),
-            tokenAdminRegistryAddress: address(0xE75f53017a840d761b44aaa83AAf5cdEb0760733)
+            rmnProxyAddress: address(0x4F213c8374c4F223eB85d8770Fc76eAd5163FC23),
+            registryModuleOwnerCustomAddress: address(0x4D8785d2D1Fa810C0B39A688AEB46146e79a4569),
+            tokenAdminRegistryAddress: address(0x22af2fDb6Ec9E5AF82585Ee0efb65b5E46086841)
         });
 
         // 0G
@@ -1151,19 +1151,6 @@ contract Register {
             rmnProxyAddress: address(0xBF38331E34ef7f248020611bB31Be0576D06413D),
             registryModuleOwnerCustomAddress: address(0x91339eb99C4c2Be9A071203DD99E014A3189FD29),
             tokenAdminRegistryAddress: address(0x051665f2455116e929b9972c36d23070F5054Ce0)
-        });
-
-        // Holesky
-        s_networkDetails[17000] = NetworkDetails({
-            chainSelector: 7717148896336251131,
-            routerAddress: address(0xb9531b46fE8808fB3659e39704953c2B1112DD43),
-            linkAddress: address(0x685cE6742351ae9b618F383883D6d1e0c5A31B4B),
-            wrappedNativeAddress: address(0x94373a4919B3240D86eA41593D5eBa789FEF3848),
-            ccipBnMAddress: address(0xdd578844095DB1837A96c353F8f237f6cDC79bED),
-            ccipLnMAddress: address(0),
-            rmnProxyAddress: address(0x8607115fd037d4f182b0eBaEC3cF08Df67080d05),
-            registryModuleOwnerCustomAddress: address(0x86fedc5f0b89131A31eBdaa2737EC81acD382264),
-            tokenAdminRegistryAddress: address(0x9cC9981c187a79365eAF1880F65DE866eBf039Dc)
         });
 
         // Everclear
@@ -1188,7 +1175,7 @@ contract Register {
             ccipBnMAddress: address(0xF48cae4B1F4EB3a1682600D4F3aFA166db5B162E),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x9D23ae40a0AeE8fF58ac4037D669773b14eEb035),
-            registryModuleOwnerCustomAddress: address(0x1B4cb6C28098eE7d04565BFB46184D3B4E23f28D),
+            registryModuleOwnerCustomAddress: address(0xbc9A4b299741CBf2A8eD5D2078A426027C31B2A3),
             tokenAdminRegistryAddress: address(0x4054fA847d51bE8bFC8D2E633eb4AD0C7D17C39C)
         });
 
@@ -1201,7 +1188,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x768a1a3B321126A8B214d7376D48465C7f6Fa061),
-            registryModuleOwnerCustomAddress: address(0x835F2315BaB7b36b3f4cacF865e55439A613cc1b),
+            registryModuleOwnerCustomAddress: address(0x1c2F528e3BEeFF81Bc03CC63E64dB131d18be7fA),
             tokenAdminRegistryAddress: address(0xD3ED6fC9fd22412764ac2Ef64fB664b9393dF9F2)
         });
 
@@ -1240,7 +1227,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x1C6e13153FdFC78793E211f557820ed86B10c36B),
-            registryModuleOwnerCustomAddress: address(0x26FD7eaFFA9aFf66b6Ad5bdC400BB65C45cB40B5),
+            registryModuleOwnerCustomAddress: address(0xBFB9E98c32b80916Bd4350F644a98ba24393a73c),
             tokenAdminRegistryAddress: address(0x10Cb4265e13801cAcEd7682Bb8B5d2ed6E97964E)
         });
 
@@ -1305,7 +1292,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0xa1E3b310025c9E1861374D9CAF629E0DAa8Ecd8C),
-            registryModuleOwnerCustomAddress: address(0xE4492EC4D601A250c383D93763390Ac4E07A9268),
+            registryModuleOwnerCustomAddress: address(0xE27dd9BF01B55ce6803c0d81386A04212c718b95),
             tokenAdminRegistryAddress: address(0x81e81F9B2C0B79C00F38357068AE049090F2DaDE)
         });
 
@@ -1318,21 +1305,8 @@ contract Register {
             ccipBnMAddress: address(0xD21341536c5cF5EB1bcb58f6723cE26e8D8E90e4),
             ccipLnMAddress: address(0x70F5c5C40b873EA597776DA2C21929A8282A3b35),
             rmnProxyAddress: address(0xAc8CFc3762a979628334a0E4C1026244498E821b),
-            registryModuleOwnerCustomAddress: address(0x97300785aF1edE1343DB6d90706A35CF14aA3d81),
+            registryModuleOwnerCustomAddress: address(0xefa93f3312840683893DbdeB3d53359b2d948F50),
             tokenAdminRegistryAddress: address(0xA92053a4a3922084d992fD2835bdBa4caC6877e6)
-        });
-
-        // Celo Alfajores
-        s_networkDetails[44787] = NetworkDetails({
-            chainSelector: 3552045678561919002,
-            routerAddress: address(0xb00E95b773528E2Ea724DB06B75113F239D15Dca),
-            linkAddress: address(0x32E08557B14FaD8908025619797221281D439071),
-            wrappedNativeAddress: address(0x99604d0e2EfE7ABFb58BdE565b5330Bb46Ab3Dca),
-            ccipBnMAddress: address(0x7e503dd1dAF90117A1b79953321043d9E6815C72),
-            ccipLnMAddress: address(0x7F4e739D40E58BBd59dAD388171d18e37B26326f),
-            rmnProxyAddress: address(0x7A394C616A7347dc91C40159929e1c9a435cb83A),
-            registryModuleOwnerCustomAddress: address(0xa8c380Ecd336401Ee896Df33b93F1c76b749C902),
-            tokenAdminRegistryAddress: address(0x5585040bED214fdC60c9cE8c3E8a9c52CE19f4Ea)
         });
 
         // Zircuit
@@ -1370,21 +1344,8 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x9D13Ef88bbfD4B3B4f4d8C61C2d528c398183814),
-            registryModuleOwnerCustomAddress: address(0x270306cc47668c6980e8F0de48650bD3002721c5),
+            registryModuleOwnerCustomAddress: address(0x6992d18b0850b01f6c121879284fD23f300ba8AD),
             tokenAdminRegistryAddress: address(0x66B6772Cb49374AaA088279d6524143B6E1914fE)
-        });
-
-        // Sonic Blaze
-        s_networkDetails[57054] = NetworkDetails({
-            chainSelector: 3676871237479449268,
-            routerAddress: address(0x2fBd4659774D468Db5ca5bacE37869905d8EfA34),
-            linkAddress: address(0xd8C1eEE32341240A62eC8BC9988320bcC13c8580),
-            wrappedNativeAddress: address(0x917FE4b784d1895187Df169aeCc687C03ba12662),
-            ccipBnMAddress: address(0x230c46b9a7c8929A80863bDe89082B372a4c7A99),
-            ccipLnMAddress: address(0),
-            rmnProxyAddress: address(0xD3166538bd1132329d25E34B240E4D44922A07F0),
-            registryModuleOwnerCustomAddress: address(0xdcF170767E0370CEB4E1fD33C79b32909C50e30E),
-            tokenAdminRegistryAddress: address(0xB87d268E7E5d921c72d1D999fa6a2Bfc6A5dBC5C)
         });
 
         // Ink
@@ -1392,7 +1353,7 @@ contract Register {
             chainSelector: 3461204551265785888,
             routerAddress: address(0xca7c90A52B44E301AC01Cb5EB99b2fD99339433A),
             linkAddress: address(0x71052BAe71C25C78E37fD12E5ff1101A71d9018F),
-            wrappedNativeAddress: address(0x4200000000000000000000000000000000000006),
+            wrappedNativeAddress: address(0xfc421aD3C883Bf9E7C4f42dE845C4e4405799e73),
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x3A293fa336E118900AD0f2EcfeC0DAa6A4DeDaA1),
@@ -1409,7 +1370,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0xA7EA79b9E466e8D2a440128867ed399bC78f4aaE),
             rmnProxyAddress: address(0xb550D73F428C08441E4d92d762CceE5F39b1c608),
-            registryModuleOwnerCustomAddress: address(0x8e3c251D4eAa31652c81bBa33A9Ee599B69fFEC2),
+            registryModuleOwnerCustomAddress: address(0xeabcDfdc6dA2c66144f150CbD1eDa54c842B67B3),
             tokenAdminRegistryAddress: address(0x5B5179082056227721031C2ef1c45049864D0149)
         });
 
@@ -1435,7 +1396,7 @@ contract Register {
             ccipBnMAddress: address(0x20Aa09AAb761e2E600d65c6929A9fd1E59821D3f),
             ccipLnMAddress: address(0x705b364CadE0e515577F2646529e3A417473a155),
             rmnProxyAddress: address(0xfd66EBE7335E91ae6f4CCCccdDDF262Ab5e35c71),
-            registryModuleOwnerCustomAddress: address(0xA8942fF01DE753BDa1D39acA8774f0872Eee5080),
+            registryModuleOwnerCustomAddress: address(0x64f8535919A00D2b09d8E5C7ab70eC4b81128CdB),
             tokenAdminRegistryAddress: address(0x31668C3E8f96415286e9e03592ad97E50e565f52)
         });
 
@@ -1474,7 +1435,7 @@ contract Register {
             ccipBnMAddress: address(0xcab0EF91Bee323d1A617c0a027eE753aFd6997E4),
             ccipLnMAddress: address(0x3d357fb52253e86c8Ee0f80F5FfE438fD9503FF2),
             rmnProxyAddress: address(0x7c1e545A40750Ee8761282382D51E017BAC68CBB),
-            registryModuleOwnerCustomAddress: address(0x84ad5890A63957C960e0F19b0448A038a574936B),
+            registryModuleOwnerCustomAddress: address(0xAF2356327c6BBd644A273271B6cA301B49787970),
             tokenAdminRegistryAddress: address(0x1e73f6842d7afDD78957ac143d1f315404Dd9e5B)
         });
 
@@ -1500,7 +1461,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x25943b8C30C47F4eF09CcF2BAE315EbaF591881d),
-            registryModuleOwnerCustomAddress: address(0x452b8543fdF4Da91FE914CC92c3B79632730cFC7),
+            registryModuleOwnerCustomAddress: address(0x160603D7C0Ac00409276bf6707430712Caf5b555),
             tokenAdminRegistryAddress: address(0x0944C3Fb1dB7D165336569221995B31cBE6c8A55)
         });
 
@@ -1526,7 +1487,7 @@ contract Register {
             ccipBnMAddress: address(0x88A2d74F47a237a62e7A51cdDa67270CE381555e),
             ccipLnMAddress: address(0xA98FA8A008371b9408195e52734b1768c0d1Cb5c),
             rmnProxyAddress: address(0x99360767a4705f68CcCb9533195B761648d6d807),
-            registryModuleOwnerCustomAddress: address(0x8A55C61227f26a3e2f217842eCF20b52007bAaBe),
+            registryModuleOwnerCustomAddress: address(0x176ae8C6C11DD2c031B924CE1A0A43188035f3f6),
             tokenAdminRegistryAddress: address(0x736D0bBb318c1B27Ff686cd19804094E66250e17)
         });
 
@@ -1539,7 +1500,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x975B590aCc4aAd12f69974339B26cCE24A380031),
-            registryModuleOwnerCustomAddress: address(0xA3fb39757629D078F4593353d37644Fdec9AA46a),
+            registryModuleOwnerCustomAddress: address(0x022D74c2D24e7625368720dcBA5674bd8A951892),
             tokenAdminRegistryAddress: address(0x01E5B2fAC7156c54f034E1767f2799fDd41B8285)
         });
 
@@ -1552,21 +1513,21 @@ contract Register {
             ccipBnMAddress: address(0x225fAc4130595d1C7dabbE61A8bA9B051440b76c),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0xAa3ae5481EE445711252131f1516922D0962916A),
-            registryModuleOwnerCustomAddress: address(0x1888ec490a6d3F9B240cA76b0eEFf8Eef504247b),
+            registryModuleOwnerCustomAddress: address(0x693926456C8b210f56E29Bc5b4514B32A5224c88),
             tokenAdminRegistryAddress: address(0x855cF0d18A0BeBEDA7c1CD2F943686120cCCC6bd)
         });
 
-        // Etherlink Testnet
-        s_networkDetails[128123] = NetworkDetails({
-            chainSelector: 1910019406958449359,
-            routerAddress: address(0xa1312a58873fb9a16008E259c3eB972038ba46D9),
-            linkAddress: address(0xE02E6E94d4a5E215F308bDd564a1B6f13AA56950),
-            wrappedNativeAddress: address(0xB1Ea698633d57705e93b0E40c1077d46CD6A51d8),
-            ccipBnMAddress: address(0),
+        // ADI Network AB Testnet
+        s_networkDetails[99999] = NetworkDetails({
+            chainSelector: 9418205736192840573,
+            routerAddress: address(0x5D445DF89674096B6A138565cAE955FF816f352D),
+            linkAddress: address(0x64c12A9Bfdb4DEB5F37A0eC4c5fae0405669612A),
+            wrappedNativeAddress: address(0xddeA1446FD21e3d2CB934A78Fe200a266739fad4),
+            ccipBnMAddress: address(0x23577b74c98325f9e70677EA8B72707F06625343),
             ccipLnMAddress: address(0),
-            rmnProxyAddress: address(0xEC7088f7952ba58f268E25AC3868DF92bF462AEf),
-            registryModuleOwnerCustomAddress: address(0xffA67C26885F6e98c010ecaD7C750D5DbdF5648d),
-            tokenAdminRegistryAddress: address(0x7A635FdfDC70469B6e8796Bd7dEeB3f24fd4f949)
+            rmnProxyAddress: address(0x8Fdc413B5Da54cEE04b181b83f99D82587F7e768),
+            registryModuleOwnerCustomAddress: address(0xb3b3F359f5C7CDE7568606889cB08cDC0a9f91Df),
+            tokenAdminRegistryAddress: address(0xEf3278a2F481415446060264b1f7903F96771447)
         });
 
         // Katana Tatara
@@ -1575,7 +1536,7 @@ contract Register {
             routerAddress: address(0x1dF1fe714A376f248d51AAB826C3feeC379e80fC),
             linkAddress: address(0x29261B6Fb93097885bEB714ee253Da63A52dFc46),
             wrappedNativeAddress: address(0x4200000000000000000000000000000000000006),
-            ccipBnMAddress: address(0xc3B04ce056D8E44AA43BE1e23D554ef2AA3a9f58),
+            ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0xAD8BeA8bC5Fe468Dc1F7BbEce59A86584407255f),
             registryModuleOwnerCustomAddress: address(0x32E18611aeb4e42d931dF838fd4e019CC6B2A674),
@@ -1591,7 +1552,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x01f66BA71474d30De43d3c7B389F4019505B7F59),
-            registryModuleOwnerCustomAddress: address(0xaD501B68b7244fD5AddD53dE24A4eC3f6343cb89),
+            registryModuleOwnerCustomAddress: address(0x4e52dD94e9BCfeFE3C78153bDfB0AB1d30687297),
             tokenAdminRegistryAddress: address(0x308a2A7d13B12ba26649F381C53F7e7C60d0D9c6)
         });
 
@@ -1617,7 +1578,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0xbef6CEC4a6C3A14404C63Ae84dA2AAf456f8a6C9),
-            registryModuleOwnerCustomAddress: address(0x6a80dDBBf2F2FFeC2aABdB57F37ee35316163c55),
+            registryModuleOwnerCustomAddress: address(0x23577b74c98325f9e70677EA8B72707F06625343),
             tokenAdminRegistryAddress: address(0x8Fb9dD6DaC6e871F09bBE5632a78e1C23249EAe9)
         });
 
@@ -1630,7 +1591,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0xdB44738b1DD21E05e3c56ecD73701daC2c793c0D),
-            registryModuleOwnerCustomAddress: address(0xa852Ce786045BFC426E1C97A1096d3a5B6366D08),
+            registryModuleOwnerCustomAddress: address(0x58783b4E644Af8f549C1D79e80E3DC65727cE09A),
             tokenAdminRegistryAddress: address(0x44919DB06c5c2f14F8d44b1A67F8032E0B617293)
         });
 
@@ -1652,11 +1613,11 @@ contract Register {
             chainSelector: 3478487238524512106,
             routerAddress: address(0x2a9C5afB0d0e4BAb2BCdaE109EC4b0c4Be15a165),
             linkAddress: address(0xb1D4538B4571d411F07960EF2838Ce337FE1E80E),
-            wrappedNativeAddress: address(0xE591bf0A0CF924A0674d7792db046B23CEbF5f34),
+            wrappedNativeAddress: address(0xb13Cfa6f8B2Eed2C37fB00fF0c1A59807C585810),
             ccipBnMAddress: address(0xA8C0c11bf64AF62CDCA6f93D3769B88BdD7cb93D),
             ccipLnMAddress: address(0x139E99f0ab4084E14e6bb7DacA289a91a2d92927),
             rmnProxyAddress: address(0x9527E2d01A3064ef6b50c1Da1C0cC523803BCFF2),
-            registryModuleOwnerCustomAddress: address(0xE625f0b8b0Ac86946035a7729Aba124c8A64cf69),
+            registryModuleOwnerCustomAddress: address(0xaD417c0611dBD225471D31F056b8B6beC1CBC153),
             tokenAdminRegistryAddress: address(0x8126bE56454B628a88C17849B9ED99dd5a11Bd2f)
         });
 
@@ -1664,12 +1625,12 @@ contract Register {
         s_networkDetails[534351] = NetworkDetails({
             chainSelector: 2279865765895943307,
             routerAddress: address(0x6aF501292f2A33C81B9156203C9A66Ba0d8E3D21),
-            linkAddress: address(0x231d45b53C905c3d6201318156BDC725c9c3B9B1),
+            linkAddress: address(0x7273ebbB21F8D8AcF2bC12E71a08937712E9E40c),
             wrappedNativeAddress: address(0x5300000000000000000000000000000000000004),
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0x0298e204F9131d45EEb436D693f32C6eA1190622),
             rmnProxyAddress: address(0x8f4413e02265F65eF89FB908dbA2915fF9f7F8cB),
-            registryModuleOwnerCustomAddress: address(0x3325786a3eE3Aa488403A136CF9Ad3E764656C75),
+            registryModuleOwnerCustomAddress: address(0xeA2912f446Ff28663D2E5A971da751A84E409292),
             tokenAdminRegistryAddress: address(0xf49C561cf56149517c67793a3035D1877ffE2f04)
         });
 
@@ -1708,7 +1669,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0xcb89C5D13C18850fA5AEe997b7B4DEdD87ab1B34),
-            registryModuleOwnerCustomAddress: address(0xC0688869Dc1D3c290eCBF3076cEAcD39731a307C),
+            registryModuleOwnerCustomAddress: address(0xd7b86ed053806177718B9e03c63c4Bc501825C00),
             tokenAdminRegistryAddress: address(0xcafA13f9Bc0AA3aB37e29cA18343507bf8D43E93)
         });
 
@@ -1734,7 +1695,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x0001518b4D94c0E1961D27F3120487f891739d0B),
-            registryModuleOwnerCustomAddress: address(0x57d3cce72e773dE1aEff941e1c406454292c1C75),
+            registryModuleOwnerCustomAddress: address(0xB45B9eb94F25683B47e5AFb0f74A05a58be86311),
             tokenAdminRegistryAddress: address(0x5c8a206f4800A61fF4430a2b75381A0033172860)
         });
 
@@ -1747,7 +1708,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x32270E4FA459cA47ae0334488e27ffb9bC9aB4a1),
-            registryModuleOwnerCustomAddress: address(0x95AdE250c01701a4C63D0893C954A510f7938Dc6),
+            registryModuleOwnerCustomAddress: address(0x10fD7245f6ca39885D3A398b03dCcCC833fC96A1),
             tokenAdminRegistryAddress: address(0x048B911A1AE5dD4f0aEE5241A30d3DEDa3501D54)
         });
 
@@ -1760,7 +1721,7 @@ contract Register {
             ccipBnMAddress: address(0x414dbe1d58dd9BA7C84f7Fc0e4f82bc858675d37),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x84017cfddD12D319E5bBf090e0de6d55B78160Cb),
-            registryModuleOwnerCustomAddress: address(0x79E8e75662c980FeD37EDCb9Afd29F1c8c46a613),
+            registryModuleOwnerCustomAddress: address(0xaB018890bBdDf9B80E21d1c335c5f6acdbE0f5D6),
             tokenAdminRegistryAddress: address(0x3A849a05a590FeaEf26c2d425241A2BF29307161)
         });
 
@@ -1773,7 +1734,7 @@ contract Register {
             ccipBnMAddress: address(0x3B7d0d0CeC08eBF8dad58aCCa4719791378b2329),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0xD642e08eeF81bb55B8282701234659A3233E2145),
-            registryModuleOwnerCustomAddress: address(0xa6CE01eC29C4bAa2256bDeDABEAd0BA72dd939a8),
+            registryModuleOwnerCustomAddress: address(0xbc9A4b299741CBf2A8eD5D2078A426027C31B2A3),
             tokenAdminRegistryAddress: address(0xAd57E853813d48c0D3687497bbdcF3eBc47dECB1)
         });
 
@@ -1803,6 +1764,19 @@ contract Register {
             tokenAdminRegistryAddress: address(0xaCc1C3b214CA255918C9Da66Db3bcc933d57188B)
         });
 
+        // Arc Network Testnet
+        s_networkDetails[5042002] = NetworkDetails({
+            chainSelector: 3034092155422581607,
+            routerAddress: address(0xdE4E7FED43FAC37EB21aA0643d9852f75332eab8),
+            linkAddress: address(0x3F1f176e347235858DD6Db905DDBA09Eaf25478a),
+            wrappedNativeAddress: address(0xbf4B839A7939a52acbF8fC52D5Bd5BFE69a064EA),
+            ccipBnMAddress: address(0),
+            ccipLnMAddress: address(0),
+            rmnProxyAddress: address(0xD610B8f58689de7755947C05342A2DFaC30ebD57),
+            registryModuleOwnerCustomAddress: address(0x524B83ae8208490151339c626fd0E35b964483e3),
+            tokenAdminRegistryAddress: address(0xd3e461C55676B10634a5F81b747c324B85686Dd1)
+        });
+
         // Jovay
         s_networkDetails[5734951] = NetworkDetails({
             chainSelector: 1523760397290643893,
@@ -1816,6 +1790,19 @@ contract Register {
             tokenAdminRegistryAddress: address(0xA27056438FfA1f286AB197488808692F0db93F8B)
         });
 
+        // DogeOS Chikyu Testnet
+        s_networkDetails[6281971] = NetworkDetails({
+            chainSelector: 7254999290874773717,
+            routerAddress: address(0x524B83ae8208490151339c626fd0E35b964483e3),
+            linkAddress: address(0xe5e3a4fF1773d043a387b16Ceb3c91cC49bAFD54),
+            wrappedNativeAddress: address(0xF6BDB158A5ddF77F1B83bC9074F6a472c58D78aE),
+            ccipBnMAddress: address(0x4A92387cE022FDae06c2e49020be7B24AAB16070),
+            ccipLnMAddress: address(0),
+            rmnProxyAddress: address(0x0820f975ce90EE5c508657F0C58b71D1fcc85cE0),
+            registryModuleOwnerCustomAddress: address(0xD610B8f58689de7755947C05342A2DFaC30ebD57),
+            tokenAdminRegistryAddress: address(0xEAB080c724587fFC9F2EFF82e36EE4Fb27774959)
+        });
+
         // Zora
         s_networkDetails[7777777] = NetworkDetails({
             chainSelector: 3555797439612589184,
@@ -1825,7 +1812,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0xFb6e1F0041c273dE4b99B23E2cB4c12CECe06C56),
-            registryModuleOwnerCustomAddress: address(0x39e2Aeb5a653b4d413B343B3F20bD5AdD0cF8292),
+            registryModuleOwnerCustomAddress: address(0x03Df929510A52C97bb1B3E5f33EA5D9735A50280),
             tokenAdminRegistryAddress: address(0x791BA3010A5BFeA773d2cfD6Ea4D0Ce9627856eB)
         });
 
@@ -1834,11 +1821,11 @@ contract Register {
             chainSelector: 16015286601757825753,
             routerAddress: address(0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59),
             linkAddress: address(0x779877A7B0D9E8603169DdbD7836e478b4624789),
-            wrappedNativeAddress: address(0x097D90c9d3E0B50Ca60e1ae45F6A81010f9FB534),
+            wrappedNativeAddress: address(0xc4bF5CbDaBE595361438F8c6a187bDc330539c60),
             ccipBnMAddress: address(0xFd57b4ddBf88a4e07fF4e34C487b99af2Fe82a05),
             ccipLnMAddress: address(0x466D489b6d36E7E3b824ef491C225F5830E81cC1),
             rmnProxyAddress: address(0xba3f6251de62dED61Ff98590cB2fDf6871FbB991),
-            registryModuleOwnerCustomAddress: address(0x62e731218d0D47305aba2BE3751E7EE9E5520790),
+            registryModuleOwnerCustomAddress: address(0xa3c796d480638d7476792230da1E2ADa86e031b0),
             tokenAdminRegistryAddress: address(0x95F29FEE11c5C55d26cCcf1DB6772DE953B37B82)
         });
 
@@ -1851,7 +1838,7 @@ contract Register {
             ccipBnMAddress: address(0x8aF4204e30565DF93352fE8E1De78925F6664dA7),
             ccipLnMAddress: address(0x044a6B4b561af69D2319A2f4be5Ec327a6975D0a),
             rmnProxyAddress: address(0xb40A3109075965cc09E93719e33E748abf680dAe),
-            registryModuleOwnerCustomAddress: address(0x49c4ba01dc6F5090f9df43Ab8F79449Db91A0CBB),
+            registryModuleOwnerCustomAddress: address(0x6AfeDdaE519bA02985B4DD027b3f22298e1D828D),
             tokenAdminRegistryAddress: address(0x1d702b1FA12F347f0921C722f9D9166F00DEB67A)
         });
 
@@ -1864,7 +1851,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0xc707eecF5CD423BbeaAc55fb1D11a7FB74bf4a4b),
-            registryModuleOwnerCustomAddress: address(0x310bbE0aF2fBb306D7F0A8A2d8AbeA86DF10FDc6),
+            registryModuleOwnerCustomAddress: address(0xd54205E00835B63Db005ADEF8d99E4984601ACAf),
             tokenAdminRegistryAddress: address(0x9F7F6002b5f6F4d5a53BFDf380435fa18Ae2Dc13)
         });
 
@@ -1890,7 +1877,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0x3C49708F8F3F7da6D0846d63Fa4E49Ab52ba9539),
-            registryModuleOwnerCustomAddress: address(0x1Dc1CD2BD61Be91A79221b3370824D944c991Bb9),
+            registryModuleOwnerCustomAddress: address(0x9377075Bf25BaCB38dbe1c29DeB143aEeE0cb51F),
             tokenAdminRegistryAddress: address(0xf0dF3Bb68A4392FF686c92486ce80E2CF4f0f326)
         });
 
@@ -1916,7 +1903,7 @@ contract Register {
             ccipBnMAddress: address(0),
             ccipLnMAddress: address(0),
             rmnProxyAddress: address(0xf3bc6E7D8A43228B49e976C5f9eDFF5fdFDDaC24),
-            registryModuleOwnerCustomAddress: address(0x4Be6BcaA3a75E7AD839823fEa9961619f9601fc1),
+            registryModuleOwnerCustomAddress: address(0x09ED6dC4d7cF091A1f9579FACA0d3f485A1c367B),
             tokenAdminRegistryAddress: address(0xa024d8e48513D1105E0c50d4494DfD827200364e)
         });
     }
