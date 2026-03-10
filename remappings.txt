@@ -1,0 +1,6 @@
+@chainlink/local/src/=src/
+@chainlink/contracts-ccip/=lib/chainlink-ccip/chains/evm/
+@chainlink/contracts/=lib/chainlink-evm/contracts/
+@openzeppelin/contracts@4.8.3/=lib/openzeppelin-contracts-4.8.3/contracts/
+@openzeppelin/contracts@5.3.0/=lib/openzeppelin-contracts-5.3.0/contracts/
+forge-std/=lib/forge-std/src/

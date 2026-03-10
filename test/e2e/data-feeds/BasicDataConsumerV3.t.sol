@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 
 import {BasicDataConsumerV3} from "../../../src/test/data-feeds/BasicDataConsumerV3.sol";
 
@@ -20,7 +20,7 @@ contract BasicDataConsumerV3Test is Test {
         consumer = new BasicDataConsumerV3(ETH_USD_AGGREGATOR_ADDRESS);
     }
 
-    function test_forkSmoke() public {
+    function test_forkSmoke() public view {
         assertEq(vm.activeFork(), ethereumMainnetForkId);
 
         int256 answer = consumer.getChainlinkDataFeedLatestAnswer();

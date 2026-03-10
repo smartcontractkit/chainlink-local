@@ -5,7 +5,7 @@ import {Test, Vm, console2} from "forge-std/Test.sol";
 import {Register} from "./Register.sol";
 import {Internal} from "@chainlink/contracts-ccip/contracts/libraries/Internal.sol";
 import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
-import {IERC20} from "../vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/IERC20.sol";
+import {IERC20} from "@openzeppelin/contracts@4.8.3/token/ERC20/IERC20.sol";
 
 /// @title IRouterFork Interface
 interface IRouterFork {
@@ -43,12 +43,20 @@ interface IEVM2EVMOffRampFork {
      * @param message - The CCIP message to be executed
      * @param offchainTokenData - Additional offchain token data
      */
-    function executeSingleMessage(
-        Internal.Any2EVMRampMessage memory message,
-        bytes[] calldata offchainTokenData,
-        uint32[] calldata tokenGasOverrides
-    ) external;
-}
+    // function executeSingleMessage(
+    //     Internal.Any2EVMRampMessage memory message,
+    //     bytes[] calldata offchainTokenData,
+    //     uint32[] calldata tokenGasOverrides
+    // ) external;
+    // function executeSingleMessage(
+    //     MessageV1Codec.MessageV1 calldata message,
+    //     bytes32 messageId,
+    //     address[] calldata ccvs,
+    //     bytes[] calldata verifierResults,
+    //     uint32 gasLimitOverride
+    // ) external;
+
+    }
 
 interface InternalPreV1dot6 {
     struct EVM2EVMMessage {
@@ -83,9 +91,9 @@ contract CCIPLocalSimulatorFork is Test {
      * @notice Events emitted when a CCIP send request is made
      */
     event CCIPSendRequested(InternalPreV1dot6.EVM2EVMMessage message);
-    event CCIPMessageSent(
-        uint64 indexed destChainSelector, uint64 indexed sequenceNumber, Internal.EVM2AnyRampMessage message
-    );
+    // event CCIPMessageSent(
+    //     uint64 indexed destChainSelector, uint64 indexed sequenceNumber, Internal.EVM2AnyRampMessage message
+    // );
 
     error InvalidExtraArgsTag();
 
@@ -237,9 +245,8 @@ contract CCIPLocalSimulatorFork is Test {
                                     for (uint256 l; l < numberOfTokens; ++l) {
                                         tokenGasOverrides[l] = uint32(message.gasLimit);
                                     }
-                                    try IEVM2EVMOffRampPreV1dot6Fork(offRamps[k - 1].offRamp).executeSingleMessage(
-                                        message, offchainTokenData, tokenGasOverrides
-                                    ) {
+                                    try IEVM2EVMOffRampPreV1dot6Fork(offRamps[k - 1].offRamp)
+                                        .executeSingleMessage(message, offchainTokenData, tokenGasOverrides) {
                                         vm.stopPrank();
                                         s_processedMessages[message.messageId] = true;
                                     } catch (bytes memory err) {
@@ -255,75 +262,78 @@ contract CCIPLocalSimulatorFork is Test {
                 }
             }
 
-            // Try Routing post v1.6 message
-            if (entries[i].topics[0] == CCIPMessageSent.selector) {
-                Internal.EVM2AnyRampMessage memory message = abi.decode(entries[i].data, (Internal.EVM2AnyRampMessage));
+            // // Try Routing post v1.6 message
+            // if (entries[i].topics[0] == CCIPMessageSent.selector) {
+            //     Internal.EVM2AnyRampMessage memory message = abi.decode(entries[i].data, (Internal.EVM2AnyRampMessage));
 
-                if (!s_processedMessages[message.header.messageId]) {
-                    s_processedMessages[message.header.messageId] = true;
+            //     if (!s_processedMessages[message.header.messageId]) {
+            //         s_processedMessages[message.header.messageId] = true;
 
-                    for (uint256 j; j < forkIds.length; ++j) {
-                        vm.selectFork(forkIds[j]);
-                        uint64 destinationChainSelector = i_register.getNetworkDetails(block.chainid).chainSelector;
+            //         for (uint256 j; j < forkIds.length; ++j) {
+            //             vm.selectFork(forkIds[j]);
+            //             uint64 destinationChainSelector = i_register.getNetworkDetails(block.chainid).chainSelector;
 
-                        vm.selectFork(sourceForkId);
-                        address onRampContract = IRouterFork(sourceRouterAddress).getOnRamp(destinationChainSelector);
+            //             vm.selectFork(sourceForkId);
+            //             address onRampContract = IRouterFork(sourceRouterAddress).getOnRamp(destinationChainSelector);
 
-                        // Deliver message
-                        if (entries[i].emitter == onRampContract) {
-                            vm.selectFork(forkIds[j]);
+            //             // Deliver message
+            //             if (entries[i].emitter == onRampContract) {
+            //                 vm.selectFork(forkIds[j]);
 
-                            IRouterFork.OffRamp[] memory offRamps =
-                                IRouterFork(i_register.getNetworkDetails(block.chainid).routerAddress).getOffRamps();
-                            uint256 offRampsLength = offRamps.length;
+            //                 IRouterFork.OffRamp[] memory offRamps =
+            //                     IRouterFork(i_register.getNetworkDetails(block.chainid).routerAddress).getOffRamps();
+            //                 uint256 offRampsLength = offRamps.length;
 
-                            for (uint256 k = offRampsLength; k > 0; --k) {
-                                if (offRamps[k - 1].sourceChainSelector == message.header.sourceChainSelector) {
-                                    vm.startPrank(offRamps[k - 1].offRamp);
-                                    uint256 gasLimit = _fromBytes(message.extraArgs).gasLimit;
-                                    uint256 numberOfTokens = message.tokenAmounts.length;
-                                    Internal.Any2EVMTokenTransfer[] memory tokenAmounts =
-                                        new Internal.Any2EVMTokenTransfer[](numberOfTokens);
-                                    for (uint256 l; l < numberOfTokens; ++l) {
-                                        tokenAmounts[l] = Internal.Any2EVMTokenTransfer({
-                                            sourcePoolAddress: abi.encodePacked(message.tokenAmounts[l].sourcePoolAddress),
-                                            destTokenAddress: address(
-                                                uint160(bytes20(message.tokenAmounts[l].destTokenAddress))
-                                            ),
-                                            destGasAmount: abi.decode(message.tokenAmounts[l].destExecData, (uint32)),
-                                            extraData: message.tokenAmounts[l].extraData,
-                                            amount: message.tokenAmounts[l].amount
-                                        });
-                                    }
-                                    Internal.Any2EVMRampMessage memory any2EVMRampMessage = Internal.Any2EVMRampMessage({
-                                        header: message.header,
-                                        sender: abi.encodePacked(message.sender),
-                                        data: message.data,
-                                        receiver: address(uint160(bytes20(message.receiver))),
-                                        gasLimit: gasLimit,
-                                        tokenAmounts: tokenAmounts
-                                    });
-                                    bytes[] memory offchainTokenData = new bytes[](numberOfTokens);
-                                    uint32[] memory tokenGasOverrides = new uint32[](numberOfTokens);
-                                    for (uint256 l; l < numberOfTokens; ++l) {
-                                        tokenGasOverrides[l] = uint32(gasLimit);
-                                    }
-                                    try IEVM2EVMOffRampFork(offRamps[k - 1].offRamp).executeSingleMessage(
-                                        any2EVMRampMessage, offchainTokenData, tokenGasOverrides
-                                    ) {
-                                        vm.stopPrank();
-                                    } catch (bytes memory err) {
-                                        vm.stopPrank();
-                                        // Solidity does not support yet catching custom errors, so this is the best we can do for now
-                                        console2.logBytes(err);
-                                    }
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            //                 for (uint256 k = offRampsLength; k > 0; --k) {
+            //                     if (offRamps[k - 1].sourceChainSelector == message.header.sourceChainSelector) {
+            //                         vm.startPrank(offRamps[k - 1].offRamp);
+            //                         uint256 gasLimit = _fromBytes(message.extraArgs).gasLimit;
+            //                         uint256 numberOfTokens = message.tokenAmounts.length;
+            //                         Internal.Any2EVMTokenTransfer[] memory tokenAmounts =
+            //                             new Internal.Any2EVMTokenTransfer[](numberOfTokens);
+            //                         for (uint256 l; l < numberOfTokens; ++l) {
+            //                             tokenAmounts[l] = Internal.Any2EVMTokenTransfer({
+            //                                 sourcePoolAddress: abi.encodePacked(
+            //                                     message.tokenAmounts[l].sourcePoolAddress
+            //                                 ),
+            //                                 destTokenAddress: address(
+            //                                     uint160(bytes20(message.tokenAmounts[l].destTokenAddress))
+            //                                 ),
+            //                                 destGasAmount: abi.decode(message.tokenAmounts[l].destExecData, (uint32)),
+            //                                 extraData: message.tokenAmounts[l].extraData,
+            //                                 amount: message.tokenAmounts[l].amount
+            //                             });
+            //                         }
+            //                         Internal.Any2EVMRampMessage memory any2EVMRampMessage = Internal.Any2EVMRampMessage({
+            //                             header: message.header,
+            //                             sender: abi.encodePacked(message.sender),
+            //                             data: message.data,
+            //                             receiver: address(uint160(bytes20(message.receiver))),
+            //                             gasLimit: gasLimit,
+            //                             tokenAmounts: tokenAmounts
+            //                         });
+            //                         bytes[] memory offchainTokenData = new bytes[](numberOfTokens);
+            //                         uint32[] memory tokenGasOverrides = new uint32[](numberOfTokens);
+            //                         for (uint256 l; l < numberOfTokens; ++l) {
+            //                             tokenGasOverrides[l] = uint32(gasLimit);
+            //                         }
+            //                         try IEVM2EVMOffRampFork(offRamps[k - 1].offRamp)
+            //                             .executeSingleMessage(
+            //                                 any2EVMRampMessage, offchainTokenData, tokenGasOverrides
+            //                             ) {
+            //                             vm.stopPrank();
+            //                         } catch (bytes memory err) {
+            //                             vm.stopPrank();
+            //                             // Solidity does not support yet catching custom errors, so this is the best we can do for now
+            //                             console2.logBytes(err);
+            //                         }
+            //                         break;
+            //                     }
+            //                 }
+            //             }
+            //         }
+            //     }
+            // }
         }
     }
 
@@ -340,6 +350,7 @@ contract CCIPLocalSimulatorFork is Test {
             return Client.GenericExtraArgsV2({gasLimit: DEFAULT_GAS_LIMIT, allowOutOfOrderExecution: false});
         }
 
+        // disable-next-line(unsafe-typecast)
         bytes4 extraArgsTag = bytes4(extraArgs);
         bytes memory gasLimit = new bytes(extraArgs.length - 4);
         for (uint256 i = 4; i < extraArgs.length; ++i) {
