@@ -8,13 +8,36 @@
  * in the constructor.
  * 
  * Usage:
- *    npm run update-register
- *    node scripts/ccip/updateRegisterContract.js
- *   
+ *    CCIP_API_BASE_URL=<base_url> npm run update-register
+ *    CCIP_API_BASE_URL=<base_url> node scripts/ccip/updateRegisterContract.js
+ *
+ * Requires: CCIP_API_BASE_URL environment variable (base URL for the CCIP API; paths are appended in code).
+ *
  */
 
 const fs = require("fs");
 const path = require("path");
+
+const CCIP_API_BASE_URL = process.env.CCIP_API_BASE_URL;
+if (!CCIP_API_BASE_URL || CCIP_API_BASE_URL.trim() === "") {
+  console.error("Error: CCIP_API_BASE_URL environment variable is required and must be set.");
+  process.exit(1);
+}
+
+/** Normalized base URL (no trailing slash) for building API requests. */
+const apiBase = CCIP_API_BASE_URL.trim().replace(/\/$/, "");
+
+/**
+ * Builds the full API URL for a given path and query parameters.
+ * @param {string} path - Path segment (e.g. "chains", "tokens")
+ * @param {Record<string, string>} params - Query parameters
+ * @returns {string} Full URL
+ */
+function apiUrl(path, params) {
+  const url = new URL(`${apiBase}/${path}`);
+  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+  return url.toString();
+}
 
 /**
  * Generates Register.sol with hardcoded network details in the constructor.
@@ -108,9 +131,11 @@ function generateRegister(outputPath, networkDetails) {
  * @returns {Promise<Object>} Network details object keyed by chain ID
  */
 async function fetchNetworkDetails(environment) {
+  const queryBase = { environment, outputKey: "chainId" };
+
   // Call Endpoint #1: chains
-  const chainsRes = await fetch(`https://docs.chain.link/api/ccip/v1/chains?environment=${environment}&outputKey=chainId&enrichFeeTokens=true`, { 
-    headers: { Accept: "application/json" } 
+  const chainsRes = await fetch(apiUrl("chains", { ...queryBase, enrichFeeTokens: "true" }), {
+    headers: { Accept: "application/json" }
   });
   if (!chainsRes.ok) {
     const body = await chainsRes.text();
@@ -119,8 +144,8 @@ async function fetchNetworkDetails(environment) {
   const chainsData = await chainsRes.json();
 
   // Call Endpoint #2: tokens
-  const tokensRes = await fetch(`https://docs.chain.link/api/ccip/v1/tokens?environment=${environment}&outputKey=chainId`, { 
-    headers: { Accept: "application/json" } 
+  const tokensRes = await fetch(apiUrl("tokens", queryBase), {
+    headers: { Accept: "application/json" }
   });
   if (!tokensRes.ok) {
     const body = await tokensRes.text();
