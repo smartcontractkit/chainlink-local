@@ -3,6 +3,7 @@
   "description": "Chainlink Local Simulator",
   "license": "MIT",
   "version": "0.2.8-beta",
+  "type": "module",
   "files": [
     "src/**/*.sol",
     "!src/test/**/*",
@@ -18,7 +19,7 @@
     "chainlink"
   ],
   "scripts": {
-    "hardhat-compile": "npx hardhat compile",    
+    "hardhat-compile": "npx hardhat compile",
     "forge-compile": "forge build",
     "hardhat-test": "npx hardhat test",
     "forge-test": "forge test",
@@ -32,17 +33,17 @@
     "update-register": "node scripts/ccip/updateRegisterContract.js"
   },
   "devDependencies": {
-    "@nomicfoundation/hardhat-foundry": "^1.1.1",
-    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "hardhat": "^3.1.10",
+    "forge-std": "github:foundry-rs/forge-std#v1.9.4",
     "@types/fs-extra": "^11.0.4",
     "@types/jsdoc-to-markdown": "^7.0.6",
     "dotenv": "^16.4.5",
     "fs-extra": "^11.2.0",
-    "hardhat": "^2.20.1",
     "jsdoc-to-markdown": "^8.0.1",
     "prettier": "^3.3.3",
     "rimraf": "^6.0.1",
-    "solidity-docgen": "^0.6.0-beta.36"
+    "@openzeppelin/contracts-4.8.3": "npm:@openzeppelin/contracts@4.8.3",
+    "@openzeppelin/contracts-5.3.0": "npm:@openzeppelin/contracts@5.3.0"
   },
   "dependencies": {
     "@chainlink/contracts": "1.5.0",

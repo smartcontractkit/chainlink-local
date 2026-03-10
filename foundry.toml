@@ -6,10 +6,13 @@ out = 'out'
 libs = ['lib']
 test = 'test'
 cache_path = 'cache_forge'
-remappings = [
-    '@chainlink/contracts-ccip/=lib/chainlink-ccip/chains/evm/',
-    '@chainlink/contracts/=lib/chainlink-evm/contracts/',
-    '@chainlink/local/src/=src/',
-    '@openzeppelin/contracts@4.8.3/=src/vendor/openzeppelin-solidity/v4.8.3/contracts/',
-    '@openzeppelin/contracts@5.0.2/=src/vendor/openzeppelin-solidity/v5.0.2/contracts/',
+
+[lint]
+exclude_lints = [
+    "mixed-case-variable",
+    "pascal-case-struct",
+    "mixed-case-function",
+    "screaming-snake-case-immutable",
+    "unwrapped-modifier-logic",
+    "asm-keccak256",
 ]

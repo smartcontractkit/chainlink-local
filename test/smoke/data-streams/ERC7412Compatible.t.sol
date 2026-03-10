@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {
     DataStreamsLocalSimulator,
     MockVerifierProxy
@@ -38,6 +38,7 @@ contract ERC7412CompatibleTest is Test {
 
         try consumer.generate7412CompatibleCall(feedId, stalenessTolerance) {}
         catch (bytes memory lowLevelData) {
+            // disable-next-line(unsafe-typecast)
             if (bytes4(abi.encodeWithSignature("OracleDataRequired(address,bytes)")) == bytes4(lowLevelData)) {
                 uint256 length = lowLevelData.length;
                 bytes memory revertData = new bytes(length - 4);

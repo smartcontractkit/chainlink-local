@@ -1,13 +1,9 @@
+import { defineConfig } from "hardhat/config";
 import * as dotenv from "dotenv";
-import "solidity-docgen";
-
-import { HardhatUserConfig } from "hardhat/config";
-import "@nomicfoundation/hardhat-toolbox";
-import "@nomicfoundation/hardhat-foundry";
 
 dotenv.config();
 
-const config: HardhatUserConfig = {
+export default defineConfig({
   solidity: {
     compilers: [
       {
@@ -27,6 +23,4 @@ const config: HardhatUserConfig = {
     exclude: ["test", "vendor"],
     outputDir: "api_reference/solidity",
   },
-};
-
-export default config;
+});
