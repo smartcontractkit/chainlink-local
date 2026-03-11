@@ -7,6 +7,10 @@ libs = ['lib']
 test = 'test'
 cache_path = 'cache_forge'
 
+[profile.legacy]
+test = 'test-legacy'
+cache_path = 'cache_forge_legacy'
+
 [lint]
 exclude_lints = [
     "mixed-case-variable",
