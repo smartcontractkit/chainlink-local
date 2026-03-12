@@ -1,4 +1,10 @@
 {
+  "lib/chainlink-ace": {
+    "tag": {
+      "name": "v1.0.0",
+      "rev": "288c393af4da077b49e5138ac47965aed9ca4b3a"
+    }
+  },
   "lib/chainlink-ccip": {
     "branch": {
       "name": "develop",

@@ -33,17 +33,18 @@
     "update-register": "node scripts/ccip/updateRegisterContract.js"
   },
   "devDependencies": {
-    "hardhat": "^3.1.10",
-    "forge-std": "github:foundry-rs/forge-std#v1.9.4",
+    "@chainlink/ace": "^1.0.0",
+    "@openzeppelin/contracts-4.8.3": "npm:@openzeppelin/contracts@4.8.3",
+    "@openzeppelin/contracts-5.3.0": "npm:@openzeppelin/contracts@5.3.0",
     "@types/fs-extra": "^11.0.4",
     "@types/jsdoc-to-markdown": "^7.0.6",
     "dotenv": "^16.4.5",
+    "forge-std": "github:foundry-rs/forge-std#v1.9.4",
     "fs-extra": "^11.2.0",
+    "hardhat": "^3.1.10",
     "jsdoc-to-markdown": "^8.0.1",
     "prettier": "^3.3.3",
-    "rimraf": "^6.0.1",
-    "@openzeppelin/contracts-4.8.3": "npm:@openzeppelin/contracts@4.8.3",
-    "@openzeppelin/contracts-5.3.0": "npm:@openzeppelin/contracts@5.3.0"
+    "rimraf": "^6.0.1"
   },
   "dependencies": {
     "@chainlink/contracts": "1.5.0",
