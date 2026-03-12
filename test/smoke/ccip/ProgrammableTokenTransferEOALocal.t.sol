@@ -49,7 +49,9 @@ contract ProgrammableTokenTransferEOALocalTest is Test {
         s_ccipBnM.drip(s_alice);
 
         bytes memory payload = bytes("Hello World");
-        bytes memory extraArgs = s_encoder.encodeV3Basic(200_000, 1);
+        uint32 gasLimit = 200_000;
+        uint16 blockConfirmations = 1;
+        bytes memory extraArgs = s_encoder.encodeV3Basic(gasLimit, blockConfirmations);
 
         Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
         tokenAmounts[0] = Client.EVMTokenAmount({token: address(s_ccipBnM), amount: amountToSend});

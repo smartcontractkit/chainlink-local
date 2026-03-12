@@ -89,23 +89,23 @@ contract LooperFork is Test {
     CCIPLocalSimulatorFork public ccipLocalSimulatorFork;
     Looper source;
     Looper destinationArb;
-    Looper destinationOp;
+    Looper destinationBase;
 
     Register.NetworkDetails sepoliaNetworkDetails;
     Register.NetworkDetails arbSepoliaNetworkDetails;
-    Register.NetworkDetails optimismSepoliaNetworkDetails;
+    Register.NetworkDetails baseSepoliaNetworkDetails;
 
     uint256 sepoliaFork;
     uint256 arbSepoliaFork;
-    uint256 optimismSepoliaFork;
+    uint256 baseSepoliaFork;
 
     function setUp() public {
         string memory ETHEREUM_SEPOLIA_RPC_URL = vm.envString("ETHEREUM_SEPOLIA_RPC_URL");
         string memory ARBITRUM_SEPOLIA_RPC_URL = vm.envString("ARBITRUM_SEPOLIA_RPC_URL");
-        string memory OPTIMISM_SEPOLIA_RPC_URL = vm.envString("OPTIMISM_SEPOLIA_RPC_URL");
+        string memory BASE_SEPOLIA_RPC_URL = vm.envString("BASE_SEPOLIA_RPC_URL");
         sepoliaFork = vm.createSelectFork(ETHEREUM_SEPOLIA_RPC_URL);
         arbSepoliaFork = vm.createFork(ARBITRUM_SEPOLIA_RPC_URL);
-        optimismSepoliaFork = vm.createFork(OPTIMISM_SEPOLIA_RPC_URL);
+        baseSepoliaFork = vm.createFork(BASE_SEPOLIA_RPC_URL);
 
         ccipLocalSimulatorFork = new CCIPLocalSimulatorFork();
         vm.makePersistent(address(ccipLocalSimulatorFork));
@@ -118,10 +118,9 @@ contract LooperFork is Test {
         arbSepoliaNetworkDetails = ccipLocalSimulatorFork.getNetworkDetails(block.chainid);
         destinationArb = new Looper(arbSepoliaNetworkDetails.routerAddress, arbSepoliaNetworkDetails.linkAddress);
 
-        vm.selectFork(optimismSepoliaFork);
-        optimismSepoliaNetworkDetails = ccipLocalSimulatorFork.getNetworkDetails(block.chainid);
-        destinationOp =
-            new Looper(optimismSepoliaNetworkDetails.routerAddress, optimismSepoliaNetworkDetails.linkAddress);
+        vm.selectFork(baseSepoliaFork);
+        baseSepoliaNetworkDetails = ccipLocalSimulatorFork.getNetworkDetails(block.chainid);
+        destinationBase = new Looper(baseSepoliaNetworkDetails.routerAddress, baseSepoliaNetworkDetails.linkAddress);
     }
 
     function test_sendNMessagesToSingleChain() public {
@@ -141,22 +140,22 @@ contract LooperFork is Test {
 
         source.send(
             address(destinationArb),
-            address(destinationOp),
+            address(destinationBase),
             arbSepoliaNetworkDetails.chainSelector,
-            optimismSepoliaNetworkDetails.chainSelector
+            baseSepoliaNetworkDetails.chainSelector
         );
 
         uint256[] memory forks = new uint256[](2);
         forks[0] = arbSepoliaFork;
-        forks[1] = optimismSepoliaFork;
+        forks[1] = baseSepoliaFork;
         ccipLocalSimulatorFork.switchChainAndRouteMessage(forks);
 
         vm.selectFork(arbSepoliaFork);
         uint256 numberOfMessagesReceived = destinationArb.s_messagesReceived();
         assertEq(numberOfMessagesReceived, 2);
 
-        vm.selectFork(optimismSepoliaFork);
-        numberOfMessagesReceived = destinationOp.s_messagesReceived();
+        vm.selectFork(baseSepoliaFork);
+        numberOfMessagesReceived = destinationBase.s_messagesReceived();
         assertEq(numberOfMessagesReceived, 1);
     }
 }

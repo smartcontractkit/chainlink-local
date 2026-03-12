@@ -55,7 +55,9 @@ contract TokenTransferFasterThanFinalityForkTest is Test {
         uint256 destinationBalanceBefore = IERC20(s_destinationNetwork.ccipBnMAddress).balanceOf(s_bob);
 
         vm.selectFork(s_sourceFork);
-        bytes memory extraArgs = s_encoder.encodeV3Basic(0, 1);
+        uint32 gasLimit = 0;
+        uint16 blockConfirmations = 1;
+        bytes memory extraArgs = s_encoder.encodeV3Basic(gasLimit, blockConfirmations);
 
         Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
         tokenAmounts[0] = Client.EVMTokenAmount({token: s_sourceNetwork.ccipBnMAddress, amount: amountToSend});

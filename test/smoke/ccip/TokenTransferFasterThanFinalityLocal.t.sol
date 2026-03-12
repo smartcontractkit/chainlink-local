@@ -41,7 +41,9 @@ contract TokenTransferFasterThanFinalityLocalTest is Test {
         uint256 amountToSend = 0.5 ether;
         s_ccipBnM.drip(s_alice);
 
-        bytes memory extraArgs = s_encoder.encodeV3Basic(0, 1);
+        uint32 gasLimit = 0;
+        uint16 blockConfirmations = 1;
+        bytes memory extraArgs = s_encoder.encodeV3Basic(gasLimit, blockConfirmations);
         Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
             receiver: abi.encode(s_bob),
             data: "",

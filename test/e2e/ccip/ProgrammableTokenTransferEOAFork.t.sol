@@ -51,7 +51,9 @@ contract ProgrammableTokenTransferEOAForkTest is Test {
         uint256 amountToSend = 1 ether;
 
         bytes memory payload = bytes("Hello World");
-        bytes memory extraArgs = s_encoder.encodeV3Basic(200_000, 1);
+        uint32 gasLimit = 200_000;
+        uint16 blockConfirmations = 1;
+        bytes memory extraArgs = s_encoder.encodeV3Basic(gasLimit, blockConfirmations);
 
         Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
         tokenAmounts[0] = Client.EVMTokenAmount({token: s_sourceNetwork.ccipBnMAddress, amount: amountToSend});

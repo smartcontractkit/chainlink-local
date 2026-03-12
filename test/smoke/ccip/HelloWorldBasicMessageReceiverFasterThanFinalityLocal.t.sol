@@ -36,7 +36,9 @@ contract HelloWorldBasicMessageReceiverFasterThanFinalityLocalTest is Test {
         BasicMessageReceiver receiver = new BasicMessageReceiver(address(s_destinationRouter));
 
         bytes memory payload = bytes("Hello World");
-        bytes memory extraArgs = s_encoder.encodeV3Basic(200_000, 1);
+        uint32 gasLimit = 200_000;
+        uint16 blockConfirmations = 1;
+        bytes memory extraArgs = s_encoder.encodeV3Basic(gasLimit, blockConfirmations);
 
         Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
             receiver: abi.encode(address(receiver)),

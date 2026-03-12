@@ -229,9 +229,21 @@ contract CCIPLocalSimulatorFork is Test {
                 continue;
             }
 
+            uint64 v2DestinationChainSelector;
+            if (logEra == CCIPEra.V2) {
+                CCIPForkAdapterV2.DecodedMessage memory decodedMessage = CCIPForkAdapterV2.decodeMessage(
+                    entry.topics, entry.data, IMessageV1Decoder(address(i_messageV1Decoder))
+                );
+                v2DestinationChainSelector = decodedMessage.message.destChainSelector;
+            }
+
             for (uint256 j; j < forkIds.length; ++j) {
                 vm.selectFork(forkIds[j]);
                 uint64 destinationChainSelector = i_register.getNetworkDetails(block.chainid).chainSelector;
+
+                if (logEra == CCIPEra.V2 && v2DestinationChainSelector != destinationChainSelector) {
+                    continue;
+                }
 
                 vm.selectFork(sourceForkId);
                 address onRampContract = IRouterFork(sourceRouterAddress).getOnRamp(destinationChainSelector);

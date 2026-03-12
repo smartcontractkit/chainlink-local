@@ -7,19 +7,19 @@ import {
     IRouterClient
 } from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
 import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
+import {MockVerifier} from "@chainlink/contracts-ccip/contracts/test/mocks/MockVerifier.sol";
 
 import {BasicMessageReceiverWithCCVs} from "../../../src/test/ccip/BasicMessageReceiverWithCCVs.sol";
 import {EncodeExtraArgsOffchain} from "../../../src/test/ccip/utils/EncodeExtraArgsOffchain.sol";
 
 contract HelloWorldBasicMessageReceiverWithCCVsLocalTest is Test {
-    address internal constant LOCAL_CCV_A = 0x1111111111111111111111111111111111111111;
-    address internal constant LOCAL_CCV_B = 0x2222222222222222222222222222222222222222;
-    address internal constant LOCAL_CCV_C = 0x3333333333333333333333333333333333333333;
-
     uint64 internal s_chainSelector;
     IRouterClient internal s_sourceRouter;
     IRouterClient internal s_destinationRouter;
     EncodeExtraArgsOffchain internal s_encoder;
+    MockVerifier internal s_mockVerifierA;
+    MockVerifier internal s_mockVerifierB;
+    MockVerifier internal s_mockVerifierC;
 
     address internal s_alice;
 
@@ -31,6 +31,10 @@ contract HelloWorldBasicMessageReceiverWithCCVsLocalTest is Test {
         s_sourceRouter = sourceRouter_;
         s_destinationRouter = destinationRouter_;
         s_encoder = new EncodeExtraArgsOffchain();
+        bytes memory verifierResult = abi.encodePacked(bytes4(0x464f524b)); // "FORK"
+        s_mockVerifierA = new MockVerifier(verifierResult);
+        s_mockVerifierB = new MockVerifier(verifierResult);
+        s_mockVerifierC = new MockVerifier(verifierResult);
 
         s_alice = makeAddr("alice");
         vm.deal(s_alice, 100 ether);
@@ -40,10 +44,10 @@ contract HelloWorldBasicMessageReceiverWithCCVsLocalTest is Test {
         BasicMessageReceiverWithCCVs receiver = new BasicMessageReceiverWithCCVs(address(s_destinationRouter));
 
         address[] memory requiredCCVs = new address[](1);
-        requiredCCVs[0] = LOCAL_CCV_A;
+        requiredCCVs[0] = address(s_mockVerifierA);
         address[] memory optionalCCVs = new address[](2);
-        optionalCCVs[0] = LOCAL_CCV_B;
-        optionalCCVs[1] = LOCAL_CCV_C;
+        optionalCCVs[0] = address(s_mockVerifierB);
+        optionalCCVs[1] = address(s_mockVerifierC);
 
         BasicMessageReceiverWithCCVs.CCVConfigArgs[] memory updates = new BasicMessageReceiverWithCCVs.CCVConfigArgs[](1);
         updates[0] = BasicMessageReceiverWithCCVs.CCVConfigArgs({
@@ -56,9 +60,9 @@ contract HelloWorldBasicMessageReceiverWithCCVsLocalTest is Test {
         receiver.applyCCVConfigUpdates(updates);
 
         address[] memory ccvs = new address[](3);
-        ccvs[0] = LOCAL_CCV_A;
-        ccvs[1] = LOCAL_CCV_B;
-        ccvs[2] = LOCAL_CCV_C;
+        ccvs[0] = address(s_mockVerifierA);
+        ccvs[1] = address(s_mockVerifierB);
+        ccvs[2] = address(s_mockVerifierC);
         bytes[] memory ccvArgs = new bytes[](3);
 
         bytes memory payload = bytes("Hello World");
