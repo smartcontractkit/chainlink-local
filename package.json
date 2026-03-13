@@ -2,7 +2,7 @@
   "name": "@chainlink/local",
   "description": "Chainlink Local Simulator",
   "license": "MIT",
-  "version": "0.2.8-beta",
+  "version": "0.3.0-beta",
   "type": "module",
   "files": [
     "src/**/*.sol",
