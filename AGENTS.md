@@ -104,7 +104,7 @@ Use these commands unless a maintainer requests something different.
   - `forge update`
   - `forge update lib/chainlink-evm lib/chainlink-ccip`
 - Install/update with pinned tag:
-  - `forge install <org>/<repo>@<tag> --no-commit`
+  - `forge install <org>/<repo>@<tag>`
 - For direct dependencies:
   - `@chainlink/contracts` equivalent:
     - `forge install smartcontractkit/chainlink-evm@contracts-v<version>`
