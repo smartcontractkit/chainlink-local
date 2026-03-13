@@ -1,0 +1,131 @@
+# Solidity API
+
+## CCIPForkAdapterV2
+
+## Functions
+
+### eventSelector
+
+```solidity
+function eventSelector() internal pure returns (bytes32);
+```
+
+### decodeMessage
+
+```solidity
+function decodeMessage(bytes32[] memory topics, bytes memory eventData, IMessageV1Decoder decoder)
+    internal
+    view
+    returns (DecodedMessage memory decodedMessage);
+```
+
+### extractOffRampAddress
+
+```solidity
+function extractOffRampAddress(DecodedMessage memory decodedMessage)
+    internal
+    pure
+    returns (address offRampAddress);
+```
+
+### deriveVerificationInputs
+
+```solidity
+function deriveVerificationInputs(address offRamp, DecodedMessage memory decodedMessage)
+    internal
+    view
+    returns (address[] memory ccvs, bytes[] memory verifierResults);
+```
+
+### execute
+
+```solidity
+function execute(
+    address offRamp,
+    MessageV1Codec.MessageV1 memory message,
+    bytes32 messageId,
+    address[] memory ccvs,
+    bytes[] memory verifierResults
+) internal returns (bool success, bytes memory returnData);
+```
+
+### \_decodeEVMAddress
+
+```solidity
+function _decodeEVMAddress(bytes memory encodedAddress) private pure returns (address decodedAddress);
+```
+
+### \_resolveVerifierResults
+
+```solidity
+function _resolveVerifierResults(DecodedMessage memory decodedMessage, uint256 targetLength)
+    private
+    pure
+    returns (bytes[] memory verifierResults);
+```
+
+### \_findVerifierResultForCCV
+
+```solidity
+function _findVerifierResultForCCV(DecodedMessage memory decodedMessage, address ccv)
+    private
+    pure
+    returns (bytes memory verifierResult);
+```
+
+## Events
+
+### CCIPMessageSent
+
+```solidity
+event CCIPMessageSent(
+    uint64 indexed destChainSelector,
+    address indexed sender,
+    bytes32 indexed messageId,
+    address feeToken,
+    uint256 tokenAmountBeforeTokenPoolFees,
+    bytes encodedMessage,
+    CCIPForkAdapterTypes.V2Receipt[] receipts,
+    bytes[] verifierBlobs
+);
+```
+
+## Errors
+
+### MissingMessageIdTopic
+
+```solidity
+error MissingMessageIdTopic();
+```
+
+### InvalidAddressEncoding
+
+```solidity
+error InvalidAddressEncoding(bytes encodedAddress);
+```
+
+### MissingVerifierBlobForCCV
+
+```solidity
+error MissingVerifierBlobForCCV(address ccv);
+```
+
+### InvalidVerifierReceiptCount
+
+```solidity
+error InvalidVerifierReceiptCount(uint256 receiptsLength, uint256 verifierBlobLength);
+```
+
+## Structs
+
+### DecodedMessage
+
+```solidity
+struct DecodedMessage {
+    bytes32 messageId;
+    bytes encodedMessage;
+    CCIPForkAdapterTypes.V2Receipt[] receipts;
+    bytes[] verifierBlobs;
+    MessageV1Codec.MessageV1 message;
+}
+```

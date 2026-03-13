@@ -1,4 +1,17 @@
+/**
+ * Mock report payload model for Data Streams report version 2.
+ */
 class ReportV2 {
+    /**
+     * @param {object} params Report fields.
+     * @param {string} params.feedId Feed identifier as bytes32 hex string.
+     * @param {number} params.validFromTimestamp Earliest timestamp where the report is valid.
+     * @param {number} params.observationsTimestamp Latest timestamp covered by observations.
+     * @param {bigint|number} params.nativeFee Verification fee in native token units.
+     * @param {bigint|number} params.linkFee Verification fee in LINK units.
+     * @param {number} params.expiresAt Expiration timestamp for on-chain verification.
+     * @param {bigint|number} params.benchmarkPrice Median benchmark price.
+     */
     constructor({
         feedId,
         validFromTimestamp,
@@ -18,7 +31,22 @@ class ReportV2 {
     }
 }
 
+/**
+ * Mock report payload model for Data Streams report version 3.
+ */
 class ReportV3 {
+    /**
+     * @param {object} params Report fields.
+     * @param {string} params.feedId Stream identifier as bytes32 hex string.
+     * @param {number} params.validFromTimestamp Earliest timestamp where the report is valid.
+     * @param {number} params.observationsTimestamp Latest timestamp covered by observations.
+     * @param {bigint|number} params.nativeFee Verification fee in native token units.
+     * @param {bigint|number} params.linkFee Verification fee in LINK units.
+     * @param {number} params.expiresAt Expiration timestamp for on-chain verification.
+     * @param {bigint|number} params.price Median price.
+     * @param {bigint|number} params.bid Simulated buy-side price impact value.
+     * @param {bigint|number} params.ask Simulated sell-side price impact value.
+     */
     constructor({
         feedId,
         validFromTimestamp,
@@ -42,7 +70,21 @@ class ReportV3 {
     }
 }
 
+/**
+ * Mock report payload model for Data Streams report version 4.
+ */
 class ReportV4 {
+    /**
+     * @param {object} params Report fields.
+     * @param {string} params.feedId Stream identifier as bytes32 hex string.
+     * @param {number} params.validFromTimestamp Earliest timestamp where the report is valid.
+     * @param {number} params.observationsTimestamp Latest timestamp covered by observations.
+     * @param {bigint|number} params.nativeFee Verification fee in native token units.
+     * @param {bigint|number} params.linkFee Verification fee in LINK units.
+     * @param {number} params.expiresAt Expiration timestamp for on-chain verification.
+     * @param {bigint|number} params.price Median benchmark price.
+     * @param {number} params.marketStatus Market status code reported by DON.
+     */
     constructor({
         feedId,
         validFromTimestamp,

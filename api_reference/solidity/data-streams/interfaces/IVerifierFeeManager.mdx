@@ -2,14 +2,20 @@
 
 ## IVerifierFeeManager
 
+**Inherits:** IERC165
+
+## Functions
+
 ### processFee
 
 ```solidity
-function processFee(bytes payload, bytes parameterPayload, address subscriber) external payable
+function processFee(bytes calldata payload, bytes calldata parameterPayload, address subscriber) external payable;
 ```
 
 ### processFeeBulk
 
 ```solidity
-function processFeeBulk(bytes[] payloads, bytes parameterPayload, address subscriber) external payable
+function processFeeBulk(bytes[] calldata payloads, bytes calldata parameterPayload, address subscriber)
+    external
+    payable;
 ```

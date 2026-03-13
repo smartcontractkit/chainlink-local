@@ -1,294 +1,463 @@
 # Solidity API
 
-## IRouterFork
-
-### OffRamp
-
-Structure representing an offRamp configuration
-
-#### Parameters
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-
-```solidity
-struct OffRamp {
-  uint64 sourceChainSelector;
-  address offRamp;
-}
-```
-
-### getOnRamp
-
-```solidity
-function getOnRamp(uint64 destChainSelector) external view returns (address)
-```
-
-Return the configured onramp for specific a destination chain. @param
-destChainSelector The destination chain Id to get the onRamp for.
-
-#### Return Values
-
-| Name | Type    | Description                |
-| ---- | ------- | -------------------------- |
-| [0]  | address | The address of the onRamp. |
-
-### getOffRamps
-
-```solidity
-function getOffRamps() external view returns (struct IRouterFork.OffRamp[])
-```
-
-Gets the list of offRamps
-
-#### Return Values
-
-| Name | Type                         | Description                         |
-| ---- | ---------------------------- | ----------------------------------- |
-| [0]  | struct IRouterFork.OffRamp[] | offRamps - Array of OffRamp structs |
-
-## IEVM2EVMOffRampFork
-
-### executeSingleMessage
-
-```solidity
-function executeSingleMessage(struct Internal.Any2EVMRampMessage message, bytes[] offchainTokenData, uint32[] tokenGasOverrides) external
-```
-
-Executes a single CCIP message on the offRamp
-
-#### Parameters
-
-| Name              | Type                               | Description                       |
-| ----------------- | ---------------------------------- | --------------------------------- |
-| message           | struct Internal.Any2EVMRampMessage | - The CCIP message to be executed |
-| offchainTokenData | bytes[]                            | - Additional offchain token data  |
-| tokenGasOverrides | uint32[]                           |                                   |
-
-## InternalPreV1dot6
-
-### EVM2EVMMessage
-
-```solidity
-struct EVM2EVMMessage {
-  uint64 sourceChainSelector;
-  address sender;
-  address receiver;
-  uint64 sequenceNumber;
-  uint256 gasLimit;
-  bool strict;
-  uint64 nonce;
-  address feeToken;
-  uint256 feeTokenAmount;
-  bytes data;
-  struct Client.EVMTokenAmount[] tokenAmounts;
-  bytes[] sourceTokenData;
-  bytes32 messageId;
-}
-```
-
-## IEVM2EVMOffRampPreV1dot6Fork
-
-### executeSingleMessage
-
-```solidity
-function executeSingleMessage(struct InternalPreV1dot6.EVM2EVMMessage message, bytes[] offchainTokenData, uint32[] tokenGasOverrides) external
-```
-
 ## CCIPLocalSimulatorFork
+
+**Inherits:** Test
+
+**Title:** CCIPLocalSimulatorFork
 
 Works with Foundry only
 
-### CCIPSendRequested
-
-```solidity
-event CCIPSendRequested(struct InternalPreV1dot6.EVM2EVMMessage message)
-```
-
-Events emitted when a CCIP send request is made
-
-### CCIPMessageSent
-
-```solidity
-event CCIPMessageSent(uint64 destChainSelector, uint64 sequenceNumber, struct Internal.EVM2AnyRampMessage message)
-```
-
-### InvalidExtraArgsTag
-
-```solidity
-error InvalidExtraArgsTag()
-```
-
-### DEFAULT_GAS_LIMIT
-
-```solidity
-uint32 DEFAULT_GAS_LIMIT
-```
+## State Variables
 
 ### i_register
 
+The immutable register instance
+
 ```solidity
-contract Register i_register
+Register immutable i_register
 ```
 
-The immutable register instance
+### i_messageV1Decoder
+
+Helper to decode MessageV1 from memory bytes.
+
+```solidity
+MessageV1CodecDecoder immutable i_messageV1Decoder
+```
 
 ### LINK_FAUCET
 
-```solidity
-address LINK_FAUCET
-```
-
 The address of the LINK faucet
+
+```solidity
+address constant LINK_FAUCET = 0x4281eCF07378Ee595C564a59048801330f3084eE
+```
 
 ### s_processedMessages
 
+Mapping to track processed messages
+
 ```solidity
-mapping(bytes32 => bool) s_processedMessages
+mapping(bytes32 messageId => bool isProcessed) internal s_processedMessages
 ```
 
-Mapping to track processed messages
+### GET_EXPECTED_NEXT_MESSAGE_NUMBER_SELECTOR
+
+```solidity
+bytes4 private constant GET_EXPECTED_NEXT_MESSAGE_NUMBER_SELECTOR =
+    bytes4(keccak256("getExpectedNextMessageNumber(uint64)"))
+```
+
+### GET_EXPECTED_NEXT_SEQUENCE_NUMBER_SELECTOR
+
+```solidity
+bytes4 private constant GET_EXPECTED_NEXT_SEQUENCE_NUMBER_SELECTOR =
+    bytes4(keccak256("getExpectedNextSequenceNumber(uint64)"))
+```
+
+### SYNTHETIC_V2_VERIFIER_VERSION
+
+```solidity
+bytes4 private constant SYNTHETIC_V2_VERIFIER_VERSION = 0x464f524b
+```
+
+### INVALID_VERIFIER_RESULTS_SELECTOR
+
+```solidity
+bytes4 private constant INVALID_VERIFIER_RESULTS_SELECTOR = bytes4(keccak256("InvalidVerifierResults()"))
+```
+
+### INVALID_VERIFIER_RESULTS_LENGTH_SELECTOR
+
+```solidity
+bytes4 private constant INVALID_VERIFIER_RESULTS_LENGTH_SELECTOR =
+    bytes4(keccak256("InvalidVerifierResultsLength()"))
+```
+
+### INBOUND_IMPLEMENTATION_NOT_FOUND_SELECTOR
+
+```solidity
+bytes4 private constant INBOUND_IMPLEMENTATION_NOT_FOUND_SELECTOR =
+    bytes4(keccak256("InboundImplementationNotFound(address,bytes)"))
+```
+
+### s_syntheticV2VerifierByScope
+
+```solidity
+mapping(uint256 routeScope => address verifier) internal s_syntheticV2VerifierByScope
+```
+
+### s_isSyntheticResolverConfiguredByScope
+
+```solidity
+mapping(uint256 routeScope => mapping(address resolver => bool isConfigured)) internal
+    s_isSyntheticResolverConfiguredByScope
+```
+
+### s_pendingV2MessagesByScope
+
+```solidity
+mapping(uint256 routeScope => mapping(bytes32 messageId => PendingV2Message pendingMessage)) internal
+    s_pendingV2MessagesByScope
+```
+
+### s_pendingV2MessageIdsByScope
+
+```solidity
+mapping(uint256 routeScope => bytes32[] messageIds) internal s_pendingV2MessageIdsByScope
+```
+
+### s_v2VerificationMode
+
+```solidity
+V2VerificationMode internal s_v2VerificationMode
+```
+
+### s_v2ExecutionMode
+
+```solidity
+V2ExecutionMode internal s_v2ExecutionMode
+```
+
+## Functions
 
 ### constructor
 
-```solidity
-constructor() public
-```
-
 Constructor to initialize the contract
 
-### switchChainAndRouteMessage
-
 ```solidity
-function switchChainAndRouteMessage(uint256 forkId) external
+constructor() ;
 ```
+
+### switchChainAndRouteMessage
 
 To be called after the sending of the cross-chain message (`ccipSend`). Goes
-through the list of past logs and looks for the `CCIPSendRequested` and
-`CCIPMessageSent` events. Switches to a destination network fork. Routes the
-sent cross-chain message on the destination network. If you sent more than one
-message, it will try to route all of them to `forkId`.
-
-#### Parameters
-
-| Name   | Type    | Description                                                                                                    |
-| ------ | ------- | -------------------------------------------------------------------------------------------------------------- |
-| forkId | uint256 | - The ID of the destination network fork. This is the returned value of `createFork()` or `createSelectFork()` |
-
-### switchChainAndRouteMessage
+through the list of past logs and looks for the supported CCIP send events.
+Switches to a destination network fork. Routes the sent cross-chain message on
+the destination network. If you sent more than one message, it will try to route
+all of them to `forkId`.
 
 ```solidity
-function switchChainAndRouteMessage(uint256[] forkIds) external
+function switchChainAndRouteMessage(uint256 forkId) external;
 ```
+
+**Parameters**
+
+| Name     | Type      | Description                                                                                                    |
+| -------- | --------- | -------------------------------------------------------------------------------------------------------------- |
+| `forkId` | `uint256` | - The ID of the destination network fork. This is the returned value of `createFork()` or `createSelectFork()` |
+
+### switchChainAndRouteMessage
 
 To be called after the sending of the cross-chain message (`ccipSend`). Override
 variant of the `switchChainAndRouteMessage(uint256 forkId)` function in case of
-multiple destination forks. Goes through the list of past logs and looks for the
-`CCIPSendRequested` and `CCIPMessageSent` events. Loops through provided
-`forkIds` and tries to route the message to correct destination. If you haven't
-provide correct `forkId`, the message will get lost. If you sent more than one
-message, it will try to route all of them to correct destinations.
+multiple destination forks. Goes through provided `forkIds` and tries to route
+messages to the matching destination.
 
-#### Parameters
+```solidity
+function switchChainAndRouteMessage(uint256[] memory forkIds) external;
+```
 
-| Name    | Type      | Description                                                                                                         |
-| ------- | --------- | ------------------------------------------------------------------------------------------------------------------- |
-| forkIds | uint256[] | - The IDs of the destination network forks. These are the returned values of `createFork()` or `createSelectFork()` |
+**Parameters**
+
+| Name      | Type        | Description                                                                                                         |
+| --------- | ----------- | ------------------------------------------------------------------------------------------------------------------- |
+| `forkIds` | `uint256[]` | - The IDs of the destination network forks. These are the returned values of `createFork()` or `createSelectFork()` |
 
 ### getNetworkDetails
 
+Returns the default values for currently CCIP supported networks.
+
 ```solidity
-function getNetworkDetails(uint256 chainId) external view returns (struct Register.NetworkDetails)
+function getNetworkDetails(uint256 chainId) external view returns (Register.NetworkDetails memory);
 ```
-
-Returns the default values for currently CCIP supported networks. If network is
-not present or some of the values are changed, user can manually add new network
-details using the `setNetworkDetails` function.
-
-#### Parameters
-
-| Name    | Type    | Description                                                                                            |
-| ------- | ------- | ------------------------------------------------------------------------------------------------------ |
-| chainId | uint256 | - The blockchain network chain ID. For example 11155111 for Ethereum Sepolia. Not CCIP chain selector. |
-
-#### Return Values
-
-| Name | Type                           | Description                                                                                                                                                                                                                                                                                                                                                                                         |
-| ---- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [0]  | struct Register.NetworkDetails | networkDetails - The tuple containing: chainSelector - The unique CCIP Chain Selector. routerAddress - The address of the CCIP Router contract. linkAddress - The address of the LINK token. wrappedNativeAddress - The address of the wrapped native token that can be used for CCIP fees. ccipBnMAddress - The address of the CCIP BnM token. ccipLnMAddress - The address of the CCIP LnM token. |
 
 ### setNetworkDetails
 
+Manually sets network details.
+
 ```solidity
-function setNetworkDetails(uint256 chainId, struct Register.NetworkDetails networkDetails) external
+function setNetworkDetails(uint256 chainId, Register.NetworkDetails memory networkDetails) external;
 ```
-
-If network details are not present or some of the values are changed, user can
-manually add new network details using the `setNetworkDetails` function.
-
-#### Parameters
-
-| Name           | Type                           | Description                                                                                                                                                                                                                                                                                                                                                                          |
-| -------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| chainId        | uint256                        | - The blockchain network chain ID. For example 11155111 for Ethereum Sepolia. Not CCIP chain selector.                                                                                                                                                                                                                                                                               |
-| networkDetails | struct Register.NetworkDetails | - The tuple containing: chainSelector - The unique CCIP Chain Selector. routerAddress - The address of the CCIP Router contract. linkAddress - The address of the LINK token. wrappedNativeAddress - The address of the wrapped native token that can be used for CCIP fees. ccipBnMAddress - The address of the CCIP BnM token. ccipLnMAddress - The address of the CCIP LnM token. |
 
 ### requestLinkFromFaucet
 
+Requests LINK tokens from the faucet.
+
 ```solidity
-function requestLinkFromFaucet(address to, uint256 amount) external returns (bool success)
+function requestLinkFromFaucet(address to, uint256 amount) external returns (bool success);
 ```
 
-Requests LINK tokens from the faucet. The provided amount of tokens are
-transferred to provided destination address.
+### setV2VerificationMode
 
-#### Parameters
+```solidity
+function setV2VerificationMode(V2VerificationMode mode) external;
+```
 
-| Name   | Type    | Description                                        |
-| ------ | ------- | -------------------------------------------------- |
-| to     | address | - The address to which LINK tokens are to be sent. |
-| amount | uint256 | - The amount of LINK tokens to send.               |
+### getV2VerificationMode
 
-#### Return Values
+```solidity
+function getV2VerificationMode() external view returns (V2VerificationMode mode);
+```
 
-| Name    | Type | Description                                                                   |
-| ------- | ---- | ----------------------------------------------------------------------------- |
-| success | bool | - Returns `true` if the transfer of tokens was successful, otherwise `false`. |
+### setV2ExecutionMode
+
+```solidity
+function setV2ExecutionMode(V2ExecutionMode mode) external;
+```
+
+### getV2ExecutionMode
+
+```solidity
+function getV2ExecutionMode() external view returns (V2ExecutionMode mode);
+```
+
+### getPendingV2MessageIds
+
+```solidity
+function getPendingV2MessageIds() external view returns (bytes32[] memory messageIds);
+```
+
+### isPendingV2Message
+
+```solidity
+function isPendingV2Message(bytes32 messageId) external view returns (bool isPending);
+```
+
+### executePendingV2Message
+
+```solidity
+function executePendingV2Message(bytes32 messageId) external returns (bool attempted);
+```
 
 ### \_routeCapturedMessages
-
-```solidity
-function _routeCapturedMessages(uint256[] forkIds, uint256 sourceForkId, address sourceRouterAddress) internal
-```
 
 Internal function to route captured messages to their respective destination
 forks.
 
-#### Parameters
-
-| Name                | Type      | Description                                                                                                                        |
-| ------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| forkIds             | uint256[] | - The IDs of the destination network forks. These are the returned values of `createFork()` or `createSelectFork()`, not chainIds. |
-| sourceForkId        | uint256   | - The ID of the source network fork. This is the returned value of `createFork()` or `createSelectFork()`, not chainId.            |
-| sourceRouterAddress | address   | - The address of the Router on the source chain.                                                                                   |
-
-### \_fromBytes
-
 ```solidity
-function _fromBytes(bytes extraArgs) internal pure returns (struct Client.GenericExtraArgsV2)
+function _routeCapturedMessages(uint256[] memory forkIds, uint256 sourceForkId, address sourceRouterAddress)
+    internal;
 ```
 
-Internal helper function to decode extraArgs bytes to GenericExtraArgsV2 struct.
-Supports decoding of both GenericExtraArgsV2 and EVMExtraArgsV1 structs.
+**Parameters**
 
-#### Parameters
+| Name                  | Type        | Description                   |
+| --------------------- | ----------- | ----------------------------- |
+| `forkIds`             | `uint256[]` | - Destination fork IDs.       |
+| `sourceForkId`        | `uint256`   | - Source fork ID.             |
+| `sourceRouterAddress` | `address`   | - Router on the source chain. |
 
-| Name      | Type  | Description                                   |
-| --------- | ----- | --------------------------------------------- |
-| extraArgs | bytes | - The bytes representing the extra arguments. |
+### \_routeMessageForEra
 
-#### Return Values
+```solidity
+function _routeMessageForEra(Vm.Log memory entry, CCIPEra routingEra) internal returns (bool attempted);
+```
 
-| Name | Type                             | Description                                               |
-| ---- | -------------------------------- | --------------------------------------------------------- |
-| [0]  | struct Client.GenericExtraArgsV2 | genericExtraArgs - The decoded GenericExtraArgsV2 struct. |
+### \_routePreV1dot6Message
+
+```solidity
+function _routePreV1dot6Message(Vm.Log memory entry) internal returns (bool attempted);
+```
+
+### \_routeV1dot6Message
+
+```solidity
+function _routeV1dot6Message(Vm.Log memory entry) internal returns (bool attempted);
+```
+
+### \_routeV2Message
+
+```solidity
+function _routeV2Message(Vm.Log memory entry) internal returns (bool attempted);
+```
+
+### \_routeV2Message
+
+```solidity
+function _routeV2Message(Vm.Log memory entry, bool forceExecution) internal returns (bool attempted);
+```
+
+### deriveV2VerificationInputs
+
+```solidity
+function deriveV2VerificationInputs(address offRamp, CCIPForkAdapterV2.DecodedMessage calldata decodedMessage)
+    external
+    view
+    returns (address[] memory ccvs, bytes[] memory verifierResults);
+```
+
+### \_deriveV2VerificationInputs
+
+```solidity
+function _deriveV2VerificationInputs(address offRamp, CCIPForkAdapterV2.DecodedMessage memory decodedMessage)
+    internal
+    returns (address[] memory ccvs, bytes[] memory verifierResults, bool usedSyntheticInputs);
+```
+
+### \_buildSyntheticV2VerificationInputs
+
+```solidity
+function _buildSyntheticV2VerificationInputs(
+    address offRamp,
+    bytes memory encodedMessage,
+    bytes[] memory existingVerifierResults
+) internal returns (address[] memory ccvs, bytes[] memory verifierResults);
+```
+
+### \_deriveV2CCVSelection
+
+```solidity
+function _deriveV2CCVSelection(address offRamp, bytes memory encodedMessage)
+    internal
+    view
+    returns (address[] memory ccvs);
+```
+
+### \_configureResolverForSyntheticV2Verification
+
+```solidity
+function _configureResolverForSyntheticV2Verification(address resolver, address syntheticVerifier)
+    internal
+    returns (bool configured);
+```
+
+### \_getOrCreateSyntheticV2Verifier
+
+```solidity
+function _getOrCreateSyntheticV2Verifier() internal returns (address verifier);
+```
+
+### \_routeScope
+
+```solidity
+function _routeScope() internal view returns (uint256 routeScope);
+```
+
+### \_shouldQueueV2Message
+
+```solidity
+function _shouldQueueV2Message(CCIPForkAdapterV2.DecodedMessage memory decodedMessage)
+    internal
+    view
+    returns (bool);
+```
+
+### \_isNoExecV2Message
+
+```solidity
+function _isNoExecV2Message(CCIPForkAdapterV2.DecodedMessage memory decodedMessage) internal pure returns (bool);
+```
+
+### \_enqueuePendingV2Message
+
+```solidity
+function _enqueuePendingV2Message(bytes32 messageId, Vm.Log memory entry) internal;
+```
+
+### \_dequeuePendingV2Message
+
+```solidity
+function _dequeuePendingV2Message(uint256 routeScope, bytes32 messageId) internal;
+```
+
+### \_pendingV2MessageToLog
+
+```solidity
+function _pendingV2MessageToLog(PendingV2Message storage pending) internal view returns (Vm.Log memory entry);
+```
+
+### \_isRecoverableV2VerificationFailure
+
+```solidity
+function _isRecoverableV2VerificationFailure(bytes memory returnData) internal pure returns (bool);
+```
+
+### \_findOffRampOnCurrentFork
+
+```solidity
+function _findOffRampOnCurrentFork(uint64 sourceChainSelector) internal view returns (address offRampAddress);
+```
+
+### \_detectEra
+
+```solidity
+function _detectEra(address onRamp) internal view returns (CCIPEra era);
+```
+
+### \_detectEraByTypeAndVersion
+
+```solidity
+function _detectEraByTypeAndVersion(address onRamp) internal view returns (CCIPEra era);
+```
+
+### \_probeSelector
+
+```solidity
+function _probeSelector(address target, bytes4 selector) internal view returns (bool supported);
+```
+
+### \_detectEraFromLog
+
+```solidity
+function _detectEraFromLog(Vm.Log memory entry) internal pure returns (CCIPEra era);
+```
+
+### \_selectRoutingEra
+
+```solidity
+function _selectRoutingEra(CCIPEra logEra, CCIPEra detectedEra) internal pure returns (CCIPEra);
+```
+
+### \_contains
+
+```solidity
+function _contains(bytes memory haystack, bytes memory needle) internal pure returns (bool);
+```
+
+## Structs
+
+### PendingV2Message
+
+```solidity
+struct PendingV2Message {
+    bool exists;
+    address emitter;
+    bytes32[] topics;
+    bytes data;
+}
+```
+
+## Enums
+
+### CCIPEra
+
+```solidity
+enum CCIPEra {
+    UNKNOWN,
+    PRE_V1_DOT_6,
+    V1_DOT_6,
+    V2
+}
+```
+
+### V2VerificationMode
+
+```solidity
+enum V2VerificationMode {
+    STRICT,
+    HYBRID,
+    SYNTHETIC_ONLY
+}
+```
+
+### V2ExecutionMode
+
+```solidity
+enum V2ExecutionMode {
+    AUTO,
+    RESPECT_NO_EXEC,
+    MANUAL_ONLY
+}
+```

@@ -2,121 +2,126 @@
 
 ## AggregatorInterface
 
+**Title:** AggregatorInterface
+
 Interface for accessing data from an aggregator contract.
 
-_Provides methods to get the latest data and historical data for specific
-rounds._
+Provides methods to get the latest data and historical data for specific rounds.
+
+## Functions
 
 ### latestAnswer
 
-```solidity
-function latestAnswer() external view returns (int256)
-```
-
 Gets the latest answer from the aggregator.
 
-#### Return Values
+```solidity
+function latestAnswer() external view returns (int256);
+```
 
-| Name | Type   | Description                 |
-| ---- | ------ | --------------------------- |
-| [0]  | int256 | int256 - The latest answer. |
+**Returns**
+
+| Name     | Type     | Description                 |
+| -------- | -------- | --------------------------- |
+| `<none>` | `int256` | int256 - The latest answer. |
 
 ### latestTimestamp
 
-```solidity
-function latestTimestamp() external view returns (uint256)
-```
-
 Gets the timestamp of the latest answer from the aggregator.
 
-#### Return Values
+```solidity
+function latestTimestamp() external view returns (uint256);
+```
 
-| Name | Type    | Description                                   |
-| ---- | ------- | --------------------------------------------- |
-| [0]  | uint256 | uint256 - The timestamp of the latest answer. |
+**Returns**
+
+| Name     | Type      | Description                                   |
+| -------- | --------- | --------------------------------------------- |
+| `<none>` | `uint256` | uint256 - The timestamp of the latest answer. |
 
 ### latestRound
 
-```solidity
-function latestRound() external view returns (uint256)
-```
-
 Gets the latest round ID from the aggregator.
 
-#### Return Values
+```solidity
+function latestRound() external view returns (uint256);
+```
 
-| Name | Type    | Description                    |
-| ---- | ------- | ------------------------------ |
-| [0]  | uint256 | uint256 - The latest round ID. |
+**Returns**
+
+| Name     | Type      | Description                    |
+| -------- | --------- | ------------------------------ |
+| `<none>` | `uint256` | uint256 - The latest round ID. |
 
 ### getAnswer
 
-```solidity
-function getAnswer(uint256 roundId) external view returns (int256)
-```
-
 Gets the answer for a specific round ID.
 
-#### Parameters
+```solidity
+function getAnswer(uint256 roundId) external view returns (int256);
+```
 
-| Name    | Type    | Description                           |
-| ------- | ------- | ------------------------------------- |
-| roundId | uint256 | - The round ID to get the answer for. |
+**Parameters**
 
-#### Return Values
+| Name      | Type      | Description                           |
+| --------- | --------- | ------------------------------------- |
+| `roundId` | `uint256` | - The round ID to get the answer for. |
 
-| Name | Type   | Description                                 |
-| ---- | ------ | ------------------------------------------- |
-| [0]  | int256 | int256 - The answer for the given round ID. |
+**Returns**
+
+| Name     | Type     | Description                                 |
+| -------- | -------- | ------------------------------------------- |
+| `<none>` | `int256` | int256 - The answer for the given round ID. |
 
 ### getTimestamp
 
-```solidity
-function getTimestamp(uint256 roundId) external view returns (uint256)
-```
-
 Gets the timestamp for a specific round ID.
 
-#### Parameters
+```solidity
+function getTimestamp(uint256 roundId) external view returns (uint256);
+```
 
-| Name    | Type    | Description                              |
-| ------- | ------- | ---------------------------------------- |
-| roundId | uint256 | - The round ID to get the timestamp for. |
+**Parameters**
 
-#### Return Values
+| Name      | Type      | Description                              |
+| --------- | --------- | ---------------------------------------- |
+| `roundId` | `uint256` | - The round ID to get the timestamp for. |
 
-| Name | Type    | Description                                     |
-| ---- | ------- | ----------------------------------------------- |
-| [0]  | uint256 | uint256 - The timestamp for the given round ID. |
+**Returns**
+
+| Name     | Type      | Description                                     |
+| -------- | --------- | ----------------------------------------------- |
+| `<none>` | `uint256` | uint256 - The timestamp for the given round ID. |
+
+## Events
 
 ### AnswerUpdated
 
-```solidity
-event AnswerUpdated(int256 current, uint256 roundId, uint256 updatedAt)
-```
-
 Emitted when the answer is updated.
 
-#### Parameters
+```solidity
+event AnswerUpdated(int256 indexed current, uint256 indexed roundId, uint256 updatedAt);
+```
 
-| Name      | Type    | Description                                      |
-| --------- | ------- | ------------------------------------------------ |
-| current   | int256  | - The updated answer.                            |
-| roundId   | uint256 | - The round ID for which the answer was updated. |
-| updatedAt | uint256 | - The timestamp when the answer was updated.     |
+**Parameters**
+
+| Name        | Type      | Description                                      |
+| ----------- | --------- | ------------------------------------------------ |
+| `current`   | `int256`  | - The updated answer.                            |
+| `roundId`   | `uint256` | - The round ID for which the answer was updated. |
+| `updatedAt` | `uint256` | - The timestamp when the answer was updated.     |
 
 ### NewRound
 
-```solidity
-event NewRound(uint256 roundId, address startedBy, uint256 startedAt)
-```
-
 Emitted when a new round is started.
 
-#### Parameters
+```solidity
+event NewRound(uint256 indexed roundId, address indexed startedBy, uint256 startedAt);
+```
 
-| Name      | Type    | Description                                          |
-| --------- | ------- | ---------------------------------------------------- |
-| roundId   | uint256 | - The round ID of the new round.                     |
-| startedBy | address | - The address of the account that started the round. |
-| startedAt | uint256 | - The timestamp when the round was started.          |
+**Parameters**
+
+| Name        | Type      | Description                                          |
+| ----------- | --------- | ---------------------------------------------------- |
+| `roundId`   | `uint256` | - The round ID of the new round.                     |
+| `startedBy` | `address` | - The address of the account that started the round. |
+| `startedAt` | `uint256` | - The timestamp when the round was started.          |

@@ -9,7 +9,7 @@
  * 
  * Usage:
  *    CCIP_API_BASE_URL=<base_url> npm run update-register
- *    CCIP_API_BASE_URL=<base_url> node scripts/ccip/updateRegisterContract.js
+ *    CCIP_API_BASE_URL=<base_url> node helper_doc/updateRegisterContract.cjs
  *
  * Requires: CCIP_API_BASE_URL environment variable (base URL for the CCIP API; paths are appended in code).
  *
@@ -17,6 +17,7 @@
 
 const fs = require("fs");
 const path = require("path");
+require("dotenv").config();
 
 const CCIP_API_BASE_URL = process.env.CCIP_API_BASE_URL;
 if (!CCIP_API_BASE_URL || CCIP_API_BASE_URL.trim() === "") {
@@ -49,7 +50,7 @@ function apiUrl(path, params) {
  */
 function generateRegister(outputPath, networkDetails) {
     // Default output path
-    const defaultOutputPath = path.join(__dirname, "../../src/ccip/Register.sol");
+    const defaultOutputPath = path.join(__dirname, "../src/ccip/Register.sol");
     const outputFilePath = outputPath || defaultOutputPath;
     
     // Generate Solidity code
@@ -88,7 +89,7 @@ function generateRegister(outputPath, networkDetails) {
     const fullConstructorCode = "    /// @notice Constructor to initialize network details for various chains.\n    constructor() {\n" + constructorBody + "    }";
     
     // Read the Register.sol file
-    const registerPath = path.join(__dirname, "../../src/ccip/Register.sol");
+    const registerPath = path.join(__dirname, "../src/ccip/Register.sol");
     let registerCode = fs.readFileSync(registerPath, "utf8");
     
     // Replace the constructor with the generated one

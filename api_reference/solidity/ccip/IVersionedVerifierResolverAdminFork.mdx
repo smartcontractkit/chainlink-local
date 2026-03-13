@@ -1,0 +1,28 @@
+# Solidity API
+
+## IVersionedVerifierResolverAdminFork
+
+## Functions
+
+### owner
+
+```solidity
+function owner() external view returns (address);
+```
+
+### applyInboundImplementationUpdates
+
+```solidity
+function applyInboundImplementationUpdates(InboundImplementationArgs[] calldata implementations) external;
+```
+
+## Structs
+
+### InboundImplementationArgs
+
+```solidity
+struct InboundImplementationArgs {
+    bytes4 version;
+    address verifier;
+}
+```
