@@ -1,0 +1,48 @@
+## Functions
+
+<dl>
+  <dt>
+    <a href="#requestLinkFromFaucet">
+      requestLinkFromFaucet(linkAddress, to, amount)
+    </a>{' '}
+    ⇒ <code>Promise.&lt;string&gt;</code>
+  </dt>
+  <dd>
+    <p>Requests LINK tokens from the faucet and returns the transaction hash</p>
+  </dd>
+  <dt>
+    <a href="#requestNativeFromFaucet">requestNativeFromFaucet(to, amount)</a>
+  </dt>
+  <dd>
+    <p>Requests native coins from the faucet</p>
+  </dd>
+</dl>
+
+<a name="requestLinkFromFaucet"></a>
+
+## requestLinkFromFaucet(linkAddress, to, amount) ⇒ <code>Promise.&lt;string&gt;</code>
+
+Requests LINK tokens from the faucet and returns the transaction hash
+
+**Kind**: global function  
+**Returns**: <code>Promise.&lt;string&gt;</code> - Promise resolving to the
+transaction hash of the fund transfer
+
+| Param       | Type                | Description                                             |
+| ----------- | ------------------- | ------------------------------------------------------- |
+| linkAddress | <code>string</code> | The address of the LINK contract on the current network |
+| to          | <code>string</code> | The address to send LINK to                             |
+| amount      | <code>bigint</code> | The amount of LINK to request                           |
+
+<a name="requestNativeFromFaucet"></a>
+
+## requestNativeFromFaucet(to, amount)
+
+Requests native coins from the faucet
+
+**Kind**: global function
+
+| Param  | Type                | Description                    |
+| ------ | ------------------- | ------------------------------ |
+| to     | <code>string</code> | The address to send coins to   |
+| amount | <code>bigint</code> | The amount of coins to request |

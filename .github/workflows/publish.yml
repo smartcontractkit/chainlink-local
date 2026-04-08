@@ -27,6 +27,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Use Node.js
         uses: actions/setup-node@v4
@@ -76,11 +78,8 @@ jobs:
         id: release-type
         run: |
           if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" =~ ^refs/tags/v.* ]]; then
-            # Get the branch that was tagged (usually the default branch of the tag)
-            BRANCH_NAME="${{ github.ref_name }}"
-            
             # Check if tag contains 'beta' to determine release type
-            if [[ "${{ github.ref_name }}" == *"beta"* ]]; then
+            if [[ "${{ github.ref_name }}" == *"-beta"* ]]; then
               echo "type=beta" >> $GITHUB_OUTPUT
               echo "expected_branch=develop" >> $GITHUB_OUTPUT
             else
@@ -99,32 +98,56 @@ jobs:
 
       - name: Validate branch for release type
         run: |
-          CURRENT_BRANCH="${{ github.ref_name }}"
           EXPECTED_BRANCH="${{ steps.release-type.outputs.expected_branch }}"
           RELEASE_TYPE="${{ steps.release-type.outputs.type }}"
-          
-          echo "Current branch: $CURRENT_BRANCH"
-          echo "Expected branch for $RELEASE_TYPE release: $EXPECTED_BRANCH"
-          
-          # For manual dispatch, we can't validate branch, so skip
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "⚠️ Manual dispatch detected - skipping branch validation"
-            echo "Please ensure you're running from the correct branch:"
-            echo "- Beta releases should be from 'develop' branch"
-            echo "- Stable releases should be from 'main' branch"
+
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" =~ ^refs/tags/v.* ]]; then
+            TAG_NAME="${{ github.ref_name }}"
+            TAG_SHA="${{ github.sha }}"
+
+            echo "Tag: $TAG_NAME"
+            echo "Tag commit: $TAG_SHA"
+            echo "Expected branch for $RELEASE_TYPE release: $EXPECTED_BRANCH"
+
+            # Ensure expected branch ref exists locally.
+            if ! git fetch --no-tags --prune origin "${EXPECTED_BRANCH}"; then
+              echo "❌ Branch validation failed!"
+              echo "Could not fetch expected branch from origin: $EXPECTED_BRANCH"
+              exit 1
+            fi
+
+            if ! git show-ref --verify --quiet "refs/remotes/origin/${EXPECTED_BRANCH}"; then
+              echo "❌ Branch validation failed!"
+              echo "Could not fetch expected branch: $EXPECTED_BRANCH"
+              exit 1
+            fi
+
+            # Validate the tagged commit belongs to expected branch history.
+            if ! git merge-base --is-ancestor "$TAG_SHA" "origin/${EXPECTED_BRANCH}"; then
+              echo "❌ Branch validation failed!"
+              echo "Tag commit is not contained in branch: $EXPECTED_BRANCH"
+              echo "Please create the tag from the correct branch"
+              exit 1
+            fi
+
+            echo "✅ Tag ancestry validation passed"
             exit 0
           fi
-          
-          # For tag pushes, validate branch
+
+          # workflow_dispatch: validate selected branch directly.
+          CURRENT_BRANCH="${{ github.ref_name }}"
+          echo "Selected workflow branch: $CURRENT_BRANCH"
+          echo "Expected branch for $RELEASE_TYPE release: $EXPECTED_BRANCH"
+
           if [[ "$CURRENT_BRANCH" != "$EXPECTED_BRANCH" ]]; then
             echo "❌ Branch validation failed!"
             echo "Current branch: $CURRENT_BRANCH"
             echo "Expected branch for $RELEASE_TYPE release: $EXPECTED_BRANCH"
-            echo "Please create the tag from the correct branch"
+            echo "For manual runs, choose the correct branch in 'Use workflow from'."
             exit 1
           fi
-          
-          echo "✅ Branch validation passed"
+
+          echo "✅ Manual branch validation passed"
 
       - name: Publish stable release
         if: steps.release-type.outputs.type == 'stable'

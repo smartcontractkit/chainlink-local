@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {MockV3Aggregator} from "@chainlink/local/src/data-feeds/MockV3Aggregator.sol";
 
 import {BasicDataConsumerV3} from "../../../src/test/data-feeds/BasicDataConsumerV3.sol";
@@ -20,7 +20,7 @@ contract BasicDataConsumerV3Test is Test {
         consumer = new BasicDataConsumerV3(address(mockEthUsdAggregator));
     }
 
-    function test_smoke() public {
+    function test_smoke() public view {
         int256 answer = consumer.getChainlinkDataFeedLatestAnswer();
         assertEq(answer, initialAnswer, "answer should be equal to initialAnswer");
     }

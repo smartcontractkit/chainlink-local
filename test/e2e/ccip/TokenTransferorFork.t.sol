@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {Test, Vm} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {TokenTransferor} from "../../../src/test/ccip/TokenTransferor.sol";
 import {BurnMintERC677Helper, IERC20} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
 import {CCIPLocalSimulatorFork, Register} from "../../../src/ccip/CCIPLocalSimulatorFork.sol";
@@ -12,6 +12,7 @@ contract TokenTransferorFork is Test {
     BurnMintERC677Helper public ccipBnM;
     IERC20 public linkToken;
     address alice;
+    uint64 arbSepoliaChainSelector;
 
     uint256 sepoliaFork;
     uint256 arbSepoliaFork;
@@ -26,6 +27,10 @@ contract TokenTransferorFork is Test {
         vm.makePersistent(address(ccipLocalSimulatorFork));
 
         Register.NetworkDetails memory sepoliaNetworkDetails = ccipLocalSimulatorFork.getNetworkDetails(block.chainid);
+        vm.selectFork(arbSepoliaFork);
+        Register.NetworkDetails memory arbSepoliaNetworkDetails = ccipLocalSimulatorFork.getNetworkDetails(block.chainid);
+        arbSepoliaChainSelector = arbSepoliaNetworkDetails.chainSelector;
+        vm.selectFork(sepoliaFork);
 
         sender = new TokenTransferor(sepoliaNetworkDetails.routerAddress, sepoliaNetworkDetails.linkAddress);
 
@@ -42,7 +47,6 @@ contract TokenTransferorFork is Test {
         uint256 amountToSend = 100;
         ccipBnM.drip(address(sender));
 
-        uint64 arbSepoliaChainSelector = 3478487238524512106;
         sender.allowlistDestinationChain(arbSepoliaChainSelector, true);
 
         uint256 balanceBefore = ccipBnM.balanceOf(address(sender));

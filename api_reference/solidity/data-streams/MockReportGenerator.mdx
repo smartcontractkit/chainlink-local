@@ -2,170 +2,194 @@
 
 ## MockReportGenerator
 
+**Inherits:** Test,
+[ReportVersions](/src/data-streams/ReportVersions.sol/abstract.ReportVersions.md)
+
+## State Variables
+
 ### i_donAddress
 
 ```solidity
-address i_donAddress
+address internal immutable i_donAddress
 ```
 
 ### i_donDigest
 
 ```solidity
-uint256 i_donDigest
+uint256 internal immutable i_donDigest
 ```
 
 ### i_reportV2MockFeedId
 
 ```solidity
-bytes32 i_reportV2MockFeedId
+bytes32 internal immutable i_reportV2MockFeedId =
+    hex"0002777777777777777777777777777777777777777777777777777777777777"
 ```
 
 ### i_reportV3MockFeedId
 
 ```solidity
-bytes32 i_reportV3MockFeedId
+bytes32 internal immutable i_reportV3MockFeedId =
+    hex"0003777777777777777777777777777777777777777777777777777777777777"
 ```
 
 ### i_reportV4MockFeedId
 
 ```solidity
-bytes32 i_reportV4MockFeedId
+bytes32 internal immutable i_reportV4MockFeedId =
+    hex"0004777777777777777777777777777777777777777777777777777777777777"
 ```
 
 ### s_price
 
 ```solidity
-int192 s_price
+int192 internal s_price
 ```
 
 ### s_bid
 
 ```solidity
-int192 s_bid
+int192 internal s_bid
 ```
 
 ### s_ask
 
 ```solidity
-int192 s_ask
+int192 internal s_ask
 ```
 
 ### s_expiresPeriod
 
 ```solidity
-uint32 s_expiresPeriod
+uint32 internal s_expiresPeriod
 ```
 
 ### s_marketStatus
 
 ```solidity
-uint32 s_marketStatus
+uint32 internal s_marketStatus
 ```
 
 ### s_nativeFee
 
 ```solidity
-uint192 s_nativeFee
+uint192 internal s_nativeFee
 ```
 
 ### s_linkFee
 
 ```solidity
-uint192 s_linkFee
+uint192 internal s_linkFee
 ```
 
-### MockReportGenerator\_\_InvalidBid
-
-```solidity
-error MockReportGenerator__InvalidBid()
-```
-
-### MockReportGenerator\_\_InvalidAsk
-
-```solidity
-error MockReportGenerator__InvalidAsk()
-```
-
-### MockReportGenerator\_\_CastOverflow
-
-```solidity
-error MockReportGenerator__CastOverflow()
-```
+## Functions
 
 ### constructor
 
 ```solidity
-constructor(int192 initialPrice) public
+constructor(int192 initialPrice) ;
 ```
 
 ### generateReport
 
 ```solidity
-function generateReport(struct ReportVersions.ReportV2 report) external returns (bytes signedReport)
+function generateReport(ReportV2 calldata report) external returns (bytes memory signedReport);
 ```
 
 ### generateReport
 
 ```solidity
-function generateReport(struct ReportVersions.ReportV3 report) external returns (bytes signedReport)
+function generateReport(ReportV3 calldata report) external returns (bytes memory signedReport);
 ```
 
 ### generateReport
 
 ```solidity
-function generateReport(struct ReportVersions.ReportV4 report) external returns (bytes signedReport)
+function generateReport(ReportV4 calldata report) external returns (bytes memory signedReport);
 ```
 
 ### generateReportV2
 
 ```solidity
-function generateReportV2() external returns (bytes signedReport, struct ReportVersions.ReportV2 report)
+function generateReportV2() external returns (bytes memory signedReport, ReportV2 memory report);
 ```
 
 ### generateReportV3
 
 ```solidity
-function generateReportV3() external returns (bytes signedReport, struct ReportVersions.ReportV3 report)
+function generateReportV3() external returns (bytes memory signedReport, ReportV3 memory report);
 ```
 
 ### generateReportV4
 
 ```solidity
-function generateReportV4() external returns (bytes signedReport, struct ReportVersions.ReportV4 report)
+function generateReportV4() external returns (bytes memory signedReport, ReportV4 memory report);
 ```
 
 ### updatePrice
 
 ```solidity
-function updatePrice(int192 price) public
+function updatePrice(int192 price) public;
 ```
 
 ### updatePriceBidAndAsk
 
 ```solidity
-function updatePriceBidAndAsk(int192 price, int192 bid, int192 ask) external
+function updatePriceBidAndAsk(int192 price, int192 bid, int192 ask) external;
 ```
 
 ### updateExpiresPeriod
 
 ```solidity
-function updateExpiresPeriod(uint32 period) external
+function updateExpiresPeriod(uint32 period) external;
 ```
 
 ### updateMarketStatus
 
 ```solidity
-function updateMarketStatus(uint32 status) external
+function updateMarketStatus(uint32 status) external;
 ```
 
 ### updateFees
 
 ```solidity
-function updateFees(uint192 nativeFee, uint192 linkFee) external
+function updateFees(uint192 nativeFee, uint192 linkFee) external;
 ```
 
 ### getMockDonAddress
 
 ```solidity
-function getMockDonAddress() external view returns (address)
+function getMockDonAddress() external view returns (address);
+```
+
+### signReport
+
+```solidity
+function signReport(bytes memory reportData) private returns (bytes memory signedReport);
+```
+
+### toUint32
+
+```solidity
+function toUint32(uint256 timestamp) private pure returns (uint32);
+```
+
+## Errors
+
+### MockReportGenerator\_\_InvalidBid
+
+```solidity
+error MockReportGenerator__InvalidBid();
+```
+
+### MockReportGenerator\_\_InvalidAsk
+
+```solidity
+error MockReportGenerator__InvalidAsk();
+```
+
+### MockReportGenerator\_\_CastOverflow
+
+```solidity
+error MockReportGenerator__CastOverflow();
 ```

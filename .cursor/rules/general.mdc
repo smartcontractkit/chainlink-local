@@ -1,0 +1,6 @@
+---
+description: General project rules for Chainlink Local
+globs:
+---
+
+All project rules, conventions, and commands are in [AGENTS.md](../../AGENTS.md) at the repository root. Read it before starting any task.

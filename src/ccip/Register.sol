@@ -906,6 +906,19 @@ contract Register {
             tokenAdminRegistryAddress: address(0x65B023D3D4Ea880B835BF2CDE48B296Ee7157EcE)
         });
 
+        // Edge
+        s_networkDetails[3343] = NetworkDetails({
+            chainSelector: 6325494908023253251,
+            routerAddress: address(0x0aA145a62153190B8f0D3cA00c441e451529f755),
+            linkAddress: address(0x76a443768A5e3B8d1AED0105FC250877841Deb40),
+            wrappedNativeAddress: address(0xBf10e3Dd6D1303310D3bf4567595091758827bc5),
+            ccipBnMAddress: address(0),
+            ccipLnMAddress: address(0),
+            rmnProxyAddress: address(0xBF38331E34ef7f248020611bB31Be0576D06413D),
+            registryModuleOwnerCustomAddress: address(0x91339eb99C4c2Be9A071203DD99E014A3189FD29),
+            tokenAdminRegistryAddress: address(0x051665f2455116e929b9972c36d23070F5054Ce0)
+        });
+
         // Botanix Testnet
         s_networkDetails[3636] = NetworkDetails({
             chainSelector: 1467223411771711614,
@@ -1192,6 +1205,19 @@ contract Register {
             tokenAdminRegistryAddress: address(0xD3ED6fC9fd22412764ac2Ef64fB664b9393dF9F2)
         });
 
+        // Edge Testnet
+        s_networkDetails[33431] = NetworkDetails({
+            chainSelector: 13222148116102326311,
+            routerAddress: address(0x64c12A9Bfdb4DEB5F37A0eC4c5fae0405669612A),
+            linkAddress: address(0xD610B8f58689de7755947C05342A2DFaC30ebD57),
+            wrappedNativeAddress: address(0x348fc2Dd7648a398DA276751bdd50E08c31f4F72),
+            ccipBnMAddress: address(0),
+            ccipLnMAddress: address(0),
+            rmnProxyAddress: address(0x0ED0EEb9b71778C2b826f37D35c4Be91D2741F33),
+            registryModuleOwnerCustomAddress: address(0xD19CFe54f26679a0C9dd7766AA8ac374b9c2Ac6b),
+            tokenAdminRegistryAddress: address(0x948cfD1C48C52a93D23Ace2CfB4D2abACc0Ada29)
+        });
+
         // Mode
         s_networkDetails[34443] = NetworkDetails({
             chainSelector: 7264351850409363825,
@@ -1216,6 +1242,19 @@ contract Register {
             rmnProxyAddress: address(0xf09AFe78d3c7d359b334d7cB88995751F7eC5E13),
             registryModuleOwnerCustomAddress: address(0xf4a170A36D4C656F614d44453f73308Bdb275196),
             tokenAdminRegistryAddress: address(0xA27056438FfA1f286AB197488808692F0db93F8B)
+        });
+
+        // ADI Network
+        s_networkDetails[36900] = NetworkDetails({
+            chainSelector: 4059281736450291836,
+            routerAddress: address(0x010771998A1F4736BD844939d0bf01ac5cA0f8fa),
+            linkAddress: address(0x76a443768A5e3B8d1AED0105FC250877841Deb40),
+            wrappedNativeAddress: address(0xBa7A1DA3d3C9F9bE5A1A56d25014932C9166D09C),
+            ccipBnMAddress: address(0),
+            ccipLnMAddress: address(0),
+            rmnProxyAddress: address(0x61b7492A40AE4c403629703a38d24851CAA1e7E4),
+            registryModuleOwnerCustomAddress: address(0x6525923279256B8a86c1C01cF5955eB00C39B048),
+            tokenAdminRegistryAddress: address(0x5fA6f142EAC511DF12325776386AB92B0F4D1eba)
         });
 
         // Lens Sepolia

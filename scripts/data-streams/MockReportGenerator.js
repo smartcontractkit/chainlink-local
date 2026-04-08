@@ -2,9 +2,15 @@ const { ethers } = require("hardhat");
 
 const { ReportV2, ReportV3, ReportV4 } = require("./ReportVersions");
 
+/**
+ * Utility that builds deterministic mock Data Streams signed reports for local testing.
+ */
 class MockReportGenerator {
     #abi_encoder;
 
+    /**
+     * @param {bigint|number} initialPrice Initial benchmark price used for generated reports.
+     */
     constructor(initialPrice) {
         // uint256(keccak256(abi.encodePacked("Mock Data Streams DON")));
         this.i_donDigest = BigInt(ethers.keccak256(ethers.toUtf8Bytes("Mock Data Streams DON")));
@@ -24,24 +30,47 @@ class MockReportGenerator {
         this.#abi_encoder = ethers.AbiCoder.defaultAbiCoder();
     }
 
+    /**
+     * Encodes and signs a version 2 report payload.
+     *
+     * @param {ReportV2} report Report object to encode.
+     * @returns {string} ABI-encoded signed report blob.
+     */
     generateReportV2WithData(report) {
         const reportData = this.#abi_encoder.encode(["bytes32", "uint32", "uint32", "uint192", "uint192", "uint32", "int192"], [report.feedId, report.validFromTimestamp, report.observationsTimestamp, report.nativeFee, report.linkFee, report.expiresAt, report.benchmarkPrice]);
         const signedReport = this.#signReport(reportData);
         return signedReport;
     }
 
+    /**
+     * Encodes and signs a version 3 report payload.
+     *
+     * @param {ReportV3} report Report object to encode.
+     * @returns {string} ABI-encoded signed report blob.
+     */
     generateReportV3WithData(report) {
         const reportData = this.#abi_encoder.encode(["bytes32", "uint32", "uint32", "uint192", "uint192", "uint32", "int192", "int192", "int192"], [report.feedId, report.validFromTimestamp, report.observationsTimestamp, report.nativeFee, report.linkFee, report.expiresAt, report.price, report.bid, report.ask]);
         const signedReport = this.#signReport(reportData);
         return signedReport;
     }
 
+    /**
+     * Encodes and signs a version 4 report payload.
+     *
+     * @param {ReportV4} report Report object to encode.
+     * @returns {string} ABI-encoded signed report blob.
+     */
     generateReportV4WithData(report) {
         const reportData = this.#abi_encoder.encode(["bytes32", "uint32", "uint32", "uint192", "uint192", "uint32", "int192", "uint8"], [report.feedId, report.validFromTimestamp, report.observationsTimestamp, report.nativeFee, report.linkFee, report.expiresAt, report.price, report.marketStatus]);
         const signedReport = this.#signReport(reportData);
         return signedReport;
     }
 
+    /**
+     * Builds and signs a default version 2 report from current generator state.
+     *
+     * @returns {Promise<{signedReport: string, report: ReportV2}>} Signed payload and decoded report model.
+     */
     async generateReportV2() {
         const latestBlock = await ethers.provider.getBlock("latest");
         const currentTimestamp = latestBlock.timestamp;
@@ -61,6 +90,11 @@ class MockReportGenerator {
         return { signedReport, report };
     }
 
+    /**
+     * Builds and signs a default version 3 report from current generator state.
+     *
+     * @returns {Promise<{signedReport: string, report: ReportV3}>} Signed payload and decoded report model.
+     */
     async generateReportV3() {
         const latestBlock = await ethers.provider.getBlock("latest");
         const currentTimestamp = latestBlock.timestamp;
@@ -82,6 +116,11 @@ class MockReportGenerator {
         return { signedReport, report };
     }
 
+    /**
+     * Builds and signs a default version 4 report from current generator state.
+     *
+     * @returns {Promise<{signedReport: string, report: ReportV4}>} Signed payload and decoded report model.
+     */
     async generateReportV4() {
         const latestBlock = await ethers.provider.getBlock("latest");
         const currentTimestamp = latestBlock.timestamp;
@@ -102,6 +141,12 @@ class MockReportGenerator {
         return { signedReport, report };
     }
 
+    /**
+     * Updates benchmark price and derives bid/ask around it using +/-0.1%.
+     *
+     * @param {bigint|number} price New benchmark price.
+     * @returns {void}
+     */
     updatePrice(price) {
         let priceAdjusted;
         let zeroOnePercent;
@@ -119,6 +164,14 @@ class MockReportGenerator {
         this.s_ask = priceAdjusted + delta;
     }
 
+    /**
+     * Updates benchmark price and explicit bid/ask values.
+     *
+     * @param {bigint|number} price Benchmark price.
+     * @param {bigint|number} bid Bid value; must be lower than price.
+     * @param {bigint|number} ask Ask value; must be higher than price.
+     * @returns {void}
+     */
     updatePriceBidAndAsk(price, bid, ask) {
         // bid < price < ask
         if (bid >= price) throw new Error("Bid must be less than price");
@@ -129,19 +182,37 @@ class MockReportGenerator {
         this.s_ask = ask;
     }
 
+    /**
+     * @param {number} period Report expiry period in seconds.
+     * @returns {void}
+     */
     updateExpiresPeriod(period) {
         this.s_expiresPeriod = period;
     }
 
+    /**
+     * @param {number} status Market status code.
+     * @returns {void}
+     */
     updateMarketStatus(status) {
         this.s_marketStatus = status;
     }
 
+    /**
+     * @param {bigint|number} nativeFee Verification fee in native token units.
+     * @param {bigint|number} linkFee Verification fee in LINK units.
+     * @returns {void}
+     */
     updateFees(nativeFee, linkFee) {
         this.s_nativeFee = nativeFee;
         this.s_linkFee = linkFee;
     }
 
+    /**
+     * Returns the mock DON signer address derived from the fixed DON digest.
+     *
+     * @returns {string} EVM address.
+     */
     getMockDonAddress() {
         return this.i_donAddress;
     }

@@ -1,0 +1,189 @@
+<a name="MockReportGenerator"></a>
+
+## MockReportGenerator
+
+Utility that builds deterministic mock Data Streams signed reports for local
+testing.
+
+**Kind**: global class
+
+- [MockReportGenerator](#MockReportGenerator)
+  - [new MockReportGenerator(initialPrice)](#new_MockReportGenerator_new)
+  - [.generateReportV2WithData(report)](#MockReportGenerator+generateReportV2WithData)
+    ⇒ <code>string</code>
+  - [.generateReportV3WithData(report)](#MockReportGenerator+generateReportV3WithData)
+    ⇒ <code>string</code>
+  - [.generateReportV4WithData(report)](#MockReportGenerator+generateReportV4WithData)
+    ⇒ <code>string</code>
+  - [.generateReportV2()](#MockReportGenerator+generateReportV2) ⇒
+    <code>Promise.&lt;\{signedReport: string, report: ReportV2}&gt;</code>
+  - [.generateReportV3()](#MockReportGenerator+generateReportV3) ⇒
+    <code>Promise.&lt;\{signedReport: string, report: ReportV3}&gt;</code>
+  - [.generateReportV4()](#MockReportGenerator+generateReportV4) ⇒
+    <code>Promise.&lt;\{signedReport: string, report: ReportV4}&gt;</code>
+  - [.updatePrice(price)](#MockReportGenerator+updatePrice) ⇒ <code>void</code>
+  - [.updatePriceBidAndAsk(price, bid, ask)](#MockReportGenerator+updatePriceBidAndAsk)
+    ⇒ <code>void</code>
+  - [.updateExpiresPeriod(period)](#MockReportGenerator+updateExpiresPeriod) ⇒
+    <code>void</code>
+  - [.updateMarketStatus(status)](#MockReportGenerator+updateMarketStatus) ⇒
+    <code>void</code>
+  - [.updateFees(nativeFee, linkFee)](#MockReportGenerator+updateFees) ⇒
+    <code>void</code>
+  - [.getMockDonAddress()](#MockReportGenerator+getMockDonAddress) ⇒
+    <code>string</code>
+
+<a name="new_MockReportGenerator_new"></a>
+
+### new MockReportGenerator(initialPrice)
+
+| Param        | Type                                       | Description                                         |
+| ------------ | ------------------------------------------ | --------------------------------------------------- |
+| initialPrice | <code>bigint</code> \| <code>number</code> | Initial benchmark price used for generated reports. |
+
+<a name="MockReportGenerator+generateReportV2WithData"></a>
+
+### mockReportGenerator.generateReportV2WithData(report) ⇒ <code>string</code>
+
+Encodes and signs a version 2 report payload.
+
+**Kind**: instance method of
+[<code>MockReportGenerator</code>](#MockReportGenerator)  
+**Returns**: <code>string</code> - ABI-encoded signed report blob.
+
+| Param  | Type                  | Description              |
+| ------ | --------------------- | ------------------------ |
+| report | <code>ReportV2</code> | Report object to encode. |
+
+<a name="MockReportGenerator+generateReportV3WithData"></a>
+
+### mockReportGenerator.generateReportV3WithData(report) ⇒ <code>string</code>
+
+Encodes and signs a version 3 report payload.
+
+**Kind**: instance method of
+[<code>MockReportGenerator</code>](#MockReportGenerator)  
+**Returns**: <code>string</code> - ABI-encoded signed report blob.
+
+| Param  | Type                  | Description              |
+| ------ | --------------------- | ------------------------ |
+| report | <code>ReportV3</code> | Report object to encode. |
+
+<a name="MockReportGenerator+generateReportV4WithData"></a>
+
+### mockReportGenerator.generateReportV4WithData(report) ⇒ <code>string</code>
+
+Encodes and signs a version 4 report payload.
+
+**Kind**: instance method of
+[<code>MockReportGenerator</code>](#MockReportGenerator)  
+**Returns**: <code>string</code> - ABI-encoded signed report blob.
+
+| Param  | Type                  | Description              |
+| ------ | --------------------- | ------------------------ |
+| report | <code>ReportV4</code> | Report object to encode. |
+
+<a name="MockReportGenerator+generateReportV2"></a>
+
+### mockReportGenerator.generateReportV2() ⇒ <code>Promise.&lt;\{signedReport: string, report: ReportV2}&gt;</code>
+
+Builds and signs a default version 2 report from current generator state.
+
+**Kind**: instance method of
+[<code>MockReportGenerator</code>](#MockReportGenerator)  
+**Returns**: <code>Promise.&lt;\{signedReport: string, report:
+ReportV2}&gt;</code> - Signed payload and decoded report model.
+
+<a name="MockReportGenerator+generateReportV3"></a>
+
+### mockReportGenerator.generateReportV3() ⇒ <code>Promise.&lt;\{signedReport: string, report: ReportV3}&gt;</code>
+
+Builds and signs a default version 3 report from current generator state.
+
+**Kind**: instance method of
+[<code>MockReportGenerator</code>](#MockReportGenerator)  
+**Returns**: <code>Promise.&lt;\{signedReport: string, report:
+ReportV3}&gt;</code> - Signed payload and decoded report model.
+
+<a name="MockReportGenerator+generateReportV4"></a>
+
+### mockReportGenerator.generateReportV4() ⇒ <code>Promise.&lt;\{signedReport: string, report: ReportV4}&gt;</code>
+
+Builds and signs a default version 4 report from current generator state.
+
+**Kind**: instance method of
+[<code>MockReportGenerator</code>](#MockReportGenerator)  
+**Returns**: <code>Promise.&lt;\{signedReport: string, report:
+ReportV4}&gt;</code> - Signed payload and decoded report model.
+
+<a name="MockReportGenerator+updatePrice"></a>
+
+### mockReportGenerator.updatePrice(price) ⇒ <code>void</code>
+
+Updates benchmark price and derives bid/ask around it using +/-0.1%.
+
+**Kind**: instance method of
+[<code>MockReportGenerator</code>](#MockReportGenerator)
+
+| Param | Type                                       | Description          |
+| ----- | ------------------------------------------ | -------------------- |
+| price | <code>bigint</code> \| <code>number</code> | New benchmark price. |
+
+<a name="MockReportGenerator+updatePriceBidAndAsk"></a>
+
+### mockReportGenerator.updatePriceBidAndAsk(price, bid, ask) ⇒ <code>void</code>
+
+Updates benchmark price and explicit bid/ask values.
+
+**Kind**: instance method of
+[<code>MockReportGenerator</code>](#MockReportGenerator)
+
+| Param | Type                                       | Description                           |
+| ----- | ------------------------------------------ | ------------------------------------- |
+| price | <code>bigint</code> \| <code>number</code> | Benchmark price.                      |
+| bid   | <code>bigint</code> \| <code>number</code> | Bid value; must be lower than price.  |
+| ask   | <code>bigint</code> \| <code>number</code> | Ask value; must be higher than price. |
+
+<a name="MockReportGenerator+updateExpiresPeriod"></a>
+
+### mockReportGenerator.updateExpiresPeriod(period) ⇒ <code>void</code>
+
+**Kind**: instance method of
+[<code>MockReportGenerator</code>](#MockReportGenerator)
+
+| Param  | Type                | Description                      |
+| ------ | ------------------- | -------------------------------- |
+| period | <code>number</code> | Report expiry period in seconds. |
+
+<a name="MockReportGenerator+updateMarketStatus"></a>
+
+### mockReportGenerator.updateMarketStatus(status) ⇒ <code>void</code>
+
+**Kind**: instance method of
+[<code>MockReportGenerator</code>](#MockReportGenerator)
+
+| Param  | Type                | Description         |
+| ------ | ------------------- | ------------------- |
+| status | <code>number</code> | Market status code. |
+
+<a name="MockReportGenerator+updateFees"></a>
+
+### mockReportGenerator.updateFees(nativeFee, linkFee) ⇒ <code>void</code>
+
+**Kind**: instance method of
+[<code>MockReportGenerator</code>](#MockReportGenerator)
+
+| Param     | Type                                       | Description                             |
+| --------- | ------------------------------------------ | --------------------------------------- |
+| nativeFee | <code>bigint</code> \| <code>number</code> | Verification fee in native token units. |
+| linkFee   | <code>bigint</code> \| <code>number</code> | Verification fee in LINK units.         |
+
+<a name="MockReportGenerator+getMockDonAddress"></a>
+
+### mockReportGenerator.getMockDonAddress() ⇒ <code>string</code>
+
+Returns the mock DON signer address derived from the fixed DON digest.
+
+**Kind**: instance method of
+[<code>MockReportGenerator</code>](#MockReportGenerator)  
+**Returns**: <code>string</code> - EVM address.

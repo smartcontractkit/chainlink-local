@@ -1,0 +1,26 @@
+# Solidity API
+
+## IOffRampExecuteV2
+
+## Functions
+
+### getCCVsForMessage
+
+```solidity
+function getCCVsForMessage(bytes calldata encodedMessage)
+    external
+    view
+    returns (address[] memory requiredCCVs, address[] memory optionalCCVs, uint8 threshold);
+```
+
+### executeSingleMessage
+
+```solidity
+function executeSingleMessage(
+    MessageV1Codec.MessageV1 calldata message,
+    bytes32 messageId,
+    address[] calldata ccvs,
+    bytes[] calldata verifierResults,
+    uint32 gasLimitOverride
+) external;
+```

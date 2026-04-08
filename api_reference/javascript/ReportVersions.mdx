@@ -1,0 +1,94 @@
+## Classes
+
+<dl>
+  <dt>
+    <a href="#ReportV2">ReportV2</a>
+  </dt>
+  <dd>
+    <p>Mock report payload model for Data Streams report version 2.</p>
+  </dd>
+  <dt>
+    <a href="#ReportV3">ReportV3</a>
+  </dt>
+  <dd>
+    <p>Mock report payload model for Data Streams report version 3.</p>
+  </dd>
+  <dt>
+    <a href="#ReportV4">ReportV4</a>
+  </dt>
+  <dd>
+    <p>Mock report payload model for Data Streams report version 4.</p>
+  </dd>
+</dl>
+
+<a name="ReportV2"></a>
+
+## ReportV2
+
+Mock report payload model for Data Streams report version 2.
+
+**Kind**: global class
+
+<a name="new_ReportV2_new"></a>
+
+### new ReportV2(params)
+
+| Param                        | Type                                       | Description                                     |
+| ---------------------------- | ------------------------------------------ | ----------------------------------------------- |
+| params                       | <code>object</code>                        | Report fields.                                  |
+| params.feedId                | <code>string</code>                        | Feed identifier as bytes32 hex string.          |
+| params.validFromTimestamp    | <code>number</code>                        | Earliest timestamp where the report is valid.   |
+| params.observationsTimestamp | <code>number</code>                        | Latest timestamp covered by observations.       |
+| params.nativeFee             | <code>bigint</code> \| <code>number</code> | Verification fee in native token units.         |
+| params.linkFee               | <code>bigint</code> \| <code>number</code> | Verification fee in LINK units.                 |
+| params.expiresAt             | <code>number</code>                        | Expiration timestamp for on-chain verification. |
+| params.benchmarkPrice        | <code>bigint</code> \| <code>number</code> | Median benchmark price.                         |
+
+<a name="ReportV3"></a>
+
+## ReportV3
+
+Mock report payload model for Data Streams report version 3.
+
+**Kind**: global class
+
+<a name="new_ReportV3_new"></a>
+
+### new ReportV3(params)
+
+| Param                        | Type                                       | Description                                     |
+| ---------------------------- | ------------------------------------------ | ----------------------------------------------- |
+| params                       | <code>object</code>                        | Report fields.                                  |
+| params.feedId                | <code>string</code>                        | Stream identifier as bytes32 hex string.        |
+| params.validFromTimestamp    | <code>number</code>                        | Earliest timestamp where the report is valid.   |
+| params.observationsTimestamp | <code>number</code>                        | Latest timestamp covered by observations.       |
+| params.nativeFee             | <code>bigint</code> \| <code>number</code> | Verification fee in native token units.         |
+| params.linkFee               | <code>bigint</code> \| <code>number</code> | Verification fee in LINK units.                 |
+| params.expiresAt             | <code>number</code>                        | Expiration timestamp for on-chain verification. |
+| params.price                 | <code>bigint</code> \| <code>number</code> | Median price.                                   |
+| params.bid                   | <code>bigint</code> \| <code>number</code> | Simulated buy-side price impact value.          |
+| params.ask                   | <code>bigint</code> \| <code>number</code> | Simulated sell-side price impact value.         |
+
+<a name="ReportV4"></a>
+
+## ReportV4
+
+Mock report payload model for Data Streams report version 4.
+
+**Kind**: global class
+
+<a name="new_ReportV4_new"></a>
+
+### new ReportV4(params)
+
+| Param                        | Type                                       | Description                                     |
+| ---------------------------- | ------------------------------------------ | ----------------------------------------------- |
+| params                       | <code>object</code>                        | Report fields.                                  |
+| params.feedId                | <code>string</code>                        | Stream identifier as bytes32 hex string.        |
+| params.validFromTimestamp    | <code>number</code>                        | Earliest timestamp where the report is valid.   |
+| params.observationsTimestamp | <code>number</code>                        | Latest timestamp covered by observations.       |
+| params.nativeFee             | <code>bigint</code> \| <code>number</code> | Verification fee in native token units.         |
+| params.linkFee               | <code>bigint</code> \| <code>number</code> | Verification fee in LINK units.                 |
+| params.expiresAt             | <code>number</code>                        | Expiration timestamp for on-chain verification. |
+| params.price                 | <code>bigint</code> \| <code>number</code> | Median benchmark price.                         |
+| params.marketStatus          | <code>number</code>                        | Market status code reported by DON.             |

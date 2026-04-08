@@ -2,217 +2,236 @@
 
 ## CCIPLocalSimulator
 
+**Title:** CCIPLocalSimulator
+
 This contract simulates local CCIP (Cross-Chain Interoperability Protocol)
 operations for testing and development purposes.
 
-_This contract includes methods to manage supported tokens and configurations
-for local simulations._
+This contract includes methods to manage supported tokens and configurations for
+local simulations.
+
+## State Variables
 
 ### CHAIN_SELECTOR
 
-```solidity
-uint64 CHAIN_SELECTOR
-```
-
 The unique CCIP Chain Selector constant
+
+```solidity
+uint64 constant CHAIN_SELECTOR = 16015286601757825753
+```
 
 ### i_wrappedNative
 
-```solidity
-contract WETH9 i_wrappedNative
-```
-
 The wrapped native token instance
+
+```solidity
+WETH9 internal immutable i_wrappedNative
+```
 
 ### i_linkToken
 
-```solidity
-contract LinkToken i_linkToken
-```
-
 The LINK token instance
+
+```solidity
+LinkToken internal immutable i_linkToken
+```
 
 ### i_ccipBnM
 
-```solidity
-contract BurnMintERC677Helper i_ccipBnM
-```
-
 The BurnMintERC677Helper instance for CCIP-BnM token
+
+```solidity
+BurnMintERC677Helper internal immutable i_ccipBnM
+```
 
 ### i_ccipLnM
 
-```solidity
-contract BurnMintERC677Helper i_ccipLnM
-```
-
 The BurnMintERC677Helper instance for CCIP-LnM token
+
+```solidity
+BurnMintERC677Helper internal immutable i_ccipLnM
+```
 
 ### i_mockRouter
 
-```solidity
-contract MockCCIPRouter i_mockRouter
-```
-
 The mock CCIP router instance
+
+```solidity
+MockCCIPRouter internal immutable i_mockRouter
+```
 
 ### s_supportedTokens
 
-```solidity
-address[] s_supportedTokens
-```
-
 The list of supported token addresses
 
-### CCIPLocalSimulator\_\_MsgSenderIsNotTokenOwner
-
 ```solidity
-error CCIPLocalSimulator__MsgSenderIsNotTokenOwner()
+address[] internal s_supportedTokens
 ```
 
-### CCIPLocalSimulator\_\_RequiredRoleNotFound
-
-```solidity
-error CCIPLocalSimulator__RequiredRoleNotFound(address account, bytes32 role, address token)
-```
+## Functions
 
 ### constructor
 
-```solidity
-constructor() public
-```
-
 Constructor to initialize the contract and pre-deployed token instances
 
-### supportNewTokenViaOwner
-
 ```solidity
-function supportNewTokenViaOwner(address tokenAddress) external
+constructor() ;
 ```
+
+### supportNewTokenViaOwner
 
 Allows user to support any new token, besides CCIP BnM and CCIP LnM, for
 cross-chain transfers. Reverts if token does not implement owner() function.
 Reverts if the caller is not the token owner.
 
-#### Parameters
+```solidity
+function supportNewTokenViaOwner(address tokenAddress) external;
+```
 
-| Name         | Type    | Description                                                        |
-| ------------ | ------- | ------------------------------------------------------------------ |
-| tokenAddress | address | - The address of the token to add to the list of supported tokens. |
+**Parameters**
+
+| Name           | Type      | Description                                                        |
+| -------------- | --------- | ------------------------------------------------------------------ |
+| `tokenAddress` | `address` | - The address of the token to add to the list of supported tokens. |
 
 ### supportNewTokenViaGetCCIPAdmin
-
-```solidity
-function supportNewTokenViaGetCCIPAdmin(address tokenAddress) external
-```
 
 Allows user to support any new token, besides CCIP BnM and CCIP LnM, for
 cross-chain transfers. Reverts if token does not implement getCCIPAdmin()
 function. Reverts if the caller is not the token CCIPAdmin.
 
-#### Parameters
+```solidity
+function supportNewTokenViaGetCCIPAdmin(address tokenAddress) external;
+```
 
-| Name         | Type    | Description                                                        |
-| ------------ | ------- | ------------------------------------------------------------------ |
-| tokenAddress | address | - The address of the token to add to the list of supported tokens. |
+**Parameters**
+
+| Name           | Type      | Description                                                        |
+| -------------- | --------- | ------------------------------------------------------------------ |
+| `tokenAddress` | `address` | - The address of the token to add to the list of supported tokens. |
 
 ### supportNewTokenViaAccessControlDefaultAdmin
-
-```solidity
-function supportNewTokenViaAccessControlDefaultAdmin(address tokenAddress) external
-```
 
 Allows user to support any new token, besides CCIP BnM and CCIP LnM, for
 cross-chain transfers. The caller must have the DEFAULT_ADMIN_ROLE as defined by
 the contract itself. Reverts if the caller is not the admin of the token using
 OZ's AccessControl DEFAULT_ADMIN_ROLE.
 
-#### Parameters
+```solidity
+function supportNewTokenViaAccessControlDefaultAdmin(address tokenAddress) external;
+```
 
-| Name         | Type    | Description                                                        |
-| ------------ | ------- | ------------------------------------------------------------------ |
-| tokenAddress | address | - The address of the token to add to the list of supported tokens. |
+**Parameters**
+
+| Name           | Type      | Description                                                        |
+| -------------- | --------- | ------------------------------------------------------------------ |
+| `tokenAddress` | `address` | - The address of the token to add to the list of supported tokens. |
 
 ### isChainSupported
 
-```solidity
-function isChainSupported(uint64 chainSelector) public pure returns (bool supported)
-```
-
 Checks whether the provided `chainSelector` is supported by the simulator.
 
-#### Parameters
+```solidity
+function isChainSupported(uint64 chainSelector) public pure returns (bool supported);
+```
 
-| Name          | Type   | Description                       |
-| ------------- | ------ | --------------------------------- |
-| chainSelector | uint64 | - The unique CCIP Chain Selector. |
+**Parameters**
 
-#### Return Values
+| Name            | Type     | Description                       |
+| --------------- | -------- | --------------------------------- |
+| `chainSelector` | `uint64` | - The unique CCIP Chain Selector. |
 
-| Name      | Type | Description                                                      |
-| --------- | ---- | ---------------------------------------------------------------- |
-| supported | bool | - Returns true if `chainSelector` is supported by the simulator. |
+**Returns**
+
+| Name        | Type   | Description                                                      |
+| ----------- | ------ | ---------------------------------------------------------------- |
+| `supported` | `bool` | - Returns true if `chainSelector` is supported by the simulator. |
 
 ### getSupportedTokens
-
-```solidity
-function getSupportedTokens(uint64 chainSelector) external view returns (address[] tokens)
-```
 
 Gets a list of token addresses that are supported for cross-chain transfers by
 the simulator.
 
-#### Parameters
+```solidity
+function getSupportedTokens(uint64 chainSelector) external view returns (address[] memory tokens);
+```
 
-| Name          | Type   | Description                       |
-| ------------- | ------ | --------------------------------- |
-| chainSelector | uint64 | - The unique CCIP Chain Selector. |
+**Parameters**
 
-#### Return Values
+| Name            | Type     | Description                       |
+| --------------- | -------- | --------------------------------- |
+| `chainSelector` | `uint64` | - The unique CCIP Chain Selector. |
 
-| Name   | Type      | Description                                                                                        |
-| ------ | --------- | -------------------------------------------------------------------------------------------------- |
-| tokens | address[] | - Returns a list of token addresses that are supported for cross-chain transfers by the simulator. |
+**Returns**
+
+| Name     | Type        | Description                                                                                        |
+| -------- | ----------- | -------------------------------------------------------------------------------------------------- |
+| `tokens` | `address[]` | - Returns a list of token addresses that are supported for cross-chain transfers by the simulator. |
 
 ### requestLinkFromFaucet
-
-```solidity
-function requestLinkFromFaucet(address to, uint256 amount) external returns (bool success)
-```
 
 Requests LINK tokens from the faucet. The provided amount of tokens are
 transferred to provided destination address.
 
-#### Parameters
+```solidity
+function requestLinkFromFaucet(address to, uint256 amount) external returns (bool success);
+```
 
-| Name   | Type    | Description                                        |
-| ------ | ------- | -------------------------------------------------- |
-| to     | address | - The address to which LINK tokens are to be sent. |
-| amount | uint256 | - The amount of LINK tokens to send.               |
+**Parameters**
 
-#### Return Values
+| Name     | Type      | Description                                        |
+| -------- | --------- | -------------------------------------------------- |
+| `to`     | `address` | - The address to which LINK tokens are to be sent. |
+| `amount` | `uint256` | - The amount of LINK tokens to send.               |
 
-| Name    | Type | Description                                                                   |
-| ------- | ---- | ----------------------------------------------------------------------------- |
-| success | bool | - Returns `true` if the transfer of tokens was successful, otherwise `false`. |
+**Returns**
+
+| Name      | Type   | Description                                                                   |
+| --------- | ------ | ----------------------------------------------------------------------------- |
+| `success` | `bool` | - Returns `true` if the transfer of tokens was successful, otherwise `false`. |
 
 ### configuration
-
-```solidity
-function configuration() public view returns (uint64 chainSelector_, contract IRouterClient sourceRouter_, contract IRouterClient destinationRouter_, contract WETH9 wrappedNative_, contract LinkToken linkToken_, contract BurnMintERC677Helper ccipBnM_, contract BurnMintERC677Helper ccipLnM_)
-```
 
 Returns configuration details for pre-deployed contracts and services needed for
 local CCIP simulations.
 
-#### Return Values
+```solidity
+function configuration()
+    public
+    view
+    returns (
+        uint64 chainSelector_,
+        IRouterClient sourceRouter_,
+        IRouterClient destinationRouter_,
+        WETH9 wrappedNative_,
+        LinkToken linkToken_,
+        BurnMintERC677Helper ccipBnM_,
+        BurnMintERC677Helper ccipLnM_
+    );
+```
 
-| Name                | Type                          | Description                                                 |
-| ------------------- | ----------------------------- | ----------------------------------------------------------- |
-| chainSelector\_     | uint64                        | - The unique CCIP Chain Selector.                           |
-| sourceRouter\_      | contract IRouterClient        | - The source chain Router contract.                         |
-| destinationRouter\_ | contract IRouterClient        | - The destination chain Router contract.                    |
-| wrappedNative\_     | contract WETH9                | - The wrapped native token which can be used for CCIP fees. |
-| linkToken\_         | contract LinkToken            | - The LINK token.                                           |
-| ccipBnM\_           | contract BurnMintERC677Helper | - The ccipBnM token.                                        |
-| ccipLnM\_           | contract BurnMintERC677Helper | - The ccipLnM token.                                        |
+**Returns**
+
+| Name                 | Type                   | Description                                                 |
+| -------------------- | ---------------------- | ----------------------------------------------------------- |
+| `chainSelector_`     | `uint64`               | - The unique CCIP Chain Selector.                           |
+| `sourceRouter_`      | `IRouterClient`        | - The source chain Router contract.                         |
+| `destinationRouter_` | `IRouterClient`        | - The destination chain Router contract.                    |
+| `wrappedNative_`     | `WETH9`                | - The wrapped native token which can be used for CCIP fees. |
+| `linkToken_`         | `LinkToken`            | - The LINK token.                                           |
+| `ccipBnM_`           | `BurnMintERC677Helper` | - The ccipBnM token.                                        |
+| `ccipLnM_`           | `BurnMintERC677Helper` | - The ccipLnM token.                                        |
+
+## Errors
+
+### CCIPLocalSimulator\_\_MsgSenderIsNotTokenOwner
+
+```solidity
+error CCIPLocalSimulator__MsgSenderIsNotTokenOwner();
+```
+
+### CCIPLocalSimulator\_\_RequiredRoleNotFound
+
+```solidity
+error CCIPLocalSimulator__RequiredRoleNotFound(address account, bytes32 role, address token);
+```

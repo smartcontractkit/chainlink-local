@@ -2,141 +2,144 @@
 
 ## MockVerifier
 
-### AccessForbidden
+**Inherits:** IERC165
 
-```solidity
-error AccessForbidden()
-```
-
-### InactiveFeed
-
-```solidity
-error InactiveFeed(bytes32 feedId)
-```
-
-### DigestInactive
-
-```solidity
-error DigestInactive(bytes32 feedId, bytes32 configDigest)
-```
-
-### BadVerification
-
-```solidity
-error BadVerification()
-```
-
-### InvalidV
-
-```solidity
-error InvalidV()
-```
-
-### AlreadyUsedSignature
-
-```solidity
-error AlreadyUsedSignature()
-```
-
-### InvalidSignatureLength
-
-```solidity
-error InvalidSignatureLength()
-```
-
-### InvalidS
-
-```solidity
-error InvalidS()
-```
+## State Variables
 
 ### N_2
 
 ```solidity
-uint256 N_2
+uint256 constant N_2 = 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0
 ```
 
 ### MOCK_DATA_STREAM_DON_ADDRESS
 
 ```solidity
-address MOCK_DATA_STREAM_DON_ADDRESS
+address constant MOCK_DATA_STREAM_DON_ADDRESS = 0x143f40b47ab222503b787e98940023c59fc29984
 ```
 
 ### i_verifierProxy
 
 ```solidity
-address i_verifierProxy
+address internal immutable i_verifierProxy
 ```
 
 ### s_inactiveDigests
 
 ```solidity
-mapping(bytes32 => mapping(bytes32 => bool)) s_inactiveDigests
+mapping(bytes32 => mapping(bytes32 => bool)) internal s_inactiveDigests
 ```
 
 ### s_inactiveFeeds
 
 ```solidity
-mapping(bytes32 => bool) s_inactiveFeeds
+mapping(bytes32 => bool) internal s_inactiveFeeds
 ```
 
 ### s_verifiedSignatures
 
 ```solidity
-mapping(bytes => bool) s_verifiedSignatures
+mapping(bytes => bool) internal s_verifiedSignatures
 ```
 
-### ReportVerified
-
-```solidity
-event ReportVerified(bytes32 feedId, address sender)
-```
+## Functions
 
 ### constructor
 
 ```solidity
-constructor(address verifierProxy) public
+constructor(address verifierProxy) ;
 ```
 
 ### verify
 
 ```solidity
-function verify(bytes signedReport, address sender) external returns (bytes verifierResponse)
+function verify(bytes calldata signedReport, address sender) external returns (bytes memory verifierResponse);
 ```
 
 ### deactivateConfig
 
 ```solidity
-function deactivateConfig(bytes32 feedId, bytes32 configDigest) external
+function deactivateConfig(bytes32 feedId, bytes32 configDigest) external;
 ```
 
 ### activateConfig
 
 ```solidity
-function activateConfig(bytes32 feedId, bytes32 configDigest) external
+function activateConfig(bytes32 feedId, bytes32 configDigest) external;
 ```
 
 ### deactivateFeed
 
 ```solidity
-function deactivateFeed(bytes32 feedId) external
+function deactivateFeed(bytes32 feedId) external;
 ```
 
 ### activateFeed
 
 ```solidity
-function activateFeed(bytes32 feedId) external
+function activateFeed(bytes32 feedId) external;
 ```
 
 ### supportsInterface
 
 ```solidity
-function supportsInterface(bytes4 interfaceId) external pure returns (bool)
+function supportsInterface(bytes4 interfaceId) external pure override returns (bool);
 ```
 
-\_Returns true if this contract implements the interface defined by
-`interfaceId`. See the corresponding
-https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[EIP
-section] to learn more about how these ids are created.
+## Events
 
-This function call must use less than 30 000 gas.\_
+### ReportVerified
+
+```solidity
+event ReportVerified(bytes32 indexed feedId, address indexed sender);
+```
+
+## Errors
+
+### AccessForbidden
+
+```solidity
+error AccessForbidden();
+```
+
+### InactiveFeed
+
+```solidity
+error InactiveFeed(bytes32 feedId);
+```
+
+### DigestInactive
+
+```solidity
+error DigestInactive(bytes32 feedId, bytes32 configDigest);
+```
+
+### BadVerification
+
+```solidity
+error BadVerification();
+```
+
+### InvalidV
+
+```solidity
+error InvalidV();
+```
+
+### AlreadyUsedSignature
+
+```solidity
+error AlreadyUsedSignature();
+```
+
+### InvalidSignatureLength
+
+```solidity
+error InvalidSignatureLength();
+```
+
+### InvalidS
+
+```solidity
+error InvalidS();
+```

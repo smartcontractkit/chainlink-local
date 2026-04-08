@@ -2,31 +2,63 @@
 
 ## LinkToken
 
+**Inherits:** ERC677
+
+**Title:** LinkToken
+
 This contract implements the ChainLink Token (LINK) using the ERC677 standard.
 
-_Inherits from the ERC677 token contract and initializes with a fixed total
-supply and standard token details._
+Inherits from the ERC677 token contract and initializes with a fixed total
+supply and standard token details.
 
-### constructor
+## State Variables
+
+### TOTAL_SUPPLY
+
+The total supply of LINK tokens.
 
 ```solidity
-constructor() public
+uint256 private constant TOTAL_SUPPLY = 10 ** 27
 ```
+
+### NAME
+
+The name of the LINK token.
+
+```solidity
+string private constant NAME = "ChainLink Token"
+```
+
+### SYMBOL
+
+The symbol of the LINK token.
+
+```solidity
+string private constant SYMBOL = "LINK"
+```
+
+## Functions
+
+### constructor
 
 Constructor to initialize the LinkToken contract with a fixed total supply,
 name, and symbol.
 
-_Calls the ERC677 constructor with the name and symbol, and then mints the total
-supply to the contract deployer._
+Calls the ERC677 constructor with the name and symbol, and then mints the total
+supply to the contract deployer.
+
+```solidity
+constructor() ERC677(NAME, SYMBOL);
+```
 
 ### \_onCreate
 
-```solidity
-function _onCreate() internal virtual
-```
-
 Hook that is called when this contract is created.
 
-_Useful to override constructor behaviour in child contracts (e.g., LINK bridge
+Useful to override constructor behaviour in child contracts (e.g., LINK bridge
 tokens). The default implementation mints 10\*\*27 tokens to the contract
-deployer._
+deployer.
+
+```solidity
+function _onCreate() internal virtual;
+```
