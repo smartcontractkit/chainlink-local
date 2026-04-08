@@ -65,10 +65,11 @@ contract HelloWorldBasicMessageReceiverWithCCVsForkTest is Test {
             requiredCCVs: requiredCCVs,
             optionalCCVs: optionalCCVs,
             sourceChainSelector: s_sourceNetwork.chainSelector,
-            optionalThreshold: 1,
-            requireFinality: false
+            optionalThreshold: 1
         });
         receiver.applyCCVConfigUpdates(updates);
+        uint16 minBlockDepth = 1;
+        receiver.setMinBlockDepth(s_sourceNetwork.chainSelector, minBlockDepth);
 
         vm.selectFork(s_sourceFork);
         bytes memory payload = bytes("Hello World");
@@ -77,7 +78,9 @@ contract HelloWorldBasicMessageReceiverWithCCVsForkTest is Test {
         ccvs[0] = address(s_mockVerifierA);
         bytes[] memory ccvArgs = new bytes[](1);
         ccvArgs[0] = "";
-        bytes memory extraArgs = s_encoder.encodeV3(200_000, 1, ccvs, ccvArgs, address(0), "", "", "");
+        uint32 gasLimit = 200_000;
+        uint16 blockConfirmations = 1;
+        bytes memory extraArgs = s_encoder.encodeV3(gasLimit, blockConfirmations, ccvs, ccvArgs, address(0), "", "", "");
 
         Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
             receiver: abi.encode(address(receiver)),
