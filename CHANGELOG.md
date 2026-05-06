@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.9-beta] - 6 May 2026
+
+### Dependencies
+
+| Package                   | Version |
+| ------------------------- | ------- |
+| @chainlink/contracts-ccip | 1.6.2   |
+| @chainlink/contracts      | 1.5.0   |
+
+### Fixed
+
+- `CCIPLocalSimulatorFork.switchChainAndRouteMessage` now pairs the destination OffRamp with the source OnRamp by reading `getSourceChainConfig` (v1.6+) and `getStaticConfig` (pre-v1.6), and falls back to trying other OffRamps with the same `sourceChainSelector` when execution fails or no deterministic match is found.
+
 ## [0.2.8] - 5 May 2026
 
 ### Dependencies
@@ -637,3 +650,4 @@ and this project adheres to
 [0.2.7]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.7
 [0.2.8-beta]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.8-beta
 [0.2.8]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.8
+[0.2.9-beta]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.9-beta
