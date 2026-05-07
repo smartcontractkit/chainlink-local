@@ -12,7 +12,7 @@ import {
 /// @dev Exposes internal OffRamp resolution for unit testing.
 contract CCIPLocalSimulatorForkHarness is CCIPLocalSimulatorFork {
     function exposedDecodeReceiver(bytes memory encoded) external pure returns (address) {
-        return _decodeEvmReceiverAddress(encoded);
+        return _decodeEVMAddress(encoded);
     }
 
     function exposedFindOffRamp(
