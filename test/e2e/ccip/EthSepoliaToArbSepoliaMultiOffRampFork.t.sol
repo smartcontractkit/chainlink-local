@@ -6,6 +6,7 @@ import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
 import {IRouterClient} from "@chainlink/contracts-ccip/contracts/interfaces/IRouterClient.sol";
 import {CCIPReceiver} from "@chainlink/contracts-ccip/contracts/applications/CCIPReceiver.sol";
 import {IERC20} from "../../../src/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/IERC20.sol";
+import {BurnMintERC677Helper} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
 import {CCIPLocalSimulatorFork, IRouterFork} from "../../../src/ccip/CCIPLocalSimulatorFork.sol";
 import {Register} from "../../../src/ccip/Register.sol";
 
@@ -96,5 +97,38 @@ contract EthSepoliaToArbSepoliaMultiOffRampForkTest is Test {
 
         vm.selectFork(arbSepoliaFork);
         assertEq(receiver.lastPayload(), payload);
+    }
+
+    /// @notice Regression: v1.6 token transfers must decode `destTokenAddress` as ABI-encoded address (32 bytes), not via `bytes20` truncation 
+    function test_transferBnMFromRouter_payFeesInNative_multiOffRampLane() public {
+        address recipientAddr = makeAddr("recipient");
+
+        vm.selectFork(sepoliaFork);
+
+        uint256 amountToSend = 100;
+        BurnMintERC677Helper ccipBnMSource = BurnMintERC677Helper(sepoliaDetails.ccipBnMAddress);
+        ccipBnMSource.drip(address(this));
+        IERC20(sepoliaDetails.ccipBnMAddress).approve(address(sepoliaRouter), amountToSend);
+
+        Client.EVMTokenAmount[] memory tokensToSendDetails = new Client.EVMTokenAmount[](1);
+        tokensToSendDetails[0] =
+            Client.EVMTokenAmount({token: sepoliaDetails.ccipBnMAddress, amount: amountToSend});
+
+        Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
+            receiver: abi.encode(recipientAddr),
+            data: abi.encode(""),
+            tokenAmounts: tokensToSendDetails,
+            extraArgs: Client._argsToBytes(Client.EVMExtraArgsV1({gasLimit: 0})),
+            feeToken: address(0)
+        });
+
+        uint256 fees = sepoliaRouter.getFee(arbDetails.chainSelector, message);
+        vm.deal(address(this), fees + 1);
+        sepoliaRouter.ccipSend{value: fees}(arbDetails.chainSelector, message);
+
+        ccipFork.switchChainAndRouteMessage(arbSepoliaFork);
+
+        vm.selectFork(arbSepoliaFork);
+        assertEq(IERC20(arbDetails.ccipBnMAddress).balanceOf(recipientAddr), amountToSend);
     }
 }

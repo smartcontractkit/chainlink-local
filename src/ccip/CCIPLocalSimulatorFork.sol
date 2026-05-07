@@ -120,7 +120,7 @@ contract CCIPLocalSimulatorFork is Test {
 
     error InvalidExtraArgsTag();
 
-    error InvalidReceiverEncoding();
+    error InvalidEVMAddressEncoding(bytes encodedAddress);
 
     uint32 public constant DEFAULT_GAS_LIMIT = 200_000;
 
@@ -406,8 +406,8 @@ contract CCIPLocalSimulatorFork is Test {
         Internal.Any2EVMTokenTransfer[] memory tokenAmounts = new Internal.Any2EVMTokenTransfer[](numberOfTokens);
         for (uint256 l; l < numberOfTokens; ++l) {
             tokenAmounts[l] = Internal.Any2EVMTokenTransfer({
-                sourcePoolAddress: abi.encodePacked(message.tokenAmounts[l].sourcePoolAddress),
-                destTokenAddress: address(uint160(bytes20(message.tokenAmounts[l].destTokenAddress))),
+                sourcePoolAddress: abi.encode(message.tokenAmounts[l].sourcePoolAddress),
+                destTokenAddress: _decodeEVMAddress(message.tokenAmounts[l].destTokenAddress),
                 destGasAmount: abi.decode(message.tokenAmounts[l].destExecData, (uint32)),
                 extraData: message.tokenAmounts[l].extraData,
                 amount: message.tokenAmounts[l].amount
@@ -417,7 +417,7 @@ contract CCIPLocalSimulatorFork is Test {
             header: message.header,
             sender: abi.encodePacked(message.sender),
             data: message.data,
-            receiver: _decodeEvmReceiverAddress(message.receiver),
+            receiver: _decodeEVMAddress(message.receiver),
             gasLimit: gasLimit,
             tokenAmounts: tokenAmounts
         });
@@ -440,17 +440,18 @@ contract CCIPLocalSimulatorFork is Test {
     }
 
     /**
-     * @notice Decodes `Client.EVM2AnyMessage.receiver` bytes to an EVM address.
-     * @dev CCIP uses `abi.encode(address)` (32 bytes). A legacy 20-byte encoding is also supported.
+     * @notice Decodes ABI-encoded EVM address bytes to an `address`.
+     * @dev Used for `Client.EVM2AnyMessage.receiver` and `Internal.EVM2AnyTokenTransfer.destTokenAddress`.
+     *      CCIP uses `abi.encode(address)` (32 bytes). A legacy 20-byte packed encoding is also supported.
      */
-    function _decodeEvmReceiverAddress(bytes memory encodedReceiver) internal pure returns (address) {
-        if (encodedReceiver.length == 32) {
-            return abi.decode(encodedReceiver, (address));
+    function _decodeEVMAddress(bytes memory encodedAddress) internal pure returns (address) {
+        if (encodedAddress.length == 32) {
+            return abi.decode(encodedAddress, (address));
         }
-        if (encodedReceiver.length == 20) {
-            return address(uint160(bytes20(encodedReceiver)));
+        if (encodedAddress.length == 20) {
+            return address(uint160(bytes20(encodedAddress)));
         }
-        revert InvalidReceiverEncoding();
+        revert InvalidEVMAddressEncoding(encodedAddress);
     }
 
     /**
