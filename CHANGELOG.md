@@ -6,6 +6,48 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.9] - 19 May 2026
+
+### Dependencies
+
+| Package                   | Version |
+| ------------------------- | ------- |
+| @chainlink/contracts-ccip | 1.6.2   |
+| @chainlink/contracts      | 1.5.0   |
+
+### Fixed
+
+- `CCIPLocalSimulatorFork.switchChainAndRouteMessage` now pairs the destination OffRamp with the source OnRamp by reading `getSourceChainConfig` (v1.6+) and `getStaticConfig` (pre-v1.6), and falls back to trying other OffRamps with the same `sourceChainSelector` when execution fails or no deterministic match is found.
+- `CCIPLocalSimulatorFork.switchChainAndRouteMessage` now correctly decodes `destTokenAddress` for v1.6 token transfers. The 32-byte `abi.encode(address)` value was previously truncated via a `bytes20` cast, yielding a garbage address and causing the destination OffRamp's `TokenAdminRegistry.getPool` lookup to revert. Decoding now handles both 32-byte ABI-encoded and 20-byte packed forms, matching production OffRamp behavior, and is shared with `receiver` decoding via a single internal `_decodeEVMAddress` helper.
+- For v1.6 token transfers, `sourcePoolAddress` is now passed to `Internal.Any2EVMTokenTransfer` as `abi.encode(address)` (32-byte word), matching production OnRamp output and destination pool validation. The simulator previously used `abi.encodePacked(address)` (20 bytes), which caused compatible pools to revert with `InvalidSourcePoolAddress` during fork testing.
+
+## [0.2.9-beta.0] - 7 May 2026
+
+### Dependencies
+
+| Package                   | Version |
+| ------------------------- | ------- |
+| @chainlink/contracts-ccip | 1.6.2   |
+| @chainlink/contracts      | 1.5.0   |
+
+### Fixed
+
+- `CCIPLocalSimulatorFork.switchChainAndRouteMessage` now correctly decodes `destTokenAddress` for v1.6 token transfers. The 32-byte `abi.encode(address)` value was previously truncated via a `bytes20` cast, yielding a garbage address and causing the destination OffRamp's `TokenAdminRegistry.getPool` lookup to revert. Decoding now handles both 32-byte ABI-encoded and 20-byte packed forms, matching production OffRamp behavior, and is shared with `receiver` decoding via a single internal `_decodeEVMAddress` helper.
+- For v1.6 token transfers, `sourcePoolAddress` is now passed to `Internal.Any2EVMTokenTransfer` as `abi.encode(address)` (32-byte word), matching production OnRamp output and destination pool validation. The simulator previously used `abi.encodePacked(address)` (20 bytes), which caused compatible pools to revert with `InvalidSourcePoolAddress` during fork testing.
+
+## [0.2.9-beta] - 6 May 2026
+
+### Dependencies
+
+| Package                   | Version |
+| ------------------------- | ------- |
+| @chainlink/contracts-ccip | 1.6.2   |
+| @chainlink/contracts      | 1.5.0   |
+
+### Fixed
+
+- `CCIPLocalSimulatorFork.switchChainAndRouteMessage` now pairs the destination OffRamp with the source OnRamp by reading `getSourceChainConfig` (v1.6+) and `getStaticConfig` (pre-v1.6), and falls back to trying other OffRamps with the same `sourceChainSelector` when execution fails or no deterministic match is found.
+
 ## [0.2.8] - 5 May 2026
 
 ### Dependencies
@@ -637,3 +679,6 @@ and this project adheres to
 [0.2.7]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.7
 [0.2.8-beta]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.8-beta
 [0.2.8]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.8
+[0.2.9-beta]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.9-beta
+[0.2.9-beta.0]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.9-beta.0
+[0.2.9]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.9
