@@ -415,7 +415,7 @@ contract CCIPLocalSimulatorFork is Test {
         }
         Internal.Any2EVMRampMessage memory any2EVMRampMessage = Internal.Any2EVMRampMessage({
             header: message.header,
-            sender: abi.encodePacked(message.sender),
+            sender: abi.encode(message.sender),
             data: message.data,
             receiver: _decodeEVMAddress(message.receiver),
             gasLimit: gasLimit,
