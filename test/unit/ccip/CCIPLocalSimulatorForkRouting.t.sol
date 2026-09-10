@@ -8,6 +8,9 @@ import {
     IOffRampSourceConfigFork,
     IEVM2EVMOffRampStaticConfigFork
 } from "../../../src/ccip/CCIPLocalSimulatorFork.sol";
+import {CCIPReceiver} from "@chainlink/contracts-ccip/contracts/applications/CCIPReceiver.sol";
+import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
+import {Internal} from "@chainlink/contracts-ccip/contracts/libraries/Internal.sol";
 
 /// @dev Exposes internal OffRamp resolution for unit testing.
 contract CCIPLocalSimulatorForkHarness is CCIPLocalSimulatorFork {
@@ -25,6 +28,13 @@ contract CCIPLocalSimulatorForkHarness is CCIPLocalSimulatorFork {
             ramps[i] = offRamps[i];
         }
         return _findOffRampForOnRamp(ramps, sourceChainSelector, sourceOnRamp);
+    }
+
+    function exposedExecutePostV1dot6(
+        address offRamp,
+        Internal.EVM2AnyRampMessage memory message
+    ) external returns (bool) {
+        return _executePostV1dot6(offRamp, message);
     }
 }
 
@@ -106,6 +116,42 @@ contract MockOffRampV16WrongThenPre16 is MockOffRampPre16 {
     }
 }
 
+contract SenderEncodingReceiver is CCIPReceiver {
+    address public lastSender;
+    bytes public lastSenderRaw;
+    string public lastMessage;
+
+    constructor(address router) CCIPReceiver(router) {}
+
+    function _ccipReceive(Client.Any2EVMMessage memory message) internal override {
+        lastSenderRaw = message.sender;
+        lastSender = abi.decode(message.sender, (address));
+        lastMessage = abi.decode(message.data, (string));
+    }
+}
+
+contract MockOffRampCapture {
+    bytes internal s_lastSenderBytes;
+    bool internal s_called;
+
+    function executeSingleMessage(
+        Internal.Any2EVMRampMessage memory message,
+        bytes[] memory,
+        uint32[] memory
+    ) external {
+        s_lastSenderBytes = message.sender;
+        s_called = true;
+    }
+
+    function wasCalled() external view returns (bool) {
+        return s_called;
+    }
+
+    function lastSenderBytes() external view returns (bytes memory) {
+        return s_lastSenderBytes;
+    }
+}
+
 /// @dev No introspection getters — `_findOffRampForOnRamp` skips these via try/catch.
 contract MockOffRampForeign {}
 
@@ -119,12 +165,12 @@ contract CCIPLocalSimulatorForkRoutingTest is Test {
         harness = new CCIPLocalSimulatorForkHarness();
     }
 
-    function test_decodeReceiver_abiEncodedAddress() public {
+    function test_decodeReceiver_abiEncodedAddress() public view {
         address a = address(0x1234567890123456789012345678901234567890);
         assertEq(harness.exposedDecodeReceiver(abi.encode(a)), a);
     }
 
-    function test_decodeReceiver_twentyByteRaw() public {
+    function test_decodeReceiver_twentyByteRaw() public view {
         address a = address(0x1234567890123456789012345678901234567890);
         assertEq(harness.exposedDecodeReceiver(abi.encodePacked(a)), a);
     }
@@ -188,4 +234,43 @@ contract CCIPLocalSimulatorForkRoutingTest is Test {
 
         assertEq(harness.exposedFindOffRamp(ramps, SOURCE_SELECTOR, sourceOnRamp), enabled);
     }
+
+
+    // SENDER ENCODING REGRESSION TEST
+    // Verifies that `sender` in v1.6 messages is ABI-encoded as a 32-byte word.
+    // If `_executePostV1dot6` uses `abi.encodePacked`, `lastSenderBytes()` will
+    // be 20 bytes long, and this test will fail.
+    
+function test_executePostV1dot6_senderIs32ByteABIWord() public {
+    MockOffRampCapture mockOffRamp = new MockOffRampCapture();
+    address expectedSender = 0x2e234DAe75C793f67A35089C9d99245E1C58470b;
+
+    Internal.EVM2AnyRampMessage memory message = Internal.EVM2AnyRampMessage({
+        header: Internal.RampMessageHeader({
+            messageId: bytes32(uint256(1)),
+            sourceChainSelector: SOURCE_SELECTOR,
+            destChainSelector: DEST_CHAIN_SELECTOR,
+            sequenceNumber: 1,
+            nonce: 0
+        }),
+        sender: expectedSender,                     // EVM2AnyRampMessage.sender is address type
+        data: abi.encode("hello v1.6"),
+        receiver: abi.encode(address(0xCAFE)),      // receiver is bytes type
+        extraArgs: "",
+        feeToken: address(0),
+        feeTokenAmount: 0,
+        feeValueJuels: 0,
+        tokenAmounts: new Internal.EVM2AnyTokenTransfer[](0)
+    });
+
+    harness.exposedExecutePostV1dot6(address(mockOffRamp), message);
+
+    assertTrue(mockOffRamp.wasCalled(), "offRamp.executeSingleMessage must be called");
+    assertEq(
+        mockOffRamp.lastSenderBytes().length,
+        32,
+        "sender must be 32-byte ABI word (abi.encode), not 20-byte (abi.encodePacked)"
+    );
 }
+}
+

@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- `CCIPLocalSimulatorFork` now ABI-encodes `sender` as a 32-byte word in v1.6 messages, matching production encoding and preventing receiver-side `abi.decode` reverts. ([#62](https://github.com/smartcontractkit/chainlink-local/issues/62), [#63](https://github.com/smartcontractkit/chainlink-local/pull/63))
+
+
 ## [0.2.9] - 19 May 2026
 
 ### Dependencies
