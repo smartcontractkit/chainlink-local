@@ -2,6 +2,7 @@
 pragma solidity ^0.8.19;
 
 import {Test} from "forge-std/Test.sol";
+import {Internal} from "@chainlink/contracts-ccip/contracts/libraries/Internal.sol";
 import {
     CCIPLocalSimulatorFork,
     IRouterFork,
@@ -13,6 +14,13 @@ import {
 contract CCIPLocalSimulatorForkHarness is CCIPLocalSimulatorFork {
     function exposedDecodeReceiver(bytes memory encoded) external pure returns (address) {
         return _decodeEVMAddress(encoded);
+    }
+
+    function exposedExecutePostV1dot6(address offRamp, Internal.EVM2AnyRampMessage memory message)
+        external
+        returns (bool)
+    {
+        return _executePostV1dot6(offRamp, message);
     }
 
     function exposedFindOffRamp(
@@ -109,6 +117,17 @@ contract MockOffRampV16WrongThenPre16 is MockOffRampPre16 {
 /// @dev No introspection getters — `_findOffRampForOnRamp` skips these via try/catch.
 contract MockOffRampForeign {}
 
+/// @dev v1.6 OffRamp mock that records the `Any2EVMRampMessage` it was handed.
+contract MockOffRampRecorder {
+    bytes public recordedSender;
+
+    function executeSingleMessage(Internal.Any2EVMRampMessage memory message, bytes[] calldata, uint32[] calldata)
+        external
+    {
+        recordedSender = message.sender;
+    }
+}
+
 contract CCIPLocalSimulatorForkRoutingTest is Test {
     CCIPLocalSimulatorForkHarness internal harness;
 
@@ -127,6 +146,37 @@ contract CCIPLocalSimulatorForkRoutingTest is Test {
     function test_decodeReceiver_twentyByteRaw() public {
         address a = address(0x1234567890123456789012345678901234567890);
         assertEq(harness.exposedDecodeReceiver(abi.encodePacked(a)), a);
+    }
+
+    /// @dev v1.6 lanes with an EVM source chain deliver `sender` as a 32-byte ABI word, so receivers can
+    ///      `abi.decode(message.sender, (address))` and compare against `abi.encode(trustedRemote)`.
+    function test_executePostV1dot6_encodesSenderAsAbiWord() public {
+        MockOffRampRecorder offRamp = new MockOffRampRecorder();
+        address sender = address(0x1234567890123456789012345678901234567890);
+
+        Internal.EVM2AnyRampMessage memory message = Internal.EVM2AnyRampMessage({
+            header: Internal.RampMessageHeader({
+                messageId: keccak256("messageId"),
+                sourceChainSelector: SOURCE_SELECTOR,
+                destChainSelector: DEST_CHAIN_SELECTOR,
+                sequenceNumber: 1,
+                nonce: 1
+            }),
+            sender: sender,
+            data: "",
+            receiver: abi.encode(address(0xABCD)),
+            extraArgs: "",
+            feeToken: address(0),
+            feeTokenAmount: 0,
+            feeValueJuels: 0,
+            tokenAmounts: new Internal.EVM2AnyTokenTransfer[](0)
+        });
+
+        assertTrue(harness.exposedExecutePostV1dot6(address(offRamp), message));
+
+        bytes memory recordedSender = offRamp.recordedSender();
+        assertEq(recordedSender.length, 32);
+        assertEq(abi.decode(recordedSender, (address)), sender);
     }
 
     function test_findOffRamp_returnsMatchingV16RegardlessOfRouterListOrder() public {
