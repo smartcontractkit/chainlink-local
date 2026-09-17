@@ -176,7 +176,10 @@ contract CCIPLocalSimulatorForkRoutingTest is Test {
 
         bytes memory recordedSender = offRamp.recordedSender();
         assertEq(recordedSender.length, 32);
+        // Receivers consume `sender` either by decoding it to an address, or by comparing the raw bytes
+        // against an encoded trusted remote. Both must hold.
         assertEq(abi.decode(recordedSender, (address)), sender);
+        assertEq(keccak256(recordedSender), keccak256(abi.encode(sender)));
     }
 
     function test_findOffRamp_returnsMatchingV16RegardlessOfRouterListOrder() public {
