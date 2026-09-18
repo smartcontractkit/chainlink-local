@@ -276,7 +276,7 @@ contract CCIPForkAdaptersUnitTest is Test {
 
         assertEq(offRamp.receiver(), expectedReceiver);
         assertEq(offRamp.destToken(), expectedDestToken);
-        assertEq(_decodePackedAddress(offRamp.sourcePoolAddress()), expectedSourcePool);
+        assertEq(abi.decode(offRamp.sourcePoolAddress(), (address)), expectedSourcePool);
         assertEq(offRamp.gasOverride(), expectedGasLimit);
     }
 
@@ -566,10 +566,4 @@ contract CCIPForkAdaptersUnitTest is Test {
         assertEq(offRamp.successfulExecutions(), 1);
     }
 
-    function _decodePackedAddress(bytes memory encodedAddress) internal pure returns (address decodedAddress) {
-        require(encodedAddress.length == 20, "expected packed address");
-        assembly {
-            decodedAddress := shr(96, mload(add(encodedAddress, 0x20)))
-        }
-    }
 }

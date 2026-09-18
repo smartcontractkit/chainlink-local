@@ -3,6 +3,23 @@ pragma solidity ^0.8.0;
 
 abstract contract ReportVersions {
     /**
+     * @dev Represents a data report from a Data Streams stream for v1 schema (early crypto report with block metadata).
+     * @dev DEPRECATED: v1 schema is deprecated; only included here for historical reference and backwards compatibility with legacy streams.
+     * For schema overview, see https://docs.chain.link/data-streams/reference/report-schema-overview
+     */
+    struct ReportV1 {
+        bytes32 feedId; // The stream ID the report has data for.
+        uint32 observationsTimestamp; // Observation timestamp in seconds.
+        int192 benchmarkPrice; // DON consensus median benchmark price.
+        int192 bid; // Bid-side price estimate.
+        int192 ask; // Ask-side price estimate.
+        uint64 currentBlockNum; // Current block number used by the report.
+        bytes32 currentBlockHash; // Current block hash used by the report.
+        uint64 validFromBlockNum; // Earliest block number from which the report is valid.
+        uint64 currentBlockTimestamp; // Current block timestamp in seconds.
+    }
+
+    /**
      * @dev Represents a data report from a Data Streams stream for v2 schema (crypto streams).
      * The `price` value is carried to either 8 or 18 decimal places, depending on the stream.
      * For more information, see https://docs.chain.link/data-streams/crypto-streams and https://docs.chain.link/data-streams/reference/report-schema
@@ -49,5 +66,166 @@ abstract contract ReportVersions {
         uint32 expiresAt; // Latest timestamp where the report can be verified onchain.
         int192 price; // DON consensus median benchmark price (8 or 18 decimals).
         uint32 marketStatus; // The DON's consensus on whether the market is currently open.
+    }
+
+    /**
+     * @dev Represents a data report from a Data Streams stream for v5 schema (rate report).
+     * For schema overview, see https://docs.chain.link/data-streams/reference/report-schema-overview
+     */
+    struct ReportV5 {
+        bytes32 feedId; // The stream ID the report has data for.
+        uint32 validFromTimestamp; // Earliest timestamp for which the report is applicable.
+        uint32 observationsTimestamp; // Latest timestamp for which the report is applicable.
+        uint192 nativeFee; // Base cost to validate a transaction using the report, denominated in the chain's native token (e.g., WETH/ETH).
+        uint192 linkFee; // Base cost to validate a transaction using the report, denominated in LINK.
+        uint32 expiresAt; // Latest timestamp where the report can be verified onchain.
+        int192 rate; // Reported rate value.
+        uint32 timestamp; // Rate timestamp in seconds.
+        uint32 duration; // Duration window in seconds.
+    }
+
+    /**
+     * @dev Represents a data report from a Data Streams stream for v6 schema (multi-price report).
+     * For schema overview, see https://docs.chain.link/data-streams/reference/report-schema-overview
+     */
+    struct ReportV6 {
+        bytes32 feedId; // The stream ID the report has data for.
+        uint32 validFromTimestamp; // Earliest timestamp for which the report is applicable.
+        uint32 observationsTimestamp; // Latest timestamp for which the report is applicable.
+        uint192 nativeFee; // Base cost to validate a transaction using the report, denominated in the chain's native token (e.g., WETH/ETH).
+        uint192 linkFee; // Base cost to validate a transaction using the report, denominated in LINK.
+        uint32 expiresAt; // Latest timestamp where the report can be verified onchain.
+        int192 price; // Primary price value.
+        int192 price2; // Secondary price value.
+        int192 price3; // Third price value.
+        int192 price4; // Fourth price value.
+        int192 price5; // Fifth price value.
+    }
+
+    /**
+     * @dev Represents a data report from a Data Streams stream for v7 schema (redemption-rate stream).
+     * The `exchangeRate` value is carried to either 8 or 18 decimal places, depending on the stream.
+     * For more information, see https://docs.chain.link/data-streams/reference/report-schema-v7
+     */
+    struct ReportV7 {
+        bytes32 feedId; // The stream ID the report has data for.
+        uint32 validFromTimestamp; // Earliest timestamp for which the report is applicable.
+        uint32 observationsTimestamp; // Latest timestamp for which the report is applicable.
+        uint192 nativeFee; // Base cost to validate a transaction using the report, denominated in the chain's native token (e.g., WETH/ETH).
+        uint192 linkFee; // Base cost to validate a transaction using the report, denominated in LINK.
+        uint32 expiresAt; // Latest timestamp where the report can be verified onchain.
+        int192 exchangeRate; // Redemption / exchange-rate value (8 or 18 decimals).
+    }
+
+    /**
+     * @dev Represents a data report from a Data Streams stream for v8 schema (RWA Standard stream).
+     * The `marketStatus` indicates whether the market is currently open. Possible values: `0` (`Unknown`), `1` (`Closed`), `2` (`Open`).
+     * For more information, see https://docs.chain.link/data-streams/reference/report-schema-v8
+     */
+    struct ReportV8 {
+        bytes32 feedId; // The stream ID the report has data for.
+        uint32 validFromTimestamp; // Earliest timestamp for which the report is applicable.
+        uint32 observationsTimestamp; // Latest timestamp for which the report is applicable.
+        uint192 nativeFee; // Base cost to validate a transaction using the report, denominated in the chain's native token (e.g., WETH/ETH).
+        uint192 linkFee; // Base cost to validate a transaction using the report, denominated in LINK.
+        uint32 expiresAt; // Latest timestamp where the report can be verified onchain.
+        uint64 lastUpdateTimestamp; // Timestamp of the last source-side update.
+        int192 midPrice; // DON consensus mid price (8 or 18 decimals).
+        uint32 marketStatus; // The DON's consensus on whether the market is currently open.
+    }
+
+    /**
+     * @dev Represents a data report from a Data Streams stream for v9 schema (SmartData / NAV / Proof of Reserve).
+     * For more information, see https://docs.chain.link/data-streams/reference/report-schema-v9
+     */
+    struct ReportV9 {
+        bytes32 feedId; // The stream ID the report has data for.
+        uint32 validFromTimestamp; // Earliest timestamp for which the report is applicable.
+        uint32 observationsTimestamp; // Latest timestamp for which the report is applicable.
+        uint192 nativeFee; // Base cost to validate a transaction using the report, denominated in the chain's native token (e.g., WETH/ETH).
+        uint192 linkFee; // Base cost to validate a transaction using the report, denominated in LINK.
+        uint32 expiresAt; // Latest timestamp where the report can be verified onchain.
+        int192 navPerShare; // Net asset value per share.
+        uint64 navDate; // NAV date / timestamp.
+        int192 aum; // Assets under management value.
+        uint32 ripcord; // Issuer / source risk flag; non-zero indicates the value should not be treated as normal market data.
+    }
+
+    /**
+     * @dev Represents a data report from a Data Streams stream for v10 schema (tokenized-asset stream).
+     * The `marketStatus` indicates whether the market is currently open. Possible values: `0` (`Unknown`), `1` (`Closed`), `2` (`Open`).
+     * For more information, see https://docs.chain.link/data-streams/reference/report-schema-v10
+     */
+    struct ReportV10 {
+        bytes32 feedId; // The stream ID the report has data for.
+        uint32 validFromTimestamp; // Earliest timestamp for which the report is applicable.
+        uint32 observationsTimestamp; // Latest timestamp for which the report is applicable.
+        uint192 nativeFee; // Base cost to validate a transaction using the report, denominated in the chain's native token (e.g., WETH/ETH).
+        uint192 linkFee; // Base cost to validate a transaction using the report, denominated in LINK.
+        uint32 expiresAt; // Latest timestamp where the report can be verified onchain.
+        uint64 lastUpdateTimestamp; // Timestamp of the last source-side update.
+        int192 price; // Underlying asset price (8 or 18 decimals).
+        uint32 marketStatus; // The DON's consensus on whether the market is currently open.
+        int192 currentMultiplier; // Current underlying-share multiplier.
+        int192 newMultiplier; // Future multiplier applied after a corporate action.
+        uint32 activationDateTime; // Corporate-action activation timestamp.
+        int192 tokenizedPrice; // Tokenized-asset price when available.
+    }
+
+    /**
+     * @dev Represents a data report from a Data Streams stream for v11 schema (RWA Advanced stream).
+     * The `marketStatus` indicates whether the market is currently open. Possible values: `0` (`Unknown`), `1` (`Closed`), `2` (`Open`).
+     * For more information, see https://docs.chain.link/data-streams/reference/report-schema-v11
+     */
+    struct ReportV11 {
+        bytes32 feedId; // The stream ID the report has data for.
+        uint32 validFromTimestamp; // Earliest timestamp for which the report is applicable.
+        uint32 observationsTimestamp; // Latest timestamp for which the report is applicable.
+        uint192 nativeFee; // Base cost to validate a transaction using the report, denominated in the chain's native token (e.g., WETH/ETH).
+        uint192 linkFee; // Base cost to validate a transaction using the report, denominated in LINK.
+        uint32 expiresAt; // Latest timestamp where the report can be verified onchain.
+        int192 mid; // Liquidity-weighted mid price (8 or 18 decimals).
+        uint64 lastSeenTimestampNs; // Last-seen timestamp from the source, in nanoseconds.
+        int192 bid; // Consensus bid price (8 or 18 decimals).
+        int192 bidVolume; // Resting bid-side volume / depth.
+        int192 ask; // Consensus ask price (8 or 18 decimals).
+        int192 askVolume; // Resting ask-side volume / depth.
+        int192 lastTradedPrice; // Most recent traded price (8 or 18 decimals).
+        uint32 marketStatus; // The DON's consensus on whether the market is currently open.
+    }
+
+    /**
+     * @dev Represents a data report from a Data Streams stream for v12 schema (NAV report with next NAV).
+     * For schema overview, see https://docs.chain.link/data-streams/reference/report-schema-overview
+     */
+    struct ReportV12 {
+        bytes32 feedId; // The stream ID the report has data for.
+        uint32 validFromTimestamp; // Earliest timestamp for which the report is applicable.
+        uint32 observationsTimestamp; // Latest timestamp for which the report is applicable.
+        uint192 nativeFee; // Base cost to validate a transaction using the report, denominated in the chain's native token (e.g., WETH/ETH).
+        uint192 linkFee; // Base cost to validate a transaction using the report, denominated in LINK.
+        uint32 expiresAt; // Latest timestamp where the report can be verified onchain.
+        int192 navPerShare; // Current NAV per share.
+        int192 nextNavPerShare; // Next NAV per share.
+        uint64 navDate; // NAV date / timestamp.
+        uint32 ripcord; // Issuer / source risk flag.
+    }
+
+    /**
+     * @dev Represents a data report from a Data Streams stream for v13 schema (best bid / best ask market data report).
+     * For schema overview, see https://docs.chain.link/data-streams/reference/report-schema-overview
+     */
+    struct ReportV13 {
+        bytes32 feedId; // The stream ID the report has data for.
+        uint32 validFromTimestamp; // Earliest timestamp for which the report is applicable.
+        uint32 observationsTimestamp; // Latest timestamp for which the report is applicable.
+        uint192 nativeFee; // Base cost to validate a transaction using the report, denominated in the chain's native token (e.g., WETH/ETH).
+        uint192 linkFee; // Base cost to validate a transaction using the report, denominated in LINK.
+        uint32 expiresAt; // Latest timestamp where the report can be verified onchain.
+        int192 bestAsk; // Best ask price.
+        int192 bestBid; // Best bid price.
+        uint64 askVolume; // Best ask volume.
+        uint64 bidVolume; // Best bid volume.
+        int192 lastTradedPrice; // Most recent traded price.
     }
 }
