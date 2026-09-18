@@ -24,6 +24,15 @@ interface IOffRampExecuteV2 {
         bytes[] calldata verifierResults,
         uint32 gasLimitOverride
     ) external;
+
+    /// @notice Permissionless execution entrypoint taking the opaque encoded message emitted by the
+    ///         source OnRamp, so routing does not depend on a locally decoded `MessageV1`.
+    function execute(
+        bytes calldata encodedMessage,
+        address[] calldata ccvs,
+        bytes[] calldata verifierResults,
+        uint32 gasLimitOverride
+    ) external;
 }
 
 library CCIPForkAdapterV2 {
@@ -71,7 +80,11 @@ library CCIPForkAdapterV2 {
         decodedMessage.message = decoder.decodeMessageV1(decodedMessage.encodedMessage);
     }
 
-    function extractOffRampAddress(DecodedMessage memory decodedMessage) internal pure returns (address offRampAddress) {
+    function extractOffRampAddress(DecodedMessage memory decodedMessage)
+        internal
+        pure
+        returns (address offRampAddress)
+    {
         return _decodeEVMAddress(decodedMessage.message.offRampAddress);
     }
 

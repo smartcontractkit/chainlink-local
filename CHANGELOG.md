@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `CCIPLocalSimulatorFork` gains `V2VerificationMode.OFFRAMP_DERIVED`: CCIP 2.0 messages are routed by deriving the required CCV list from the destination OffRamp (`getCCVsForMessage`) and executing the raw encoded message through the permissionless `execute` entrypoint, so fork tests do not depend on the local `MessageV1` codec.
+- `CCIPLocalSimulatorFork.getOffRampForLane` and `setLaneDefaultCCVs` fork-only helpers, plus the `CCVNoOpVerifier` test double (`src/test/ccip/CCVNoOpVerifier.sol`), to mock a CCIP 2.0 lane's default CCV in fork tests.
+
 ## [0.2.9] - 19 May 2026
 
 ### Dependencies
