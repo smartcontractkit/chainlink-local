@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Dependencies
+
+| Package                   | Version |
+| ------------------------- | ------- |
+| @chainlink/contracts-ccip | 1.6.2   |
+| @chainlink/contracts      | 1.5.0   |
+
+### Fixed
+
+- For v1.6 messages, `CCIPLocalSimulatorFork.switchChainAndRouteMessage` now builds `Internal.Any2EVMRampMessage.sender` with `abi.encode(address)` (32-byte word) instead of `abi.encodePacked(address)` (20 bytes), matching what production v1.6 lanes deliver for EVM source chains. Receivers doing `abi.decode(message.sender, (address))` previously reverted, and receivers comparing the raw bytes against `abi.encode(trustedRemote)` took their untrusted-sender branch.
+
 ## [0.2.9] - 19 May 2026
 
 ### Dependencies
@@ -682,3 +695,4 @@ and this project adheres to
 [0.2.9-beta]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.9-beta
 [0.2.9-beta.0]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.9-beta.0
 [0.2.9]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.9
+[unreleased]: https://github.com/smartcontractkit/chainlink-local/compare/v0.2.9...HEAD
