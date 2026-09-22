@@ -1,0 +1,17 @@
+[package]
+name = "ChainlinkLocal"
+version = "0.0.1"
+
+[addresses]
+move_stdlib = "0x1"
+aptos_std = "0x1"
+chainlink_local = "_"
+sender = "_"
+
+[dev-addresses]
+chainlink_local = "0x777"
+sender = "0xb0b"
+
+[dependencies]
+AptosFramework = { git = "https://github.com/aptos-labs/aptos-core.git", subdir = "aptos-move/framework/aptos-framework", rev = "main" }
+MoveStdlib = { git = "https://github.com/aptos-labs/aptos-core.git", subdir = "aptos-move/framework/move-stdlib", rev = "main" }
