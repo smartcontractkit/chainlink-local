@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.2.10-beta] - 21 September 2026
+
 ### Dependencies
 
 | Package                   | Version |
