@@ -166,7 +166,9 @@ contract CCIPLocalSimulatorUnitTest is Test {
             receiver: abi.encode(bob),
             data: "",
             tokenAmounts: new Client.EVMTokenAmount[](0),
-            extraArgs: Client._argsToBytes(Client.GenericExtraArgsV2({gasLimit: 500_000, allowOutOfOrderExecution: true})),
+            extraArgs: Client._argsToBytes(
+                Client.GenericExtraArgsV2({gasLimit: 500_000, allowOutOfOrderExecution: true})
+            ),
             feeToken: address(0)
         });
         router.ccipSend(chainSelector, message);

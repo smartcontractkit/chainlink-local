@@ -74,7 +74,13 @@ contract MockVerifierProxy is OwnerIsCreator {
         emit VerifierInitialized(verifierAddress);
     }
 
-    function getVerifier(bytes32 /*configDigest*/ ) external view returns (address) {
+    function getVerifier(
+        bytes32 /*configDigest*/
+    )
+        external
+        view
+        returns (address)
+    {
         return s_verifier;
     }
 
@@ -94,20 +100,16 @@ contract MockVerifierProxy is OwnerIsCreator {
 
         // Case 1: On-chain billing is configured but consumer is using off-chain mechanism
         if (hasFeeManager && !hasParameterPayload) {
-            revert FeeManagerRequired(
-                "On-chain billing is active but your contract is using off-chain billing mechanism. "
+            revert FeeManagerRequired("On-chain billing is active but your contract is using off-chain billing mechanism. "
                 "Either call simulator.enableOffChainBilling() or provide fee token address in parameterPayload. "
-                "See: https://docs.chain.link/data-streams/tutorials/evm-onchain-report-verification"
-            );
+                "See: https://docs.chain.link/data-streams/tutorials/evm-onchain-report-verification");
         }
 
         // Case 2: Off-chain billing is configured but consumer is using on-chain mechanism
         if (!hasFeeManager && hasParameterPayload) {
-            revert FeeManagerNotExpected(
-                "Off-chain billing is active but your contract is providing parameterPayload for on-chain billing. "
+            revert FeeManagerNotExpected("Off-chain billing is active but your contract is providing parameterPayload for on-chain billing. "
                 "Either call simulator.enableOnChainBilling() or pass empty bytes as parameterPayload. "
-                "Off-chain billing chains don't require fee handling in smart contracts."
-            );
+                "Off-chain billing chains don't require fee handling in smart contracts.");
         }
 
         // Case 3: Both configurations match - validation passes

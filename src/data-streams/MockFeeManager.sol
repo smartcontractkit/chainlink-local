@@ -128,8 +128,10 @@ contract MockFeeManager is IVerifierFeeManager, OwnerIsCreator {
 
         (, bytes memory report) = abi.decode(payload, (bytes32[3], bytes));
 
-        (Common.Asset memory fee, /*Common.Asset memory reward*/, /*uint256 appliedDiscount*/ ) =
-            getFeeAndReward(subscriber, report, quote);
+        (
+            Common.Asset memory fee,
+            /*Common.Asset memory reward*/, /*uint256 appliedDiscount*/
+        ) = getFeeAndReward(subscriber, report, quote);
 
         if (fee.assetAddress == i_linkAddress) {
             IRewardManager.FeePayment[] memory payments = new IRewardManager.FeePayment[](1);
