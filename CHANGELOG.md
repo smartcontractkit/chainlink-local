@@ -13,6 +13,19 @@ and this project adheres to
 - `CCIPLocalSimulatorFork` gains `V2VerificationMode.OFFRAMP_DERIVED`: CCIP 2.0 messages are routed by deriving the required CCV list from the destination OffRamp (`getCCVsForMessage`) and executing the raw encoded message through the permissionless `execute` entrypoint, so fork tests do not depend on the local `MessageV1` codec.
 - `CCIPLocalSimulatorFork.getOffRampForLane` and `setLaneDefaultCCVs` fork-only helpers, plus the `CCVNoOpVerifier` test double (`src/test/ccip/CCVNoOpVerifier.sol`), to mock a CCIP 2.0 lane's default CCV in fork tests.
 
+## [0.2.10-beta] - 21 September 2026
+
+### Dependencies
+
+| Package                   | Version |
+| ------------------------- | ------- |
+| @chainlink/contracts-ccip | 1.6.2   |
+| @chainlink/contracts      | 1.5.0   |
+
+### Fixed
+
+- For v1.6 messages, `CCIPLocalSimulatorFork.switchChainAndRouteMessage` now builds `Internal.Any2EVMRampMessage.sender` with `abi.encode(address)` (32-byte word) instead of `abi.encodePacked(address)` (20 bytes), matching what production v1.6 lanes deliver for EVM source chains. Receivers doing `abi.decode(message.sender, (address))` previously reverted, and receivers comparing the raw bytes against `abi.encode(trustedRemote)` took their untrusted-sender branch.
+
 ## [0.2.9] - 19 May 2026
 
 ### Dependencies
@@ -689,3 +702,4 @@ and this project adheres to
 [0.2.9-beta]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.9-beta
 [0.2.9-beta.0]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.9-beta.0
 [0.2.9]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.9
+[unreleased]: https://github.com/smartcontractkit/chainlink-local/compare/v0.2.9...HEAD

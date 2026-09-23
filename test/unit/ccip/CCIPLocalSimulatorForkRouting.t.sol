@@ -8,11 +8,22 @@ import {
     IOffRampSourceConfigFork,
     IEVM2EVMOffRampStaticConfigFork
 } from "../../../src/ccip/CCIPLocalSimulatorFork.sol";
+import {CCIPForkAdapterTypes} from "../../../src/ccip/adapters/CCIPForkAdapterTypes.sol";
+import {CCIPForkAdapterV1dot6} from "../../../src/ccip/adapters/CCIPForkAdapterV1dot6.sol";
 
 /// @dev Exposes internal OffRamp resolution for unit testing.
 contract CCIPLocalSimulatorForkHarness is CCIPLocalSimulatorFork {
     function exposedDecodeReceiver(bytes memory encoded) external pure returns (address) {
         return _decodeEVMAddress(encoded);
+    }
+
+    function exposedExecuteV1dot6(address offRamp, CCIPForkAdapterTypes.V1dot6EVM2AnyRampMessage memory message)
+        external
+        returns (bool success)
+    {
+        vm.startPrank(offRamp);
+        (success,) = CCIPForkAdapterV1dot6.execute(message, offRamp);
+        vm.stopPrank();
     }
 
     function exposedFindOffRamp(
@@ -109,6 +120,19 @@ contract MockOffRampV16WrongThenPre16 is MockOffRampPre16 {
 /// @dev No introspection getters — `_findOffRampForOnRamp` skips these via try/catch.
 contract MockOffRampForeign {}
 
+/// @dev v1.6 OffRamp mock that records the `Any2EVMRampMessage` it was handed.
+contract MockOffRampRecorder {
+    bytes public recordedSender;
+
+    function executeSingleMessage(
+        CCIPForkAdapterTypes.V1dot6Any2EVMRampMessage memory message,
+        bytes[] calldata,
+        uint32[] calldata
+    ) external {
+        recordedSender = message.sender;
+    }
+}
+
 contract CCIPLocalSimulatorForkRoutingTest is Test {
     CCIPLocalSimulatorForkHarness internal harness;
 
@@ -127,6 +151,40 @@ contract CCIPLocalSimulatorForkRoutingTest is Test {
     function test_decodeReceiver_twentyByteRaw() public {
         address a = address(0x1234567890123456789012345678901234567890);
         assertEq(harness.exposedDecodeReceiver(abi.encodePacked(a)), a);
+    }
+
+    /// @dev v1.6 lanes with an EVM source chain deliver `sender` as a 32-byte ABI word, so receivers can
+    ///      `abi.decode(message.sender, (address))` and compare against `abi.encode(trustedRemote)`.
+    function test_executeV1dot6_encodesSenderAsAbiWord() public {
+        MockOffRampRecorder offRamp = new MockOffRampRecorder();
+        address sender = address(0x1234567890123456789012345678901234567890);
+
+        CCIPForkAdapterTypes.V1dot6EVM2AnyRampMessage memory message = CCIPForkAdapterTypes.V1dot6EVM2AnyRampMessage({
+            header: CCIPForkAdapterTypes.V1dot6RampMessageHeader({
+                messageId: keccak256("messageId"),
+                sourceChainSelector: SOURCE_SELECTOR,
+                destChainSelector: DEST_CHAIN_SELECTOR,
+                sequenceNumber: 1,
+                nonce: 1
+            }),
+            sender: sender,
+            data: "",
+            receiver: abi.encode(address(0xABCD)),
+            extraArgs: "",
+            feeToken: address(0),
+            feeTokenAmount: 0,
+            feeValueJuels: 0,
+            tokenAmounts: new CCIPForkAdapterTypes.V1dot6EVM2AnyTokenTransfer[](0)
+        });
+
+        assertTrue(harness.exposedExecuteV1dot6(address(offRamp), message));
+
+        bytes memory recordedSender = offRamp.recordedSender();
+        assertEq(recordedSender.length, 32);
+        // Receivers consume `sender` either by decoding it to an address, or by comparing the raw bytes
+        // against an encoded trusted remote. Both must hold.
+        assertEq(abi.decode(recordedSender, (address)), sender);
+        assertEq(keccak256(recordedSender), keccak256(abi.encode(sender)));
     }
 
     function test_findOffRamp_returnsMatchingV16RegardlessOfRouterListOrder() public {

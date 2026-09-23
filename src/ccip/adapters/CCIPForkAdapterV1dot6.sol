@@ -78,7 +78,7 @@ library CCIPForkAdapterV1dot6 {
 
         any2EVMMessage = CCIPForkAdapterTypes.V1dot6Any2EVMRampMessage({
             header: message.header,
-            sender: abi.encodePacked(message.sender),
+            sender: abi.encode(message.sender),
             data: message.data,
             receiver: _decodeEVMAddress(message.receiver),
             gasLimit: gasLimit,
