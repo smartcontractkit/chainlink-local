@@ -11,10 +11,63 @@ import {CCIPForkAdapterV1dot6} from "./adapters/CCIPForkAdapterV1dot6.sol";
 import {CCIPForkAdapterV2, IMessageV1Decoder, IOffRampExecuteV2} from "./adapters/CCIPForkAdapterV2.sol";
 import {MessageV1CodecDecoder} from "./adapters/MessageV1CodecDecoder.sol";
 
+/// @title IRouterFork Interface
 interface IRouterFork {
+    /**
+     * @notice Structure representing an offRamp configuration
+     *
+     * @param sourceChainSelector - The chain selector for the source chain
+     * @param offRamp - The address of the offRamp contract
+     */
+    struct OffRamp {
+        uint64 sourceChainSelector;
+        address offRamp;
+    }
+
+    /**
+     * @notice Return the configured onramp for specific a destination chain.
+     *  @param destChainSelector The destination chain Id to get the onRamp for.
+     * @return The address of the onRamp.
+     */
     function getOnRamp(uint64 destChainSelector) external view returns (address);
 
-    function getOffRamps() external view returns (CCIPForkAdapterTypes.RouterOffRamp[] memory);
+    /**
+     * @notice Gets the list of offRamps
+     *
+     * @return offRamps - Array of OffRamp structs
+     */
+    function getOffRamps() external view returns (OffRamp[] memory);
+}
+
+/// @title IEVM2EVMOffRampStaticConfigFork
+/// @notice Minimal view surface for pre-v1.6 OffRamp static config (EVM2EVMOffRamp 1.5.x).
+interface IEVM2EVMOffRampStaticConfigFork {
+    struct StaticConfig {
+        address commitStore;
+        uint64 chainSelector;
+        uint64 sourceChainSelector;
+        address onRamp;
+        address prevOffRamp;
+        address rmnProxy;
+        address tokenAdminRegistry;
+    }
+
+    function getStaticConfig() external view returns (StaticConfig memory);
+}
+
+/// @title IOffRampSourceConfigFork
+/// @notice Minimal view surface for v1.6+ OffRamp per-source-chain config (OffRamp 1.6.x).
+/// @dev `router` is ABI-compatible with `IRouter` in CCIP OffRamp `SourceChainConfig`.
+interface IOffRampSourceConfigFork {
+    struct SourceChainConfig {
+        address router;
+        bool isEnabled;
+        uint64 minSeqNr;
+        bool isRMNVerificationDisabled;
+        bytes onRamp;
+    }
+
+    function getSourceChainConfig(uint64 sourceChainSelector) external view returns (SourceChainConfig memory);
 }
 
 interface ITypeAndVersionProbe {
@@ -64,6 +117,8 @@ contract CCIPLocalSimulatorFork is Test {
         bytes32[] topics;
         bytes data;
     }
+
+    error InvalidEVMAddressEncoding(bytes encodedAddress);
 
     /// @notice The immutable register instance
     Register immutable i_register;
@@ -256,7 +311,7 @@ contract CCIPLocalSimulatorFork is Test {
                 CCIPEra routingEra = _selectRoutingEra(logEra, detectedEra);
 
                 vm.selectFork(forkIds[j]);
-                bool attempted = _routeMessageForEra(entry, routingEra);
+                bool attempted = _routeMessageForEra(entry, routingEra, onRampContract);
 
                 if (attempted) {
                     break;
@@ -265,13 +320,16 @@ contract CCIPLocalSimulatorFork is Test {
         }
     }
 
-    function _routeMessageForEra(Vm.Log memory entry, CCIPEra routingEra) internal returns (bool attempted) {
+    function _routeMessageForEra(Vm.Log memory entry, CCIPEra routingEra, address sourceOnRamp)
+        internal
+        returns (bool attempted)
+    {
         if (routingEra == CCIPEra.PRE_V1_DOT_6) {
-            return _routePreV1dot6Message(entry);
+            return _routePreV1dot6Message(entry, sourceOnRamp);
         }
 
         if (routingEra == CCIPEra.V1_DOT_6) {
-            return _routeV1dot6Message(entry);
+            return _routeV1dot6Message(entry, sourceOnRamp);
         }
 
         if (routingEra == CCIPEra.V2) {
@@ -281,14 +339,14 @@ contract CCIPLocalSimulatorFork is Test {
         return false;
     }
 
-    function _routePreV1dot6Message(Vm.Log memory entry) internal returns (bool attempted) {
+    function _routePreV1dot6Message(Vm.Log memory entry, address sourceOnRamp) internal returns (bool attempted) {
         CCIPForkAdapterTypes.PreV1dot6Message memory message = CCIPForkAdapterPreV1dot6.decodeMessage(entry.data);
 
         if (s_processedMessages[message.messageId]) {
             return true;
         }
 
-        address offRamp = _findOffRampOnCurrentFork(message.sourceChainSelector);
+        address offRamp = _findOffRampOnCurrentFork(message.sourceChainSelector, sourceOnRamp);
         if (offRamp == address(0)) {
             return false;
         }
@@ -306,14 +364,14 @@ contract CCIPLocalSimulatorFork is Test {
         return true;
     }
 
-    function _routeV1dot6Message(Vm.Log memory entry) internal returns (bool attempted) {
+    function _routeV1dot6Message(Vm.Log memory entry, address sourceOnRamp) internal returns (bool attempted) {
         CCIPForkAdapterTypes.V1dot6EVM2AnyRampMessage memory message = CCIPForkAdapterV1dot6.decodeMessage(entry.data);
 
         if (s_processedMessages[message.header.messageId]) {
             return true;
         }
 
-        address offRamp = _findOffRampOnCurrentFork(message.header.sourceChainSelector);
+        address offRamp = _findOffRampOnCurrentFork(message.header.sourceChainSelector, sourceOnRamp);
         if (offRamp == address(0)) {
             return false;
         }
@@ -345,7 +403,9 @@ contract CCIPLocalSimulatorFork is Test {
 
         address offRamp = CCIPForkAdapterV2.extractOffRampAddress(decodedMessage);
         if (offRamp == address(0)) {
-            offRamp = _findOffRampOnCurrentFork(decodedMessage.message.sourceChainSelector);
+            offRamp = _findOffRampOnCurrentFork(
+                decodedMessage.message.sourceChainSelector, _decodeEVMAddress(decodedMessage.message.onRampAddress)
+            );
         }
         if (offRamp == address(0)) {
             return false;
@@ -625,7 +685,62 @@ contract CCIPLocalSimulatorFork is Test {
             || selector == INBOUND_IMPLEMENTATION_NOT_FOUND_SELECTOR;
     }
 
-    function _findOffRampOnCurrentFork(uint64 sourceChainSelector) internal view returns (address offRampAddress) {
+    /// @notice Returns the destination OffRamp whose lane is configured for `sourceOnRamp`, if discoverable.
+    function _findOffRampForOnRamp(
+        IRouterFork.OffRamp[] memory offRamps,
+        uint64 sourceChainSelector,
+        address sourceOnRamp
+    ) internal view returns (address offRampAddress) {
+        uint256 length = offRamps.length;
+        for (uint256 i = length; i > 0; --i) {
+            address candidateAddr = offRamps[i - 1].offRamp;
+            if (offRamps[i - 1].sourceChainSelector != sourceChainSelector) {
+                continue;
+            }
+
+            try IOffRampSourceConfigFork(candidateAddr).getSourceChainConfig(sourceChainSelector) returns (
+                IOffRampSourceConfigFork.SourceChainConfig memory cfg
+            ) {
+                if (cfg.isEnabled && cfg.onRamp.length == 32) {
+                    address configuredOnRamp = abi.decode(cfg.onRamp, (address));
+                    if (configuredOnRamp == sourceOnRamp) {
+                        return candidateAddr;
+                    }
+                }
+            } catch {}
+
+            try IEVM2EVMOffRampStaticConfigFork(candidateAddr).getStaticConfig() returns (
+                IEVM2EVMOffRampStaticConfigFork.StaticConfig memory staticCfg
+            ) {
+                if (staticCfg.onRamp == sourceOnRamp && staticCfg.sourceChainSelector == sourceChainSelector) {
+                    return candidateAddr;
+                }
+            } catch {}
+        }
+
+        return address(0);
+    }
+
+    /**
+     * @notice Decodes ABI-encoded EVM address bytes to an `address`.
+     * @dev Used for `Client.EVM2AnyMessage.receiver` and `Internal.EVM2AnyTokenTransfer.destTokenAddress`.
+     *      CCIP uses `abi.encode(address)` (32 bytes). A legacy 20-byte packed encoding is also supported.
+     */
+    function _decodeEVMAddress(bytes memory encodedAddress) internal pure returns (address) {
+        if (encodedAddress.length == 32) {
+            return abi.decode(encodedAddress, (address));
+        }
+        if (encodedAddress.length == 20) {
+            return address(uint160(bytes20(encodedAddress)));
+        }
+        revert InvalidEVMAddressEncoding(encodedAddress);
+    }
+
+    function _findOffRampOnCurrentFork(uint64 sourceChainSelector, address sourceOnRamp)
+        internal
+        view
+        returns (address offRampAddress)
+    {
         address destinationRouterAddress = i_register.getNetworkDetails(block.chainid).routerAddress;
 
         (bool success, bytes memory returnData) =
@@ -634,16 +749,9 @@ contract CCIPLocalSimulatorFork is Test {
             return address(0);
         }
 
-        CCIPForkAdapterTypes.RouterOffRamp[] memory offRamps =
-            abi.decode(returnData, (CCIPForkAdapterTypes.RouterOffRamp[]));
+        IRouterFork.OffRamp[] memory offRamps = abi.decode(returnData, (IRouterFork.OffRamp[]));
 
-        for (uint256 i = offRamps.length; i > 0; --i) {
-            if (offRamps[i - 1].sourceChainSelector == sourceChainSelector) {
-                return offRamps[i - 1].offRamp;
-            }
-        }
-
-        return address(0);
+        return _findOffRampForOnRamp(offRamps, sourceChainSelector, sourceOnRamp);
     }
 
     function _detectEra(address onRamp) internal view returns (CCIPEra era) {

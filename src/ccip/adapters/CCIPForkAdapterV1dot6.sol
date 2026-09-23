@@ -68,7 +68,7 @@ library CCIPForkAdapterV1dot6 {
 
         for (uint256 i = 0; i < numberOfTokens; ++i) {
             tokenAmounts[i] = CCIPForkAdapterTypes.V1dot6Any2EVMTokenTransfer({
-                sourcePoolAddress: abi.encodePacked(message.tokenAmounts[i].sourcePoolAddress),
+                sourcePoolAddress: abi.encode(message.tokenAmounts[i].sourcePoolAddress),
                 destTokenAddress: _decodeEVMAddress(message.tokenAmounts[i].destTokenAddress),
                 destGasAmount: abi.decode(message.tokenAmounts[i].destExecData, (uint32)),
                 extraData: message.tokenAmounts[i].extraData,

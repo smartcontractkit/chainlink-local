@@ -8,12 +8,32 @@ contract MockReportGenerator is Test, ReportVersions {
     address internal immutable i_donAddress;
     uint256 internal immutable i_donDigest;
 
+    bytes32 internal immutable i_reportV1MockFeedId =
+        hex"0001777777777777777777777777777777777777777777777777777777777777";
     bytes32 internal immutable i_reportV2MockFeedId =
         hex"0002777777777777777777777777777777777777777777777777777777777777";
     bytes32 internal immutable i_reportV3MockFeedId =
         hex"0003777777777777777777777777777777777777777777777777777777777777";
     bytes32 internal immutable i_reportV4MockFeedId =
         hex"0004777777777777777777777777777777777777777777777777777777777777";
+    bytes32 internal immutable i_reportV5MockFeedId =
+        hex"0005777777777777777777777777777777777777777777777777777777777777";
+    bytes32 internal immutable i_reportV6MockFeedId =
+        hex"0006777777777777777777777777777777777777777777777777777777777777";
+    bytes32 internal immutable i_reportV7MockFeedId =
+        hex"0007777777777777777777777777777777777777777777777777777777777777";
+    bytes32 internal immutable i_reportV8MockFeedId =
+        hex"0008777777777777777777777777777777777777777777777777777777777777";
+    bytes32 internal immutable i_reportV9MockFeedId =
+        hex"0009777777777777777777777777777777777777777777777777777777777777";
+    bytes32 internal immutable i_reportV10MockFeedId =
+        hex"000a777777777777777777777777777777777777777777777777777777777777";
+    bytes32 internal immutable i_reportV11MockFeedId =
+        hex"000b777777777777777777777777777777777777777777777777777777777777";
+    bytes32 internal immutable i_reportV12MockFeedId =
+        hex"000c777777777777777777777777777777777777777777777777777777777777";
+    bytes32 internal immutable i_reportV13MockFeedId =
+        hex"000d777777777777777777777777777777777777777777777777777777777777";
 
     int192 internal s_price;
     int192 internal s_bid;
@@ -34,7 +54,12 @@ contract MockReportGenerator is Test, ReportVersions {
         (i_donAddress, i_donDigest) = makeAddrAndKey("Mock Data Streams DON");
     }
 
-    function generateReport(ReportV2 calldata report) external returns (bytes memory signedReport) {
+    function generateReport(ReportV1 calldata report) external returns (bytes memory signedReport) {
+        bytes memory reportData = abi.encode(report);
+        signedReport = signReport(reportData);
+    }
+
+    function generateReportV2(ReportV2 calldata report) external returns (bytes memory signedReport) {
         bytes memory reportData = abi.encode(report);
         signedReport = signReport(reportData);
     }
@@ -45,6 +70,67 @@ contract MockReportGenerator is Test, ReportVersions {
     }
 
     function generateReport(ReportV4 calldata report) external returns (bytes memory signedReport) {
+        bytes memory reportData = abi.encode(report);
+        signedReport = signReport(reportData);
+    }
+
+    function generateReport(ReportV5 calldata report) external returns (bytes memory signedReport) {
+        bytes memory reportData = abi.encode(report);
+        signedReport = signReport(reportData);
+    }
+
+    function generateReport(ReportV6 calldata report) external returns (bytes memory signedReport) {
+        bytes memory reportData = abi.encode(report);
+        signedReport = signReport(reportData);
+    }
+
+    function generateReport(ReportV7 calldata report) external returns (bytes memory signedReport) {
+        bytes memory reportData = abi.encode(report);
+        signedReport = signReport(reportData);
+    }
+
+    function generateReport(ReportV8 calldata report) external returns (bytes memory signedReport) {
+        bytes memory reportData = abi.encode(report);
+        signedReport = signReport(reportData);
+    }
+
+    function generateReport(ReportV9 calldata report) external returns (bytes memory signedReport) {
+        bytes memory reportData = abi.encode(report);
+        signedReport = signReport(reportData);
+    }
+
+    function generateReport(ReportV10 calldata report) external returns (bytes memory signedReport) {
+        bytes memory reportData = abi.encode(report);
+        signedReport = signReport(reportData);
+    }
+
+    function generateReport(ReportV11 calldata report) external returns (bytes memory signedReport) {
+        bytes memory reportData = abi.encode(report);
+        signedReport = signReport(reportData);
+    }
+
+    function generateReport(ReportV12 calldata report) external returns (bytes memory signedReport) {
+        bytes memory reportData = abi.encode(report);
+        signedReport = signReport(reportData);
+    }
+
+    function generateReport(ReportV13 calldata report) external returns (bytes memory signedReport) {
+        bytes memory reportData = abi.encode(report);
+        signedReport = signReport(reportData);
+    }
+
+    function generateReportV1() external returns (bytes memory signedReport, ReportV1 memory report) {
+        report = ReportV1({
+            feedId: i_reportV1MockFeedId,
+            observationsTimestamp: toUint32(block.timestamp),
+            benchmarkPrice: s_price,
+            bid: s_bid,
+            ask: s_ask,
+            currentBlockNum: toUint64(block.number),
+            currentBlockHash: blockhash(block.number == 0 ? 0 : block.number - 1),
+            validFromBlockNum: toUint64(block.number),
+            currentBlockTimestamp: toUint64(block.timestamp)
+        });
         bytes memory reportData = abi.encode(report);
         signedReport = signReport(reportData);
     }
@@ -89,6 +175,163 @@ contract MockReportGenerator is Test, ReportVersions {
             expiresAt: toUint32(block.timestamp + s_expiresPeriod),
             price: s_price,
             marketStatus: s_marketStatus
+        });
+        bytes memory reportData = abi.encode(report);
+        signedReport = signReport(reportData);
+    }
+
+    function generateReportV5() external returns (bytes memory signedReport, ReportV5 memory report) {
+        report = ReportV5({
+            feedId: i_reportV5MockFeedId,
+            validFromTimestamp: toUint32(block.timestamp),
+            observationsTimestamp: toUint32(block.timestamp),
+            nativeFee: s_nativeFee,
+            linkFee: s_linkFee,
+            expiresAt: toUint32(block.timestamp + s_expiresPeriod),
+            rate: s_price,
+            timestamp: toUint32(block.timestamp),
+            duration: s_expiresPeriod
+        });
+        bytes memory reportData = abi.encode(report);
+        signedReport = signReport(reportData);
+    }
+
+    function generateReportV6() external returns (bytes memory signedReport, ReportV6 memory report) {
+        report = ReportV6({
+            feedId: i_reportV6MockFeedId,
+            validFromTimestamp: toUint32(block.timestamp),
+            observationsTimestamp: toUint32(block.timestamp),
+            nativeFee: s_nativeFee,
+            linkFee: s_linkFee,
+            expiresAt: toUint32(block.timestamp + s_expiresPeriod),
+            price: s_price,
+            price2: s_price,
+            price3: s_price,
+            price4: s_price,
+            price5: s_price
+        });
+        bytes memory reportData = abi.encode(report);
+        signedReport = signReport(reportData);
+    }
+
+    function generateReportV7() external returns (bytes memory signedReport, ReportV7 memory report) {
+        report = ReportV7({
+            feedId: i_reportV7MockFeedId,
+            validFromTimestamp: toUint32(block.timestamp),
+            observationsTimestamp: toUint32(block.timestamp),
+            nativeFee: s_nativeFee,
+            linkFee: s_linkFee,
+            expiresAt: toUint32(block.timestamp + s_expiresPeriod),
+            exchangeRate: s_price
+        });
+        bytes memory reportData = abi.encode(report);
+        signedReport = signReport(reportData);
+    }
+
+    function generateReportV8() external returns (bytes memory signedReport, ReportV8 memory report) {
+        report = ReportV8({
+            feedId: i_reportV8MockFeedId,
+            validFromTimestamp: toUint32(block.timestamp),
+            observationsTimestamp: toUint32(block.timestamp),
+            nativeFee: s_nativeFee,
+            linkFee: s_linkFee,
+            expiresAt: toUint32(block.timestamp + s_expiresPeriod),
+            lastUpdateTimestamp: toUint64(block.timestamp),
+            midPrice: s_price,
+            marketStatus: s_marketStatus
+        });
+        bytes memory reportData = abi.encode(report);
+        signedReport = signReport(reportData);
+    }
+
+    function generateReportV9() external returns (bytes memory signedReport, ReportV9 memory report) {
+        report = ReportV9({
+            feedId: i_reportV9MockFeedId,
+            validFromTimestamp: toUint32(block.timestamp),
+            observationsTimestamp: toUint32(block.timestamp),
+            nativeFee: s_nativeFee,
+            linkFee: s_linkFee,
+            expiresAt: toUint32(block.timestamp + s_expiresPeriod),
+            navPerShare: s_price,
+            navDate: toUint64(block.timestamp),
+            aum: s_price,
+            ripcord: 0
+        });
+        bytes memory reportData = abi.encode(report);
+        signedReport = signReport(reportData);
+    }
+
+    function generateReportV10() external returns (bytes memory signedReport, ReportV10 memory report) {
+        report = ReportV10({
+            feedId: i_reportV10MockFeedId,
+            validFromTimestamp: toUint32(block.timestamp),
+            observationsTimestamp: toUint32(block.timestamp),
+            nativeFee: s_nativeFee,
+            linkFee: s_linkFee,
+            expiresAt: toUint32(block.timestamp + s_expiresPeriod),
+            lastUpdateTimestamp: toUint64(block.timestamp),
+            price: s_price,
+            marketStatus: s_marketStatus,
+            currentMultiplier: int192(1e18),
+            newMultiplier: int192(1e18),
+            activationDateTime: toUint32(block.timestamp + s_expiresPeriod),
+            tokenizedPrice: s_price
+        });
+        bytes memory reportData = abi.encode(report);
+        signedReport = signReport(reportData);
+    }
+
+    function generateReportV11() external returns (bytes memory signedReport, ReportV11 memory report) {
+        report = ReportV11({
+            feedId: i_reportV11MockFeedId,
+            validFromTimestamp: toUint32(block.timestamp),
+            observationsTimestamp: toUint32(block.timestamp),
+            nativeFee: s_nativeFee,
+            linkFee: s_linkFee,
+            expiresAt: toUint32(block.timestamp + s_expiresPeriod),
+            mid: s_price,
+            lastSeenTimestampNs: toUint64(block.timestamp) * 1e9,
+            bid: s_bid,
+            bidVolume: 0,
+            ask: s_ask,
+            askVolume: 0,
+            lastTradedPrice: s_price,
+            marketStatus: s_marketStatus
+        });
+        bytes memory reportData = abi.encode(report);
+        signedReport = signReport(reportData);
+    }
+
+    function generateReportV12() external returns (bytes memory signedReport, ReportV12 memory report) {
+        report = ReportV12({
+            feedId: i_reportV12MockFeedId,
+            validFromTimestamp: toUint32(block.timestamp),
+            observationsTimestamp: toUint32(block.timestamp),
+            nativeFee: s_nativeFee,
+            linkFee: s_linkFee,
+            expiresAt: toUint32(block.timestamp + s_expiresPeriod),
+            navPerShare: s_price,
+            nextNavPerShare: s_price,
+            navDate: toUint64(block.timestamp),
+            ripcord: 0
+        });
+        bytes memory reportData = abi.encode(report);
+        signedReport = signReport(reportData);
+    }
+
+    function generateReportV13() external returns (bytes memory signedReport, ReportV13 memory report) {
+        report = ReportV13({
+            feedId: i_reportV13MockFeedId,
+            validFromTimestamp: toUint32(block.timestamp),
+            observationsTimestamp: toUint32(block.timestamp),
+            nativeFee: s_nativeFee,
+            linkFee: s_linkFee,
+            expiresAt: toUint32(block.timestamp + s_expiresPeriod),
+            bestAsk: s_ask,
+            bestBid: s_bid,
+            askVolume: 0,
+            bidVolume: 0,
+            lastTradedPrice: s_price
         });
         bytes memory reportData = abi.encode(report);
         signedReport = signReport(reportData);
@@ -156,5 +399,12 @@ contract MockReportGenerator is Test, ReportVersions {
             revert MockReportGenerator__CastOverflow();
         }
         return uint32(timestamp);
+    }
+
+    function toUint64(uint256 value) private pure returns (uint64) {
+        if (value > type(uint64).max) {
+            revert MockReportGenerator__CastOverflow();
+        }
+        return uint64(value);
     }
 }
