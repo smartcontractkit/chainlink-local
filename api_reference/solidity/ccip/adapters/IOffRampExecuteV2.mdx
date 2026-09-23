@@ -24,3 +24,26 @@ function executeSingleMessage(
     uint32 gasLimitOverride
 ) external;
 ```
+
+### getExecutionState
+
+Returns the `Internal.MessageExecutionState` of `messageId`
+(`keccak256(encodedMessage)`).
+
+```solidity
+function getExecutionState(bytes32 messageId) external view returns (uint8);
+```
+
+### execute
+
+Permissionless execution entrypoint taking the opaque encoded message emitted by
+the source OnRamp, so routing does not depend on a locally decoded `MessageV1`.
+
+```solidity
+function execute(
+    bytes calldata encodedMessage,
+    address[] calldata ccvs,
+    bytes[] calldata verifierResults,
+    uint32 gasLimitOverride
+) external;
+```

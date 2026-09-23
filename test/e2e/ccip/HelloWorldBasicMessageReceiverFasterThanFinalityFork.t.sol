@@ -6,7 +6,10 @@ import {CCIPLocalSimulatorFork, Register} from "@chainlink/local/src/ccip/CCIPLo
 import {IRouterClient} from "@chainlink/contracts-ccip/contracts/interfaces/IRouterClient.sol";
 import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
 
+import {FinalityCodec} from "@chainlink/contracts-ccip/contracts/libraries/FinalityCodec.sol";
+
 import {BasicMessageReceiver} from "../../../src/test/ccip/BasicMessageReceiver.sol";
+import {BasicMessageReceiverWithCCVs} from "../../../src/test/ccip/BasicMessageReceiverWithCCVs.sol";
 import {EncodeExtraArgsOffchain} from "../../../src/test/ccip/utils/EncodeExtraArgsOffchain.sol";
 
 contract HelloWorldBasicMessageReceiverFasterThanFinalityForkTest is Test {
@@ -41,30 +44,17 @@ contract HelloWorldBasicMessageReceiverFasterThanFinalityForkTest is Test {
         vm.deal(s_alice, 10 ether);
     }
 
+    /// @dev CCIP 2.0: the destination OffRamp only delivers a Faster-Than-Finality message with data to a receiver
+    ///      that opts in through `getCCVsAndFinalityConfig`.
     function test_helloWorldBasicMessageReceiverFasterThanFinality_fork() external {
+        uint16 blockDepth = 1;
+
         vm.selectFork(s_destinationFork);
-        BasicMessageReceiver receiver = new BasicMessageReceiver(s_destinationNetwork.routerAddress);
+        BasicMessageReceiverWithCCVs receiver = new BasicMessageReceiverWithCCVs(s_destinationNetwork.routerAddress);
+        receiver.setAllowedFinalityConfig(s_sourceNetwork.chainSelector, FinalityCodec._encodeBlockDepth(blockDepth));
 
-        vm.selectFork(s_sourceFork);
         bytes memory payload = bytes("Hello World");
-        uint32 gasLimit = 200_000;
-        uint16 blockConfirmations = 1;
-        bytes memory extraArgs = s_encoder.encodeV3Basic(gasLimit, blockConfirmations);
-
-        Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
-            receiver: abi.encode(address(receiver)),
-            data: payload,
-            tokenAmounts: new Client.EVMTokenAmount[](0),
-            extraArgs: extraArgs,
-            feeToken: address(0)
-        });
-
-        vm.startPrank(s_alice);
-        uint256 fee = IRouterClient(s_sourceNetwork.routerAddress).getFee(s_destinationNetwork.chainSelector, message);
-        bytes32 messageId = IRouterClient(s_sourceNetwork.routerAddress).ccipSend{value: fee}(
-            s_destinationNetwork.chainSelector, message
-        );
-        vm.stopPrank();
+        bytes32 messageId = _sendFasterThanFinality(address(receiver), payload, blockDepth);
 
         s_forkSimulator.switchChainAndRouteMessage(s_destinationFork);
 
@@ -73,5 +63,40 @@ contract HelloWorldBasicMessageReceiverFasterThanFinalityForkTest is Test {
         assertEq(receiver.latestSourceChainSelector(), s_sourceNetwork.chainSelector);
         assertEq(receiver.latestSender(), s_alice);
         assertEq(receiver.latestMessage(), payload);
+    }
+
+    /// @dev Production parity: a receiver that does not opt into Faster-Than-Finality only accepts finalized messages,
+    ///      so the OffRamp records the execution as FAILURE and the message is not delivered.
+    function test_helloWorldFasterThanFinality_notDeliveredToReceiverRequiringFinality_fork() external {
+        vm.selectFork(s_destinationFork);
+        BasicMessageReceiver receiver = new BasicMessageReceiver(s_destinationNetwork.routerAddress);
+
+        _sendFasterThanFinality(address(receiver), bytes("Hello World"), 1);
+
+        s_forkSimulator.switchChainAndRouteMessage(s_destinationFork);
+
+        vm.selectFork(s_destinationFork);
+        assertEq(receiver.latestMessageId(), bytes32(0));
+    }
+
+    function _sendFasterThanFinality(address receiver, bytes memory payload, uint16 blockDepth)
+        internal
+        returns (bytes32 messageId)
+    {
+        vm.selectFork(s_sourceFork);
+        Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
+            receiver: abi.encode(receiver),
+            data: payload,
+            tokenAmounts: new Client.EVMTokenAmount[](0),
+            extraArgs: s_encoder.encodeV3BasicBlockDepth(200_000, blockDepth),
+            feeToken: address(0)
+        });
+
+        vm.startPrank(s_alice);
+        uint256 fee = IRouterClient(s_sourceNetwork.routerAddress).getFee(s_destinationNetwork.chainSelector, message);
+        messageId = IRouterClient(s_sourceNetwork.routerAddress).ccipSend{value: fee}(
+            s_destinationNetwork.chainSelector, message
+        );
+        vm.stopPrank();
     }
 }

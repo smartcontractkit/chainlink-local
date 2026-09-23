@@ -12,6 +12,7 @@ import {LockReleaseTokenPool, IERC20} from "@chainlink/contracts-ccip/contracts/
 import {ERC20LockBox} from "@chainlink/contracts-ccip/contracts/pools/ERC20LockBox.sol";
 import {TokenPool} from "@chainlink/contracts-ccip/contracts/pools/TokenPool.sol";
 import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
+import {FinalityCodec} from "@chainlink/contracts-ccip/contracts/libraries/FinalityCodec.sol";
 import {RateLimiter} from "@chainlink/contracts-ccip/contracts/libraries/RateLimiter.sol";
 import {BurnMintERC20} from "@chainlink/contracts/src/v0.8/shared/token/ERC20/BurnMintERC20.sol";
 import {AuthorizedCallers} from "@chainlink/contracts/src/v0.8/shared/access/AuthorizedCallers.sol";
@@ -96,7 +97,7 @@ contract CCTLockReleaseFasterThanFinalityForkTest is Test {
         _configureTrustedPool(
             address(sourcePool), s_destinationNetwork.chainSelector, address(destinationPool), address(destinationToken)
         );
-        TokenPool(address(sourcePool)).setMinBlockConfirmations(BLOCK_CONFIRMATIONS);
+        TokenPool(address(sourcePool)).setAllowedFinalityConfig(FinalityCodec._encodeBlockDepth(BLOCK_CONFIRMATIONS));
 
         vm.selectFork(s_destinationFork);
         _configureTrustedPool(
@@ -111,7 +112,7 @@ contract CCTLockReleaseFasterThanFinalityForkTest is Test {
             receiver: abi.encode(s_bob),
             data: "",
             tokenAmounts: tokenAmounts,
-            extraArgs: s_encoder.encodeV3Basic(GAS_LIMIT, BLOCK_CONFIRMATIONS),
+            extraArgs: s_encoder.encodeV3BasicBlockDepth(GAS_LIMIT, BLOCK_CONFIRMATIONS),
             feeToken: address(0)
         });
 

@@ -25,6 +25,9 @@ interface IOffRampExecuteV2 {
         uint32 gasLimitOverride
     ) external;
 
+    /// @notice Returns the `Internal.MessageExecutionState` of `messageId` (`keccak256(encodedMessage)`).
+    function getExecutionState(bytes32 messageId) external view returns (uint8);
+
     /// @notice Permissionless execution entrypoint taking the opaque encoded message emitted by the
     ///         source OnRamp, so routing does not depend on a locally decoded `MessageV1`.
     function execute(

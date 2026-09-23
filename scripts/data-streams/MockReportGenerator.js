@@ -1,6 +1,4 @@
-const { ethers } = require("hardhat");
-
-const {
+import {
     ReportV1,
     ReportV2,
     ReportV3,
@@ -14,21 +12,25 @@ const {
     ReportV11,
     ReportV12,
     ReportV13,
-} = require("./ReportVersions");
+} from "./ReportVersions.js";
 
 /**
  * Utility that builds deterministic mock Data Streams signed reports for local testing.
  */
 class MockReportGenerator {
     #abi_encoder;
+    #ethers;
 
     /**
+     * @param {object} connection Hardhat 3 network connection from `network.connect()`; requires the
+     *                            `@nomicfoundation/hardhat-ethers` plugin.
      * @param {bigint|number} initialPrice Initial benchmark price used for generated reports.
      */
-    constructor(initialPrice) {
+    constructor(connection, initialPrice) {
+        this.#ethers = connection.ethers;
         // uint256(keccak256(abi.encodePacked("Mock Data Streams DON")));
-        this.i_donDigest = BigInt(ethers.keccak256(ethers.toUtf8Bytes("Mock Data Streams DON")));
-        this.i_donAddress = ethers.computeAddress("0x" + this.i_donDigest.toString(16));
+        this.i_donDigest = BigInt(this.#ethers.keccak256(this.#ethers.toUtf8Bytes("Mock Data Streams DON")));
+        this.i_donAddress = this.#ethers.computeAddress("0x" + this.i_donDigest.toString(16));
 
         this.i_reportV1MockFeedId = "0x0001777777777777777777777777777777777777777777777777777777777777";
         this.i_reportV2MockFeedId = "0x0002777777777777777777777777777777777777777777777777777777777777";
@@ -51,7 +53,7 @@ class MockReportGenerator {
         this.s_nativeFee = 0; // 0 by default
         this.s_linkFee = 0; // 0 by default
 
-        this.#abi_encoder = ethers.AbiCoder.defaultAbiCoder();
+        this.#abi_encoder = this.#ethers.AbiCoder.defaultAbiCoder();
     }
 
     /**
@@ -246,12 +248,12 @@ class MockReportGenerator {
      * @returns {Promise<{signedReport: string, report: ReportV1}>} Signed payload and decoded report model.
      */
     async generateReportV1() {
-        const latestBlock = await ethers.provider.getBlock("latest");
+        const latestBlock = await this.#ethers.provider.getBlock("latest");
         const currentTimestamp = latestBlock.timestamp;
         const currentBlockNum = latestBlock.number;
         const previousBlockHash = currentBlockNum === 0
             ? "0x0000000000000000000000000000000000000000000000000000000000000000"
-            : (await ethers.provider.getBlock(currentBlockNum - 1)).hash;
+            : (await this.#ethers.provider.getBlock(currentBlockNum - 1)).hash;
 
         const report = new ReportV1({
             feedId: this.i_reportV1MockFeedId,
@@ -276,7 +278,7 @@ class MockReportGenerator {
      * @returns {Promise<{signedReport: string, report: ReportV2}>} Signed payload and decoded report model.
      */
     async generateReportV2() {
-        const latestBlock = await ethers.provider.getBlock("latest");
+        const latestBlock = await this.#ethers.provider.getBlock("latest");
         const currentTimestamp = latestBlock.timestamp;
 
         const report = new ReportV2({
@@ -300,7 +302,7 @@ class MockReportGenerator {
      * @returns {Promise<{signedReport: string, report: ReportV3}>} Signed payload and decoded report model.
      */
     async generateReportV3() {
-        const latestBlock = await ethers.provider.getBlock("latest");
+        const latestBlock = await this.#ethers.provider.getBlock("latest");
         const currentTimestamp = latestBlock.timestamp;
 
         const report = new ReportV3({
@@ -326,7 +328,7 @@ class MockReportGenerator {
      * @returns {Promise<{signedReport: string, report: ReportV4}>} Signed payload and decoded report model.
      */
     async generateReportV4() {
-        const latestBlock = await ethers.provider.getBlock("latest");
+        const latestBlock = await this.#ethers.provider.getBlock("latest");
         const currentTimestamp = latestBlock.timestamp;
 
         const report = new ReportV4({
@@ -351,7 +353,7 @@ class MockReportGenerator {
      * @returns {Promise<{signedReport: string, report: ReportV5}>} Signed payload and decoded report model.
      */
     async generateReportV5() {
-        const latestBlock = await ethers.provider.getBlock("latest");
+        const latestBlock = await this.#ethers.provider.getBlock("latest");
         const currentTimestamp = latestBlock.timestamp;
 
         const report = new ReportV5({
@@ -377,7 +379,7 @@ class MockReportGenerator {
      * @returns {Promise<{signedReport: string, report: ReportV6}>} Signed payload and decoded report model.
      */
     async generateReportV6() {
-        const latestBlock = await ethers.provider.getBlock("latest");
+        const latestBlock = await this.#ethers.provider.getBlock("latest");
         const currentTimestamp = latestBlock.timestamp;
 
         const report = new ReportV6({
@@ -405,7 +407,7 @@ class MockReportGenerator {
      * @returns {Promise<{signedReport: string, report: ReportV7}>} Signed payload and decoded report model.
      */
     async generateReportV7() {
-        const latestBlock = await ethers.provider.getBlock("latest");
+        const latestBlock = await this.#ethers.provider.getBlock("latest");
         const currentTimestamp = latestBlock.timestamp;
 
         const report = new ReportV7({
@@ -429,7 +431,7 @@ class MockReportGenerator {
      * @returns {Promise<{signedReport: string, report: ReportV8}>} Signed payload and decoded report model.
      */
     async generateReportV8() {
-        const latestBlock = await ethers.provider.getBlock("latest");
+        const latestBlock = await this.#ethers.provider.getBlock("latest");
         const currentTimestamp = latestBlock.timestamp;
 
         const report = new ReportV8({
@@ -455,7 +457,7 @@ class MockReportGenerator {
      * @returns {Promise<{signedReport: string, report: ReportV9}>} Signed payload and decoded report model.
      */
     async generateReportV9() {
-        const latestBlock = await ethers.provider.getBlock("latest");
+        const latestBlock = await this.#ethers.provider.getBlock("latest");
         const currentTimestamp = latestBlock.timestamp;
 
         const report = new ReportV9({
@@ -482,7 +484,7 @@ class MockReportGenerator {
      * @returns {Promise<{signedReport: string, report: ReportV10}>} Signed payload and decoded report model.
      */
     async generateReportV10() {
-        const latestBlock = await ethers.provider.getBlock("latest");
+        const latestBlock = await this.#ethers.provider.getBlock("latest");
         const currentTimestamp = latestBlock.timestamp;
 
         const report = new ReportV10({
@@ -512,7 +514,7 @@ class MockReportGenerator {
      * @returns {Promise<{signedReport: string, report: ReportV11}>} Signed payload and decoded report model.
      */
     async generateReportV11() {
-        const latestBlock = await ethers.provider.getBlock("latest");
+        const latestBlock = await this.#ethers.provider.getBlock("latest");
         const currentTimestamp = latestBlock.timestamp;
 
         const report = new ReportV11({
@@ -543,7 +545,7 @@ class MockReportGenerator {
      * @returns {Promise<{signedReport: string, report: ReportV12}>} Signed payload and decoded report model.
      */
     async generateReportV12() {
-        const latestBlock = await ethers.provider.getBlock("latest");
+        const latestBlock = await this.#ethers.provider.getBlock("latest");
         const currentTimestamp = latestBlock.timestamp;
 
         const report = new ReportV12({
@@ -570,7 +572,7 @@ class MockReportGenerator {
      * @returns {Promise<{signedReport: string, report: ReportV13}>} Signed payload and decoded report model.
      */
     async generateReportV13() {
-        const latestBlock = await ethers.provider.getBlock("latest");
+        const latestBlock = await this.#ethers.provider.getBlock("latest");
         const currentTimestamp = latestBlock.timestamp;
 
         const report = new ReportV13({
@@ -678,11 +680,11 @@ class MockReportGenerator {
             `0x0000000000000000000000000000000000000000000000000000000000000000`, // not needed for mocks
         ];
 
-        const hashedReport = ethers.keccak256(reportData);
+        const hashedReport = this.#ethers.keccak256(reportData);
 
-        const h = ethers.solidityPackedKeccak256(["bytes32", "bytes32[3]"], [hashedReport, reportContext]);
+        const h = this.#ethers.solidityPackedKeccak256(["bytes32", "bytes32[3]"], [hashedReport, reportContext]);
 
-        const signer = new ethers.SigningKey(`0x${this.i_donDigest.toString(16)}`);
+        const signer = new this.#ethers.SigningKey(`0x${this.i_donDigest.toString(16)}`);
         let signature = signer.sign(h);
 
         if (BigInt(signature.s) > BigInt(N_2)) {
@@ -702,7 +704,7 @@ class MockReportGenerator {
     }
 }
 
-module.exports = {
+export {
     ReportV1,
     ReportV2,
     ReportV3,
@@ -716,5 +718,5 @@ module.exports = {
     ReportV11,
     ReportV12,
     ReportV13,
-    MockReportGenerator
-}
+    MockReportGenerator,
+};

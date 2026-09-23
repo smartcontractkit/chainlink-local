@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 import {Test, Vm} from "forge-std/Test.sol";
 import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
 import {MessageV1Codec} from "@chainlink/contracts-ccip/contracts/libraries/MessageV1Codec.sol";
+import {FinalityCodec} from "@chainlink/contracts-ccip/contracts/libraries/FinalityCodec.sol";
 import {CCIPLocalSimulatorFork} from "../../../src/ccip/CCIPLocalSimulatorFork.sol";
 import {CCIPForkAdapterTypes} from "../../../src/ccip/adapters/CCIPForkAdapterTypes.sol";
 import {CCIPForkAdapterV1dot6} from "../../../src/ccip/adapters/CCIPForkAdapterV1dot6.sol";
@@ -133,12 +134,18 @@ contract MockOnRampV1dot6BySelector {
 contract MockOnRampPreV1dot6 {}
 
 contract CCIPLocalSimulatorForkHarness is CCIPLocalSimulatorFork {
+    /// @dev These tests cover the opt-in local-codec V2 path, which was the default before OFFRAMP_DERIVED.
+    constructor() {
+        s_v2VerificationMode = V2VerificationMode.HYBRID;
+    }
+
     function detectEra(address onRamp) external view returns (uint8) {
         return uint8(_detectEra(onRamp));
     }
 
     function routeV2Message(Vm.Log memory entry) external returns (bool attempted) {
-        return _routeV2Message(entry);
+        // The local-codec path reads the source chain selector from the decoded message.
+        return _routeV2Message(entry, 0, false);
     }
 }
 
@@ -186,11 +193,8 @@ interface ITestResolver {
 }
 
 interface ITestVerifier {
-    function verifyMessage(
-        MessageV1Codec.MessageV1 memory message,
-        bytes32 messageId,
-        bytes memory verifierResults
-    ) external;
+    function verifyMessage(MessageV1Codec.MessageV1 memory message, bytes32 messageId, bytes memory verifierResults)
+        external;
 }
 
 contract MockV2OffRampWithVerifier {
@@ -253,11 +257,7 @@ contract CCIPForkAdaptersUnitTest is Test {
 
         CCIPForkAdapterTypes.V1dot6EVM2AnyRampMessage memory message = CCIPForkAdapterTypes.V1dot6EVM2AnyRampMessage({
             header: CCIPForkAdapterTypes.V1dot6RampMessageHeader({
-                messageId: keccak256("m"),
-                sourceChainSelector: 1,
-                destChainSelector: 2,
-                sequenceNumber: 3,
-                nonce: 4
+                messageId: keccak256("m"), sourceChainSelector: 1, destChainSelector: 2, sequenceNumber: 3, nonce: 4
             }),
             sender: makeAddr("sender"),
             data: "hello",
@@ -298,7 +298,7 @@ contract CCIPForkAdaptersUnitTest is Test {
             messageNumber: 1,
             executionGasLimit: 400_000,
             ccipReceiveGasLimit: 300_000,
-            finality: 2,
+            finality: FinalityCodec._encodeBlockDepth(2),
             ccvAndExecutorHash: bytes32(0),
             onRampAddress: abi.encode(makeAddr("onRamp")),
             offRampAddress: abi.encodePacked(address(offRamp)),
@@ -318,18 +318,10 @@ contract CCIPForkAdaptersUnitTest is Test {
 
         CCIPForkAdapterTypes.V2Receipt[] memory receipts = new CCIPForkAdapterTypes.V2Receipt[](2);
         receipts[0] = CCIPForkAdapterTypes.V2Receipt({
-            issuer: ccv1,
-            destGasLimit: 10_000,
-            destBytesOverhead: 32,
-            feeTokenAmount: 1,
-            extraArgs: hex""
+            issuer: ccv1, destGasLimit: 10_000, destBytesOverhead: 32, feeTokenAmount: 1, extraArgs: hex""
         });
         receipts[1] = CCIPForkAdapterTypes.V2Receipt({
-            issuer: ccv2,
-            destGasLimit: 10_000,
-            destBytesOverhead: 32,
-            feeTokenAmount: 1,
-            extraArgs: hex""
+            issuer: ccv2, destGasLimit: 10_000, destBytesOverhead: 32, feeTokenAmount: 1, extraArgs: hex""
         });
         bytes memory eventData = abi.encode(address(0x1), uint256(0), encodedMessage, receipts, verifierBlobs);
 
@@ -353,8 +345,9 @@ contract CCIPForkAdaptersUnitTest is Test {
         assertEq(verifierResults[0], verifierBlobs[0]);
         assertEq(verifierResults[1], verifierBlobs[1]);
 
-        (bool success,) =
-            CCIPForkAdapterV2.execute(address(offRamp), decodedMessage.message, decodedMessage.messageId, ccvs, verifierResults);
+        (bool success,) = CCIPForkAdapterV2.execute(
+            address(offRamp), decodedMessage.message, decodedMessage.messageId, ccvs, verifierResults
+        );
         assertTrue(success);
 
         assertEq(offRamp.messageId(), messageId);
@@ -386,7 +379,7 @@ contract CCIPForkAdaptersUnitTest is Test {
             messageNumber: 1,
             executionGasLimit: 400_000,
             ccipReceiveGasLimit: 300_000,
-            finality: 2,
+            finality: FinalityCodec._encodeBlockDepth(2),
             ccvAndExecutorHash: bytes32(0),
             onRampAddress: abi.encode(makeAddr("onRamp")),
             offRampAddress: abi.encodePacked(address(offRamp)),
@@ -405,11 +398,7 @@ contract CCIPForkAdaptersUnitTest is Test {
 
         CCIPForkAdapterTypes.V2Receipt[] memory receipts = new CCIPForkAdapterTypes.V2Receipt[](1);
         receipts[0] = CCIPForkAdapterTypes.V2Receipt({
-            issuer: address(resolver),
-            destGasLimit: 10_000,
-            destBytesOverhead: 32,
-            feeTokenAmount: 1,
-            extraArgs: hex""
+            issuer: address(resolver), destGasLimit: 10_000, destBytesOverhead: 32, feeTokenAmount: 1, extraArgs: hex""
         });
         bytes memory eventData = abi.encode(address(0x1), uint256(0), encodedMessage, receipts, verifierBlobs);
 
@@ -448,7 +437,7 @@ contract CCIPForkAdaptersUnitTest is Test {
             messageNumber: 1,
             executionGasLimit: 400_000,
             ccipReceiveGasLimit: 300_000,
-            finality: 2,
+            finality: FinalityCodec._encodeBlockDepth(2),
             ccvAndExecutorHash: bytes32(0),
             onRampAddress: abi.encode(makeAddr("onRamp")),
             offRampAddress: abi.encodePacked(address(offRamp)),
@@ -471,11 +460,7 @@ contract CCIPForkAdaptersUnitTest is Test {
             extraArgs: hex""
         });
         receipts[1] = CCIPForkAdapterTypes.V2Receipt({
-            issuer: makeAddr("router"),
-            destGasLimit: 0,
-            destBytesOverhead: 0,
-            feeTokenAmount: 1,
-            extraArgs: hex""
+            issuer: makeAddr("router"), destGasLimit: 0, destBytesOverhead: 0, feeTokenAmount: 1, extraArgs: hex""
         });
         bytes memory eventData = abi.encode(address(0x1), uint256(0), encodedMessage, receipts, new bytes[](0));
 
@@ -517,7 +502,7 @@ contract CCIPForkAdaptersUnitTest is Test {
             messageNumber: 1,
             executionGasLimit: 400_000,
             ccipReceiveGasLimit: 300_000,
-            finality: 2,
+            finality: FinalityCodec._encodeBlockDepth(2),
             ccvAndExecutorHash: bytes32(0),
             onRampAddress: abi.encode(makeAddr("onRamp")),
             offRampAddress: abi.encodePacked(address(offRamp)),
@@ -536,11 +521,7 @@ contract CCIPForkAdaptersUnitTest is Test {
 
         CCIPForkAdapterTypes.V2Receipt[] memory receipts = new CCIPForkAdapterTypes.V2Receipt[](1);
         receipts[0] = CCIPForkAdapterTypes.V2Receipt({
-            issuer: address(resolver),
-            destGasLimit: 10_000,
-            destBytesOverhead: 32,
-            feeTokenAmount: 1,
-            extraArgs: hex""
+            issuer: address(resolver), destGasLimit: 10_000, destBytesOverhead: 32, feeTokenAmount: 1, extraArgs: hex""
         });
         bytes memory eventData = abi.encode(address(0x1), uint256(0), encodedMessage, receipts, verifierBlobs);
 
@@ -565,5 +546,4 @@ contract CCIPForkAdaptersUnitTest is Test {
         assertTrue(syntheticOnlySimulator.routeV2Message(entry));
         assertEq(offRamp.successfulExecutions(), 1);
     }
-
 }

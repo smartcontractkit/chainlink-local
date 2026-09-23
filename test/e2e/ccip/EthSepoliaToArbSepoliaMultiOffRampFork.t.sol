@@ -9,6 +9,7 @@ import {IERC20} from "@openzeppelin/contracts@4.8.3/token/ERC20/IERC20.sol";
 import {BurnMintERC677Helper} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
 import {CCIPLocalSimulatorFork, IRouterFork} from "../../../src/ccip/CCIPLocalSimulatorFork.sol";
 import {Register} from "../../../src/ccip/Register.sol";
+import {CCIPForkAdapterTypes} from "../../../src/ccip/adapters/CCIPForkAdapterTypes.sol";
 
 /// @dev Minimal receiver so the only “application” code is CCIP wiring; the test sends via the Router directly.
 contract MinimalStringReceiver is CCIPReceiver {
@@ -56,7 +57,7 @@ contract EthSepoliaToArbSepoliaMultiOffRampForkTest is Test {
         vm.selectFork(arbSepoliaFork);
         arbDetails = ccipFork.getNetworkDetails(block.chainid);
 
-        IRouterFork.OffRamp[] memory offRamps = IRouterFork(arbDetails.routerAddress).getOffRamps();
+        CCIPForkAdapterTypes.RouterOffRamp[] memory offRamps = IRouterFork(arbDetails.routerAddress).getOffRamps();
         uint256 matching;
         for (uint256 i; i < offRamps.length; ++i) {
             if (offRamps[i].sourceChainSelector == ETH_SEPOLIA_CHAIN_SELECTOR) {
@@ -99,7 +100,7 @@ contract EthSepoliaToArbSepoliaMultiOffRampForkTest is Test {
         assertEq(receiver.lastPayload(), payload);
     }
 
-    /// @notice Regression: v1.6 token transfers must decode `destTokenAddress` as ABI-encoded address (32 bytes), not via `bytes20` truncation 
+    /// @notice Regression: v1.6 token transfers must decode `destTokenAddress` as ABI-encoded address (32 bytes), not via `bytes20` truncation
     function test_transferBnMFromRouter_payFeesInNative_multiOffRampLane() public {
         address recipientAddr = makeAddr("recipient");
 
@@ -111,8 +112,7 @@ contract EthSepoliaToArbSepoliaMultiOffRampForkTest is Test {
         IERC20(sepoliaDetails.ccipBnMAddress).approve(address(sepoliaRouter), amountToSend);
 
         Client.EVMTokenAmount[] memory tokensToSendDetails = new Client.EVMTokenAmount[](1);
-        tokensToSendDetails[0] =
-            Client.EVMTokenAmount({token: sepoliaDetails.ccipBnMAddress, amount: amountToSend});
+        tokensToSendDetails[0] = Client.EVMTokenAmount({token: sepoliaDetails.ccipBnMAddress, amount: amountToSend});
 
         Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
             receiver: abi.encode(recipientAddr),

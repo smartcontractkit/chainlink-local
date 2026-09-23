@@ -8,19 +8,59 @@ testing.
 **Kind**: global class
 
 - [MockReportGenerator](#MockReportGenerator)
-  - [new MockReportGenerator(initialPrice)](#new_MockReportGenerator_new)
+  - [new MockReportGenerator(connection, initialPrice)](#new_MockReportGenerator_new)
+  - [.generateReportV1WithData(report)](#MockReportGenerator+generateReportV1WithData)
+    ⇒ <code>string</code>
   - [.generateReportV2WithData(report)](#MockReportGenerator+generateReportV2WithData)
     ⇒ <code>string</code>
   - [.generateReportV3WithData(report)](#MockReportGenerator+generateReportV3WithData)
     ⇒ <code>string</code>
   - [.generateReportV4WithData(report)](#MockReportGenerator+generateReportV4WithData)
     ⇒ <code>string</code>
+  - [.generateReportV5WithData(report)](#MockReportGenerator+generateReportV5WithData)
+    ⇒ <code>string</code>
+  - [.generateReportV6WithData(report)](#MockReportGenerator+generateReportV6WithData)
+    ⇒ <code>string</code>
+  - [.generateReportV7WithData(report)](#MockReportGenerator+generateReportV7WithData)
+    ⇒ <code>string</code>
+  - [.generateReportV8WithData(report)](#MockReportGenerator+generateReportV8WithData)
+    ⇒ <code>string</code>
+  - [.generateReportV9WithData(report)](#MockReportGenerator+generateReportV9WithData)
+    ⇒ <code>string</code>
+  - [.generateReportV10WithData(report)](#MockReportGenerator+generateReportV10WithData)
+    ⇒ <code>string</code>
+  - [.generateReportV11WithData(report)](#MockReportGenerator+generateReportV11WithData)
+    ⇒ <code>string</code>
+  - [.generateReportV12WithData(report)](#MockReportGenerator+generateReportV12WithData)
+    ⇒ <code>string</code>
+  - [.generateReportV13WithData(report)](#MockReportGenerator+generateReportV13WithData)
+    ⇒ <code>string</code>
+  - [.generateReportV1()](#MockReportGenerator+generateReportV1) ⇒
+    <code>Promise.&lt;\{signedReport: string, report: ReportV1}&gt;</code>
   - [.generateReportV2()](#MockReportGenerator+generateReportV2) ⇒
     <code>Promise.&lt;\{signedReport: string, report: ReportV2}&gt;</code>
   - [.generateReportV3()](#MockReportGenerator+generateReportV3) ⇒
     <code>Promise.&lt;\{signedReport: string, report: ReportV3}&gt;</code>
   - [.generateReportV4()](#MockReportGenerator+generateReportV4) ⇒
     <code>Promise.&lt;\{signedReport: string, report: ReportV4}&gt;</code>
+  - [.generateReportV5()](#MockReportGenerator+generateReportV5) ⇒
+    <code>Promise.&lt;\{signedReport: string, report: ReportV5}&gt;</code>
+  - [.generateReportV6()](#MockReportGenerator+generateReportV6) ⇒
+    <code>Promise.&lt;\{signedReport: string, report: ReportV6}&gt;</code>
+  - [.generateReportV7()](#MockReportGenerator+generateReportV7) ⇒
+    <code>Promise.&lt;\{signedReport: string, report: ReportV7}&gt;</code>
+  - [.generateReportV8()](#MockReportGenerator+generateReportV8) ⇒
+    <code>Promise.&lt;\{signedReport: string, report: ReportV8}&gt;</code>
+  - [.generateReportV9()](#MockReportGenerator+generateReportV9) ⇒
+    <code>Promise.&lt;\{signedReport: string, report: ReportV9}&gt;</code>
+  - [.generateReportV10()](#MockReportGenerator+generateReportV10) ⇒
+    <code>Promise.&lt;\{signedReport: string, report: ReportV10}&gt;</code>
+  - [.generateReportV11()](#MockReportGenerator+generateReportV11) ⇒
+    <code>Promise.&lt;\{signedReport: string, report: ReportV11}&gt;</code>
+  - [.generateReportV12()](#MockReportGenerator+generateReportV12) ⇒
+    <code>Promise.&lt;\{signedReport: string, report: ReportV12}&gt;</code>
+  - [.generateReportV13()](#MockReportGenerator+generateReportV13) ⇒
+    <code>Promise.&lt;\{signedReport: string, report: ReportV13}&gt;</code>
   - [.updatePrice(price)](#MockReportGenerator+updatePrice) ⇒ <code>void</code>
   - [.updatePriceBidAndAsk(price, bid, ask)](#MockReportGenerator+updatePriceBidAndAsk)
     ⇒ <code>void</code>
@@ -35,11 +75,26 @@ testing.
 
 <a name="new_MockReportGenerator_new"></a>
 
-### new MockReportGenerator(initialPrice)
+### new MockReportGenerator(connection, initialPrice)
 
-| Param        | Type                                       | Description                                         |
-| ------------ | ------------------------------------------ | --------------------------------------------------- |
-| initialPrice | <code>bigint</code> \| <code>number</code> | Initial benchmark price used for generated reports. |
+| Param        | Type                                       | Description                                                                                                   |
+| ------------ | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| connection   | <code>object</code>                        | Hardhat 3 network connection from `network.connect()`; requires the `@nomicfoundation/hardhat-ethers` plugin. |
+| initialPrice | <code>bigint</code> \| <code>number</code> | Initial benchmark price used for generated reports.                                                           |
+
+<a name="MockReportGenerator+generateReportV1WithData"></a>
+
+### mockReportGenerator.generateReportV1WithData(report) ⇒ <code>string</code>
+
+Encodes and signs a version 1 report payload.
+
+**Kind**: instance method of
+[<code>MockReportGenerator</code>](#MockReportGenerator)  
+**Returns**: <code>string</code> - ABI-encoded signed report blob.
+
+| Param  | Type                  | Description              |
+| ------ | --------------------- | ------------------------ |
+| report | <code>ReportV1</code> | Report object to encode. |
 
 <a name="MockReportGenerator+generateReportV2WithData"></a>
 
@@ -83,6 +138,143 @@ Encodes and signs a version 4 report payload.
 | ------ | --------------------- | ------------------------ |
 | report | <code>ReportV4</code> | Report object to encode. |
 
+<a name="MockReportGenerator+generateReportV5WithData"></a>
+
+### mockReportGenerator.generateReportV5WithData(report) ⇒ <code>string</code>
+
+Encodes and signs a version 5 report payload.
+
+**Kind**: instance method of
+[<code>MockReportGenerator</code>](#MockReportGenerator)  
+**Returns**: <code>string</code> - ABI-encoded signed report blob.
+
+| Param  | Type                  | Description              |
+| ------ | --------------------- | ------------------------ |
+| report | <code>ReportV5</code> | Report object to encode. |
+
+<a name="MockReportGenerator+generateReportV6WithData"></a>
+
+### mockReportGenerator.generateReportV6WithData(report) ⇒ <code>string</code>
+
+Encodes and signs a version 6 report payload.
+
+**Kind**: instance method of
+[<code>MockReportGenerator</code>](#MockReportGenerator)  
+**Returns**: <code>string</code> - ABI-encoded signed report blob.
+
+| Param  | Type                  | Description              |
+| ------ | --------------------- | ------------------------ |
+| report | <code>ReportV6</code> | Report object to encode. |
+
+<a name="MockReportGenerator+generateReportV7WithData"></a>
+
+### mockReportGenerator.generateReportV7WithData(report) ⇒ <code>string</code>
+
+Encodes and signs a version 7 report payload.
+
+**Kind**: instance method of
+[<code>MockReportGenerator</code>](#MockReportGenerator)  
+**Returns**: <code>string</code> - ABI-encoded signed report blob.
+
+| Param  | Type                  | Description              |
+| ------ | --------------------- | ------------------------ |
+| report | <code>ReportV7</code> | Report object to encode. |
+
+<a name="MockReportGenerator+generateReportV8WithData"></a>
+
+### mockReportGenerator.generateReportV8WithData(report) ⇒ <code>string</code>
+
+Encodes and signs a version 8 report payload.
+
+**Kind**: instance method of
+[<code>MockReportGenerator</code>](#MockReportGenerator)  
+**Returns**: <code>string</code> - ABI-encoded signed report blob.
+
+| Param  | Type                  | Description              |
+| ------ | --------------------- | ------------------------ |
+| report | <code>ReportV8</code> | Report object to encode. |
+
+<a name="MockReportGenerator+generateReportV9WithData"></a>
+
+### mockReportGenerator.generateReportV9WithData(report) ⇒ <code>string</code>
+
+Encodes and signs a version 9 report payload.
+
+**Kind**: instance method of
+[<code>MockReportGenerator</code>](#MockReportGenerator)  
+**Returns**: <code>string</code> - ABI-encoded signed report blob.
+
+| Param  | Type                  | Description              |
+| ------ | --------------------- | ------------------------ |
+| report | <code>ReportV9</code> | Report object to encode. |
+
+<a name="MockReportGenerator+generateReportV10WithData"></a>
+
+### mockReportGenerator.generateReportV10WithData(report) ⇒ <code>string</code>
+
+Encodes and signs a version 10 report payload.
+
+**Kind**: instance method of
+[<code>MockReportGenerator</code>](#MockReportGenerator)  
+**Returns**: <code>string</code> - ABI-encoded signed report blob.
+
+| Param  | Type                   | Description              |
+| ------ | ---------------------- | ------------------------ |
+| report | <code>ReportV10</code> | Report object to encode. |
+
+<a name="MockReportGenerator+generateReportV11WithData"></a>
+
+### mockReportGenerator.generateReportV11WithData(report) ⇒ <code>string</code>
+
+Encodes and signs a version 11 report payload.
+
+**Kind**: instance method of
+[<code>MockReportGenerator</code>](#MockReportGenerator)  
+**Returns**: <code>string</code> - ABI-encoded signed report blob.
+
+| Param  | Type                   | Description              |
+| ------ | ---------------------- | ------------------------ |
+| report | <code>ReportV11</code> | Report object to encode. |
+
+<a name="MockReportGenerator+generateReportV12WithData"></a>
+
+### mockReportGenerator.generateReportV12WithData(report) ⇒ <code>string</code>
+
+Encodes and signs a version 12 report payload.
+
+**Kind**: instance method of
+[<code>MockReportGenerator</code>](#MockReportGenerator)  
+**Returns**: <code>string</code> - ABI-encoded signed report blob.
+
+| Param  | Type                   | Description              |
+| ------ | ---------------------- | ------------------------ |
+| report | <code>ReportV12</code> | Report object to encode. |
+
+<a name="MockReportGenerator+generateReportV13WithData"></a>
+
+### mockReportGenerator.generateReportV13WithData(report) ⇒ <code>string</code>
+
+Encodes and signs a version 13 report payload.
+
+**Kind**: instance method of
+[<code>MockReportGenerator</code>](#MockReportGenerator)  
+**Returns**: <code>string</code> - ABI-encoded signed report blob.
+
+| Param  | Type                   | Description              |
+| ------ | ---------------------- | ------------------------ |
+| report | <code>ReportV13</code> | Report object to encode. |
+
+<a name="MockReportGenerator+generateReportV1"></a>
+
+### mockReportGenerator.generateReportV1() ⇒ <code>Promise.&lt;\{signedReport: string, report: ReportV1}&gt;</code>
+
+Builds and signs a default version 1 report from current generator state.
+
+**Kind**: instance method of
+[<code>MockReportGenerator</code>](#MockReportGenerator)  
+**Returns**: <code>Promise.&lt;\{signedReport: string, report:
+ReportV1}&gt;</code> - Signed payload and decoded report model.
+
 <a name="MockReportGenerator+generateReportV2"></a>
 
 ### mockReportGenerator.generateReportV2() ⇒ <code>Promise.&lt;\{signedReport: string, report: ReportV2}&gt;</code>
@@ -115,6 +307,105 @@ Builds and signs a default version 4 report from current generator state.
 [<code>MockReportGenerator</code>](#MockReportGenerator)  
 **Returns**: <code>Promise.&lt;\{signedReport: string, report:
 ReportV4}&gt;</code> - Signed payload and decoded report model.
+
+<a name="MockReportGenerator+generateReportV5"></a>
+
+### mockReportGenerator.generateReportV5() ⇒ <code>Promise.&lt;\{signedReport: string, report: ReportV5}&gt;</code>
+
+Builds and signs a default version 5 report from current generator state.
+
+**Kind**: instance method of
+[<code>MockReportGenerator</code>](#MockReportGenerator)  
+**Returns**: <code>Promise.&lt;\{signedReport: string, report:
+ReportV5}&gt;</code> - Signed payload and decoded report model.
+
+<a name="MockReportGenerator+generateReportV6"></a>
+
+### mockReportGenerator.generateReportV6() ⇒ <code>Promise.&lt;\{signedReport: string, report: ReportV6}&gt;</code>
+
+Builds and signs a default version 6 report from current generator state.
+
+**Kind**: instance method of
+[<code>MockReportGenerator</code>](#MockReportGenerator)  
+**Returns**: <code>Promise.&lt;\{signedReport: string, report:
+ReportV6}&gt;</code> - Signed payload and decoded report model.
+
+<a name="MockReportGenerator+generateReportV7"></a>
+
+### mockReportGenerator.generateReportV7() ⇒ <code>Promise.&lt;\{signedReport: string, report: ReportV7}&gt;</code>
+
+Builds and signs a default version 7 report from current generator state.
+
+**Kind**: instance method of
+[<code>MockReportGenerator</code>](#MockReportGenerator)  
+**Returns**: <code>Promise.&lt;\{signedReport: string, report:
+ReportV7}&gt;</code> - Signed payload and decoded report model.
+
+<a name="MockReportGenerator+generateReportV8"></a>
+
+### mockReportGenerator.generateReportV8() ⇒ <code>Promise.&lt;\{signedReport: string, report: ReportV8}&gt;</code>
+
+Builds and signs a default version 8 report from current generator state.
+
+**Kind**: instance method of
+[<code>MockReportGenerator</code>](#MockReportGenerator)  
+**Returns**: <code>Promise.&lt;\{signedReport: string, report:
+ReportV8}&gt;</code> - Signed payload and decoded report model.
+
+<a name="MockReportGenerator+generateReportV9"></a>
+
+### mockReportGenerator.generateReportV9() ⇒ <code>Promise.&lt;\{signedReport: string, report: ReportV9}&gt;</code>
+
+Builds and signs a default version 9 report from current generator state.
+
+**Kind**: instance method of
+[<code>MockReportGenerator</code>](#MockReportGenerator)  
+**Returns**: <code>Promise.&lt;\{signedReport: string, report:
+ReportV9}&gt;</code> - Signed payload and decoded report model.
+
+<a name="MockReportGenerator+generateReportV10"></a>
+
+### mockReportGenerator.generateReportV10() ⇒ <code>Promise.&lt;\{signedReport: string, report: ReportV10}&gt;</code>
+
+Builds and signs a default version 10 report from current generator state.
+
+**Kind**: instance method of
+[<code>MockReportGenerator</code>](#MockReportGenerator)  
+**Returns**: <code>Promise.&lt;\{signedReport: string, report:
+ReportV10}&gt;</code> - Signed payload and decoded report model.
+
+<a name="MockReportGenerator+generateReportV11"></a>
+
+### mockReportGenerator.generateReportV11() ⇒ <code>Promise.&lt;\{signedReport: string, report: ReportV11}&gt;</code>
+
+Builds and signs a default version 11 report from current generator state.
+
+**Kind**: instance method of
+[<code>MockReportGenerator</code>](#MockReportGenerator)  
+**Returns**: <code>Promise.&lt;\{signedReport: string, report:
+ReportV11}&gt;</code> - Signed payload and decoded report model.
+
+<a name="MockReportGenerator+generateReportV12"></a>
+
+### mockReportGenerator.generateReportV12() ⇒ <code>Promise.&lt;\{signedReport: string, report: ReportV12}&gt;</code>
+
+Builds and signs a default version 12 report from current generator state.
+
+**Kind**: instance method of
+[<code>MockReportGenerator</code>](#MockReportGenerator)  
+**Returns**: <code>Promise.&lt;\{signedReport: string, report:
+ReportV12}&gt;</code> - Signed payload and decoded report model.
+
+<a name="MockReportGenerator+generateReportV13"></a>
+
+### mockReportGenerator.generateReportV13() ⇒ <code>Promise.&lt;\{signedReport: string, report: ReportV13}&gt;</code>
+
+Builds and signs a default version 13 report from current generator state.
+
+**Kind**: instance method of
+[<code>MockReportGenerator</code>](#MockReportGenerator)  
+**Returns**: <code>Promise.&lt;\{signedReport: string, report:
+ReportV13}&gt;</code> - Signed payload and decoded report model.
 
 <a name="MockReportGenerator+updatePrice"></a>
 

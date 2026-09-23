@@ -6,11 +6,14 @@ import {CCIPLocalSimulatorFork, Register} from "@chainlink/local/src/ccip/CCIPLo
 import {IRouterClient} from "@chainlink/contracts-ccip/contracts/interfaces/IRouterClient.sol";
 import {ITokenAdminRegistry} from "@chainlink/contracts-ccip/contracts/interfaces/ITokenAdminRegistry.sol";
 import {IBurnMintERC20} from "@chainlink/contracts-ccip/contracts/interfaces/IBurnMintERC20.sol";
-import {RegistryModuleOwnerCustom} from "@chainlink/contracts-ccip/contracts/tokenAdminRegistry/RegistryModuleOwnerCustom.sol";
+import {
+    RegistryModuleOwnerCustom
+} from "@chainlink/contracts-ccip/contracts/tokenAdminRegistry/RegistryModuleOwnerCustom.sol";
 import {BurnMintTokenPool} from "@chainlink/contracts-ccip/contracts/pools/BurnMintTokenPool.sol";
 import {AdvancedPoolHooks} from "@chainlink/contracts-ccip/contracts/pools/AdvancedPoolHooks.sol";
 import {TokenPool} from "@chainlink/contracts-ccip/contracts/pools/TokenPool.sol";
 import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
+import {FinalityCodec} from "@chainlink/contracts-ccip/contracts/libraries/FinalityCodec.sol";
 import {RateLimiter} from "@chainlink/contracts-ccip/contracts/libraries/RateLimiter.sol";
 import {BurnMintERC20} from "@chainlink/contracts/src/v0.8/shared/token/ERC20/BurnMintERC20.sol";
 import {AuthorizedCallers} from "@chainlink/contracts/src/v0.8/shared/access/AuthorizedCallers.sol";
@@ -80,8 +83,7 @@ contract CCTBurnMintAdvancedPoolHooksFasterThanFinalityForkTest is Test {
         vm.selectFork(s_destinationFork);
         address[] memory destinationAllowList = new address[](1);
         destinationAllowList[0] = s_bob;
-        AdvancedPoolHooks destinationHook =
-            new AdvancedPoolHooks(destinationAllowList, 0, address(0), new address[](0));
+        AdvancedPoolHooks destinationHook = new AdvancedPoolHooks(destinationAllowList, 0, address(0), new address[](0));
 
         BurnMintERC20 destinationToken = new BurnMintERC20("CCT Hook Dest", "CCTH-D", 18, 0, 0);
         BurnMintTokenPool destinationPool = new BurnMintTokenPool(
@@ -98,19 +100,13 @@ contract CCTBurnMintAdvancedPoolHooksFasterThanFinalityForkTest is Test {
 
         vm.selectFork(s_sourceFork);
         _configureTrustedPool(
-            address(sourcePool),
-            s_destinationNetwork.chainSelector,
-            address(destinationPool),
-            address(destinationToken)
+            address(sourcePool), s_destinationNetwork.chainSelector, address(destinationPool), address(destinationToken)
         );
-        TokenPool(address(sourcePool)).setMinBlockConfirmations(BLOCK_CONFIRMATIONS);
+        TokenPool(address(sourcePool)).setAllowedFinalityConfig(FinalityCodec._encodeBlockDepth(BLOCK_CONFIRMATIONS));
 
         vm.selectFork(s_destinationFork);
         _configureTrustedPool(
-            address(destinationPool),
-            s_sourceNetwork.chainSelector,
-            address(sourcePool),
-            address(sourceToken)
+            address(destinationPool), s_sourceNetwork.chainSelector, address(sourcePool), address(sourceToken)
         );
 
         vm.selectFork(s_sourceFork);
@@ -131,7 +127,7 @@ contract CCTBurnMintAdvancedPoolHooksFasterThanFinalityForkTest is Test {
             receiver: abi.encode(s_bob),
             data: "",
             tokenAmounts: tokenAmounts,
-            extraArgs: s_encoder.encodeV3Basic(GAS_LIMIT, BLOCK_CONFIRMATIONS),
+            extraArgs: s_encoder.encodeV3BasicBlockDepth(GAS_LIMIT, BLOCK_CONFIRMATIONS),
             feeToken: address(0)
         });
 
@@ -164,9 +160,12 @@ contract CCTBurnMintAdvancedPoolHooksFasterThanFinalityForkTest is Test {
         );
     }
 
-    function _configureTrustedPool(address localPool, uint64 remoteChainSelector, address remotePool, address remoteToken)
-        internal
-    {
+    function _configureTrustedPool(
+        address localPool,
+        uint64 remoteChainSelector,
+        address remotePool,
+        address remoteToken
+    ) internal {
         bytes[] memory remotePoolAddresses = new bytes[](1);
         remotePoolAddresses[0] = abi.encode(remotePool);
 

@@ -52,8 +52,10 @@ contract EncodeExtraArgsOffchain {
      *                 is `0`, no callback is executed (useful for token-only transfers or EOA receivers).
      *                 **Note:** The sender is billed for the *specified* gas limit, not actual usage. Unused gas is **not** refunded.
      *                 Estimate gas requirements carefully, as they vary by chain family (refer to chain-specific documentation).
-     * @param blockConfirmations Number of block confirmations to wait before execution. `0` uses the default finality
-     *                            defined by the CCV. Non-zero values may be rejected by CCVs/Pools/executor if considered too risky.
+     * @param requestedFinalityConfig Finality requested for the message, encoded with `FinalityCodec`.
+     *                                `FinalityCodec.WAIT_FOR_FINALITY_FLAG` (`bytes4(0)`) waits for finality; a block depth
+     *                                (`FinalityCodec._encodeBlockDepth(n)`) or `WAIT_FOR_SAFE_FLAG` requests Faster-Than-Finality,
+     *                                which CCVs/Pools/executor/receiver may reject if considered too risky.
      * @param ccvs Array of cross-chain verifier (CCV) addresses. If empty, default verifiers are used.
      * @param ccvArgs Optional, uninterpreted arguments for each CCV in `ccvs`. Must match the length of `ccvs`.
      *                 **Format:** Chain/CCV-specific (e.g., encoded structs or raw bytes).
@@ -70,7 +72,7 @@ contract EncodeExtraArgsOffchain {
      */
     function encodeV3(
         uint32 gasLimit,
-        uint16 blockConfirmations,
+        bytes4 requestedFinalityConfig,
         address[] memory ccvs,
         bytes[] memory ccvArgs,
         address executor,
@@ -80,7 +82,7 @@ contract EncodeExtraArgsOffchain {
     ) public pure returns (bytes memory extraArgsBytes) {
         ExtraArgsCodec.GenericExtraArgsV3 memory extraArgs = ExtraArgsCodec.GenericExtraArgsV3({
             gasLimit: gasLimit,
-            blockConfirmations: blockConfirmations,
+            requestedFinalityConfig: requestedFinalityConfig,
             ccvs: ccvs,
             ccvArgs: ccvArgs,
             executor: executor,
@@ -92,13 +94,20 @@ contract EncodeExtraArgsOffchain {
         extraArgsBytes = ExtraArgsCodec._encodeGenericExtraArgsV3(extraArgs);
     }
 
-    /// @notice Creates a basic encoded GenericExtraArgsV3 with only gasLimit and blockConfirmations set.
-    function encodeV3Basic(uint32 gasLimit, uint16 blockConfirmations)
+    /// @notice Creates a basic encoded GenericExtraArgsV3 with only gasLimit and finality config set.
+    /// @param finalityConfig Finality config encoded with `FinalityCodec`.
+    function encodeV3Basic(uint32 gasLimit, bytes4 finalityConfig) public pure returns (bytes memory extraArgsBytes) {
+        extraArgsBytes = ExtraArgsCodec._getBasicEncodedExtraArgsV3(gasLimit, finalityConfig);
+    }
+
+    /// @notice Creates a basic encoded GenericExtraArgsV3 with only gasLimit and a block-depth finality set.
+    /// @param blockDepth Block depth to wait for. `0` waits for finality; non-zero requests Faster-Than-Finality.
+    function encodeV3BasicBlockDepth(uint32 gasLimit, uint16 blockDepth)
         public
         pure
         returns (bytes memory extraArgsBytes)
     {
-        extraArgsBytes = ExtraArgsCodec._getBasicEncodedExtraArgsV3(gasLimit, blockConfirmations);
+        extraArgsBytes = ExtraArgsCodec._getBasicEncodedExtraArgsV3BlockDepth(gasLimit, blockDepth);
     }
 
     /// @notice Get the NO_EXECUTION_ADDRESS for manual execution.

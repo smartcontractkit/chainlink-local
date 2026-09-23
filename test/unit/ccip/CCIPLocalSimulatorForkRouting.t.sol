@@ -4,8 +4,8 @@ pragma solidity ^0.8.19;
 import {Test} from "forge-std/Test.sol";
 import {
     CCIPLocalSimulatorFork,
-    IRouterFork,
     IOffRampSourceConfigFork,
+    IOffRampSourceConfigV2Fork,
     IEVM2EVMOffRampStaticConfigFork
 } from "../../../src/ccip/CCIPLocalSimulatorFork.sol";
 import {CCIPForkAdapterTypes} from "../../../src/ccip/adapters/CCIPForkAdapterTypes.sol";
@@ -14,7 +14,7 @@ import {CCIPForkAdapterV1dot6} from "../../../src/ccip/adapters/CCIPForkAdapterV
 /// @dev Exposes internal OffRamp resolution for unit testing.
 contract CCIPLocalSimulatorForkHarness is CCIPLocalSimulatorFork {
     function exposedDecodeReceiver(bytes memory encoded) external pure returns (address) {
-        return _decodeEVMAddress(encoded);
+        return CCIPForkAdapterV1dot6._decodeEVMAddress(encoded);
     }
 
     function exposedExecuteV1dot6(address offRamp, CCIPForkAdapterTypes.V1dot6EVM2AnyRampMessage memory message)
@@ -27,11 +27,11 @@ contract CCIPLocalSimulatorForkHarness is CCIPLocalSimulatorFork {
     }
 
     function exposedFindOffRamp(
-        IRouterFork.OffRamp[] calldata offRamps,
+        CCIPForkAdapterTypes.RouterOffRamp[] calldata offRamps,
         uint64 sourceChainSelector,
         address sourceOnRamp
     ) external view returns (address) {
-        IRouterFork.OffRamp[] memory ramps = new IRouterFork.OffRamp[](offRamps.length);
+        CCIPForkAdapterTypes.RouterOffRamp[] memory ramps = new CCIPForkAdapterTypes.RouterOffRamp[](offRamps.length);
         for (uint256 i; i < offRamps.length; ++i) {
             ramps[i] = offRamps[i];
         }
@@ -94,12 +94,9 @@ contract MockOffRampPre16 {
 contract MockOffRampV16WrongThenPre16 is MockOffRampPre16 {
     address internal immutable i_wrongOnRamp;
 
-    constructor(
-        uint64 chainSelector_,
-        uint64 sourceChainSelector_,
-        address correctOnRamp_,
-        address wrongOnRamp_
-    ) MockOffRampPre16(chainSelector_, sourceChainSelector_, correctOnRamp_) {
+    constructor(uint64 chainSelector_, uint64 sourceChainSelector_, address correctOnRamp_, address wrongOnRamp_)
+        MockOffRampPre16(chainSelector_, sourceChainSelector_, correctOnRamp_)
+    {
         i_wrongOnRamp = wrongOnRamp_;
     }
 
@@ -130,6 +127,145 @@ contract MockOffRampRecorder {
         uint32[] calldata
     ) external {
         recordedSender = message.sender;
+    }
+}
+
+/// @dev Shape of `getStaticConfig()` on the real 1.6 and 2.0 OffRamps: 5 static words, versus 7 on pre-1.6
+///      `EVM2EVMOffRamp`. Same selector, so decoding it as the pre-1.6 struct must not revert the lookup.
+struct FiveWordStaticConfig {
+    uint64 localChainSelector;
+    uint16 gasForCallExactCheck;
+    address rmnRemote;
+    address tokenAdminRegistry;
+    uint32 maxGasBufferToUpdateState;
+}
+
+/// @dev Faithful OffRamp 2.0.0 view surface: `getSourceChainConfig` has the 1.6 selector but the 2.0 struct.
+contract MockOffRampV2Real {
+    uint64 internal immutable i_sourceChainSelector;
+    bool internal immutable i_enabled;
+    bytes[] internal s_onRamps;
+
+    constructor(uint64 sourceChainSelector_, address[] memory onRamps_, bool enabled_) {
+        i_sourceChainSelector = sourceChainSelector_;
+        i_enabled = enabled_;
+        for (uint256 i; i < onRamps_.length; ++i) {
+            s_onRamps.push(abi.encode(onRamps_[i]));
+        }
+    }
+
+    function typeAndVersion() external pure returns (string memory) {
+        return "OffRamp 2.0.0";
+    }
+
+    function getSourceChainConfig(uint64 sourceChainSelector)
+        external
+        view
+        returns (IOffRampSourceConfigV2Fork.SourceChainConfig memory cfg)
+    {
+        if (sourceChainSelector != i_sourceChainSelector) return cfg;
+        cfg.router = address(0xBEEF);
+        cfg.isEnabled = i_enabled;
+        cfg.onRamps = s_onRamps;
+        cfg.defaultCCVs = new address[](1);
+        cfg.defaultCCVs[0] = address(0xCC5);
+        cfg.laneMandatedCCVs = new address[](0);
+    }
+
+    function getStaticConfig() external pure returns (FiveWordStaticConfig memory c) {
+        c.localChainSelector = 1;
+    }
+}
+
+/// @dev 2.0 OffRamp without `typeAndVersion`, so the lookup has to probe shapes.
+contract MockOffRampV2NoTypeAndVersion {
+    uint64 internal immutable i_sourceChainSelector;
+    address internal immutable i_onRamp;
+
+    constructor(uint64 sourceChainSelector_, address onRamp_) {
+        i_sourceChainSelector = sourceChainSelector_;
+        i_onRamp = onRamp_;
+    }
+
+    function getSourceChainConfig(uint64 sourceChainSelector)
+        external
+        view
+        returns (IOffRampSourceConfigV2Fork.SourceChainConfig memory cfg)
+    {
+        if (sourceChainSelector != i_sourceChainSelector) return cfg;
+        cfg.router = address(0xBEEF);
+        cfg.isEnabled = true;
+        cfg.onRamps = new bytes[](1);
+        cfg.onRamps[0] = abi.encode(i_onRamp);
+        cfg.defaultCCVs = new address[](1);
+        cfg.defaultCCVs[0] = address(0xCC5);
+    }
+
+    function getStaticConfig() external pure returns (FiveWordStaticConfig memory c) {
+        c.localChainSelector = 1;
+    }
+}
+
+/// @dev Faithful OffRamp 1.6.x view surface, including the 5-word `getStaticConfig`.
+contract MockOffRampV16Real {
+    uint64 internal immutable i_sourceChainSelector;
+    address internal immutable i_onRamp;
+
+    constructor(uint64 sourceChainSelector_, address onRamp_) {
+        i_sourceChainSelector = sourceChainSelector_;
+        i_onRamp = onRamp_;
+    }
+
+    function typeAndVersion() external pure returns (string memory) {
+        return "OffRamp 1.6.0";
+    }
+
+    function getSourceChainConfig(uint64 sourceChainSelector)
+        external
+        view
+        returns (IOffRampSourceConfigFork.SourceChainConfig memory cfg)
+    {
+        if (sourceChainSelector != i_sourceChainSelector) return cfg;
+        cfg.router = address(0xBEEF);
+        cfg.isEnabled = true;
+        cfg.minSeqNr = 1;
+        cfg.onRamp = abi.encode(i_onRamp);
+    }
+
+    function getStaticConfig() external pure returns (FiveWordStaticConfig memory c) {
+        c.localChainSelector = 1;
+    }
+}
+
+/// @dev Pre-1.6 EVM2EVMOffRamp with its real `typeAndVersion`.
+contract MockOffRampPre16Real is MockOffRampPre16 {
+    constructor(uint64 chainSelector_, uint64 sourceChainSelector_, address onRamp_)
+        MockOffRampPre16(chainSelector_, sourceChainSelector_, onRamp_)
+    {}
+
+    function typeAndVersion() external pure returns (string memory) {
+        return "EVM2EVMOffRamp 1.5.0";
+    }
+}
+
+/// @dev Answers every call (including `typeAndVersion`) with 3 junk bytes: an OffRamp of unknown shape.
+contract MockOffRampGarbage {
+    fallback() external {
+        assembly {
+            mstore(0, 0x0102030000000000000000000000000000000000000000000000000000000000)
+            return(0, 3)
+        }
+    }
+}
+
+/// @dev Future OffRamp version whose config getter has a shape this simulator does not know.
+contract MockOffRampUnknownVersion {
+    function typeAndVersion() external pure returns (string memory) {
+        return "OffRamp 9.0.0";
+    }
+
+    function getSourceChainConfig(uint64) external pure returns (uint256, uint256) {
+        return (1, 2);
     }
 }
 
@@ -195,10 +331,10 @@ contract CCIPLocalSimulatorForkRoutingTest is Test {
         address bad = address(new MockOffRampV16(routerAddr, SOURCE_SELECTOR, address(0xBAD), true));
         address foreign = address(new MockOffRampForeign());
 
-        IRouterFork.OffRamp[] memory ramps = new IRouterFork.OffRamp[](3);
-        ramps[0] = IRouterFork.OffRamp({sourceChainSelector: SOURCE_SELECTOR, offRamp: good});
-        ramps[1] = IRouterFork.OffRamp({sourceChainSelector: SOURCE_SELECTOR, offRamp: bad});
-        ramps[2] = IRouterFork.OffRamp({sourceChainSelector: SOURCE_SELECTOR, offRamp: foreign});
+        CCIPForkAdapterTypes.RouterOffRamp[] memory ramps = new CCIPForkAdapterTypes.RouterOffRamp[](3);
+        ramps[0] = CCIPForkAdapterTypes.RouterOffRamp({sourceChainSelector: SOURCE_SELECTOR, offRamp: good});
+        ramps[1] = CCIPForkAdapterTypes.RouterOffRamp({sourceChainSelector: SOURCE_SELECTOR, offRamp: bad});
+        ramps[2] = CCIPForkAdapterTypes.RouterOffRamp({sourceChainSelector: SOURCE_SELECTOR, offRamp: foreign});
 
         assertEq(harness.exposedFindOffRamp(ramps, SOURCE_SELECTOR, sourceOnRamp), good);
     }
@@ -207,8 +343,8 @@ contract CCIPLocalSimulatorForkRoutingTest is Test {
         address sourceOnRamp = address(0xB0B);
         address pre = address(new MockOffRampPre16(DEST_CHAIN_SELECTOR, SOURCE_SELECTOR, sourceOnRamp));
 
-        IRouterFork.OffRamp[] memory ramps = new IRouterFork.OffRamp[](1);
-        ramps[0] = IRouterFork.OffRamp({sourceChainSelector: SOURCE_SELECTOR, offRamp: pre});
+        CCIPForkAdapterTypes.RouterOffRamp[] memory ramps = new CCIPForkAdapterTypes.RouterOffRamp[](1);
+        ramps[0] = CCIPForkAdapterTypes.RouterOffRamp({sourceChainSelector: SOURCE_SELECTOR, offRamp: pre});
 
         assertEq(harness.exposedFindOffRamp(ramps, SOURCE_SELECTOR, sourceOnRamp), pre);
     }
@@ -217,8 +353,8 @@ contract CCIPLocalSimulatorForkRoutingTest is Test {
         address sourceOnRamp = address(0xC0C0);
         address wrong = address(new MockOffRampV16(address(0x1), SOURCE_SELECTOR, address(0xDEAD), true));
 
-        IRouterFork.OffRamp[] memory ramps = new IRouterFork.OffRamp[](1);
-        ramps[0] = IRouterFork.OffRamp({sourceChainSelector: SOURCE_SELECTOR, offRamp: wrong});
+        CCIPForkAdapterTypes.RouterOffRamp[] memory ramps = new CCIPForkAdapterTypes.RouterOffRamp[](1);
+        ramps[0] = CCIPForkAdapterTypes.RouterOffRamp({sourceChainSelector: SOURCE_SELECTOR, offRamp: wrong});
 
         assertEq(harness.exposedFindOffRamp(ramps, SOURCE_SELECTOR, sourceOnRamp), address(0));
     }
@@ -226,10 +362,11 @@ contract CCIPLocalSimulatorForkRoutingTest is Test {
     function test_findOffRamp_fallsBackToStaticWhenV16OnRampWrong() public {
         address sourceOnRamp = address(0xD00D);
         address wrongOnRamp = address(0xBAD1);
-        address combo = address(new MockOffRampV16WrongThenPre16(DEST_CHAIN_SELECTOR, SOURCE_SELECTOR, sourceOnRamp, wrongOnRamp));
+        address combo =
+            address(new MockOffRampV16WrongThenPre16(DEST_CHAIN_SELECTOR, SOURCE_SELECTOR, sourceOnRamp, wrongOnRamp));
 
-        IRouterFork.OffRamp[] memory ramps = new IRouterFork.OffRamp[](1);
-        ramps[0] = IRouterFork.OffRamp({sourceChainSelector: SOURCE_SELECTOR, offRamp: combo});
+        CCIPForkAdapterTypes.RouterOffRamp[] memory ramps = new CCIPForkAdapterTypes.RouterOffRamp[](1);
+        ramps[0] = CCIPForkAdapterTypes.RouterOffRamp({sourceChainSelector: SOURCE_SELECTOR, offRamp: combo});
 
         assertEq(harness.exposedFindOffRamp(ramps, SOURCE_SELECTOR, sourceOnRamp), combo);
     }
@@ -240,10 +377,113 @@ contract CCIPLocalSimulatorForkRoutingTest is Test {
         address disabled = address(new MockOffRampV16(routerAddr, SOURCE_SELECTOR, sourceOnRamp, false));
         address enabled = address(new MockOffRampV16(routerAddr, SOURCE_SELECTOR, sourceOnRamp, true));
 
-        IRouterFork.OffRamp[] memory ramps = new IRouterFork.OffRamp[](2);
-        ramps[0] = IRouterFork.OffRamp({sourceChainSelector: SOURCE_SELECTOR, offRamp: disabled});
-        ramps[1] = IRouterFork.OffRamp({sourceChainSelector: SOURCE_SELECTOR, offRamp: enabled});
+        CCIPForkAdapterTypes.RouterOffRamp[] memory ramps = new CCIPForkAdapterTypes.RouterOffRamp[](2);
+        ramps[0] = CCIPForkAdapterTypes.RouterOffRamp({sourceChainSelector: SOURCE_SELECTOR, offRamp: disabled});
+        ramps[1] = CCIPForkAdapterTypes.RouterOffRamp({sourceChainSelector: SOURCE_SELECTOR, offRamp: enabled});
 
         assertEq(harness.exposedFindOffRamp(ramps, SOURCE_SELECTOR, sourceOnRamp), enabled);
+    }
+
+    function _ramps(address[] memory offRamps)
+        internal
+        pure
+        returns (CCIPForkAdapterTypes.RouterOffRamp[] memory ramps)
+    {
+        ramps = new CCIPForkAdapterTypes.RouterOffRamp[](offRamps.length);
+        for (uint256 i; i < offRamps.length; ++i) {
+            ramps[i] = CCIPForkAdapterTypes.RouterOffRamp({sourceChainSelector: SOURCE_SELECTOR, offRamp: offRamps[i]});
+        }
+    }
+
+    function _one(address a) internal pure returns (address[] memory arr) {
+        arr = new address[](1);
+        arr[0] = a;
+    }
+
+    /// @dev Mixed-era migration: 1.6 and 2.0 OffRamps registered for the same source selector. Both lanes must be
+    ///      resolvable, in both router orders, without the 2.0 `SourceChainConfig` payload reverting the 1.6 decode.
+    function test_findOffRamp_mixedEra_resolvesBothLanesInAnyOrder() public {
+        address onRampV16 = address(0x1616);
+        address onRampV2 = address(0x2020);
+        address v16 = address(new MockOffRampV16Real(SOURCE_SELECTOR, onRampV16));
+        address v2 = address(new MockOffRampV2Real(SOURCE_SELECTOR, _one(onRampV2), true));
+
+        address[] memory order = new address[](2);
+        order[0] = v16;
+        order[1] = v2;
+        assertEq(harness.exposedFindOffRamp(_ramps(order), SOURCE_SELECTOR, onRampV16), v16);
+        assertEq(harness.exposedFindOffRamp(_ramps(order), SOURCE_SELECTOR, onRampV2), v2);
+
+        order[0] = v2;
+        order[1] = v16;
+        assertEq(harness.exposedFindOffRamp(_ramps(order), SOURCE_SELECTOR, onRampV16), v16);
+        assertEq(harness.exposedFindOffRamp(_ramps(order), SOURCE_SELECTOR, onRampV2), v2);
+    }
+
+    function test_findOffRamp_v2Only_matchesAnyEntryOfOnRampsArray() public {
+        address[] memory onRamps = new address[](2);
+        onRamps[0] = address(0xAAAA);
+        onRamps[1] = address(0xBBBB);
+        address v2 = address(new MockOffRampV2Real(SOURCE_SELECTOR, onRamps, true));
+
+        assertEq(harness.exposedFindOffRamp(_ramps(_one(v2)), SOURCE_SELECTOR, address(0xBBBB)), v2);
+        assertEq(harness.exposedFindOffRamp(_ramps(_one(v2)), SOURCE_SELECTOR, address(0xCCCC)), address(0));
+    }
+
+    function test_findOffRamp_v2_ignoresDisabledLane() public {
+        address onRamp = address(0x2021);
+        address disabled = address(new MockOffRampV2Real(SOURCE_SELECTOR, _one(onRamp), false));
+
+        assertEq(harness.exposedFindOffRamp(_ramps(_one(disabled)), SOURCE_SELECTOR, onRamp), address(0));
+    }
+
+    /// @dev Two real-shaped 1.6 OffRamps: the non-matching one is probed first (router list is walked newest first)
+    ///      and its 5-word `getStaticConfig` must not be decoded as the 7-word pre-1.6 struct.
+    function test_findOffRamp_twoV16_nonMatchingFirst_doesNotRevert() public {
+        address onRamp = address(0x1617);
+        address good = address(new MockOffRampV16Real(SOURCE_SELECTOR, onRamp));
+        address other = address(new MockOffRampV16Real(SOURCE_SELECTOR, address(0xDEAD)));
+
+        address[] memory order = new address[](2);
+        order[0] = good;
+        order[1] = other;
+        assertEq(harness.exposedFindOffRamp(_ramps(order), SOURCE_SELECTOR, onRamp), good);
+    }
+
+    function test_findOffRamp_preV16WithTypeAndVersion() public {
+        address onRamp = address(0x1515);
+        address pre = address(new MockOffRampPre16Real(DEST_CHAIN_SELECTOR, SOURCE_SELECTOR, onRamp));
+        address v2 = address(new MockOffRampV2Real(SOURCE_SELECTOR, _one(address(0x2022)), true));
+
+        address[] memory order = new address[](2);
+        order[0] = pre;
+        order[1] = v2;
+        assertEq(harness.exposedFindOffRamp(_ramps(order), SOURCE_SELECTOR, onRamp), pre);
+    }
+
+    /// @dev Unknown shapes (junk return data, or an unrecognised `typeAndVersion`) are skipped, never reverted on.
+    function test_findOffRamp_unknownShape_isSkipped() public {
+        address onRamp = address(0x2023);
+        address v2 = address(new MockOffRampV2Real(SOURCE_SELECTOR, _one(onRamp), true));
+
+        address[] memory order = new address[](3);
+        order[0] = v2;
+        order[1] = address(new MockOffRampGarbage());
+        order[2] = address(new MockOffRampUnknownVersion());
+        assertEq(harness.exposedFindOffRamp(_ramps(order), SOURCE_SELECTOR, onRamp), v2);
+        assertEq(harness.exposedFindOffRamp(_ramps(order), SOURCE_SELECTOR, address(0x9999)), address(0));
+    }
+
+    function test_findOffRamp_v2WithoutTypeAndVersion_resolvedByShapeProbe() public {
+        address onRamp = address(0x2024);
+        address v2 = address(new MockOffRampV2NoTypeAndVersion(SOURCE_SELECTOR, onRamp));
+        address v16 = address(new MockOffRampV16(address(0xBEEF), SOURCE_SELECTOR, address(0x1618), true));
+
+        address[] memory order = new address[](2);
+        order[0] = v2;
+        order[1] = v16;
+        assertEq(harness.exposedFindOffRamp(_ramps(order), SOURCE_SELECTOR, onRamp), v2);
+        assertEq(harness.exposedFindOffRamp(_ramps(order), SOURCE_SELECTOR, address(0x1618)), v16);
+        assertEq(harness.exposedFindOffRamp(_ramps(order), SOURCE_SELECTOR, address(0)), address(0));
     }
 }

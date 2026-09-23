@@ -56,7 +56,7 @@ contract ProgrammableTokenTransferSenderDefaultFinalityForkTest is Test {
         bytes memory payload = bytes("Hello World");
         uint32 gasLimit = 200_000;
         uint16 blockConfirmations = 0;
-        bytes memory extraArgs = s_encoder.encodeV3Basic(gasLimit, blockConfirmations);
+        bytes memory extraArgs = s_encoder.encodeV3BasicBlockDepth(gasLimit, blockConfirmations);
 
         Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
         tokenAmounts[0] = Client.EVMTokenAmount({token: s_sourceNetwork.ccipBnMAddress, amount: amountToSend});

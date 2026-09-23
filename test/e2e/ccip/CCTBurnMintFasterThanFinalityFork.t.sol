@@ -8,8 +8,11 @@ import {ITokenAdminRegistry} from "@chainlink/contracts-ccip/contracts/interface
 import {IBurnMintERC20} from "@chainlink/contracts-ccip/contracts/interfaces/IBurnMintERC20.sol";
 import {BurnMintTokenPool} from "@chainlink/contracts-ccip/contracts/pools/BurnMintTokenPool.sol";
 import {TokenPool} from "@chainlink/contracts-ccip/contracts/pools/TokenPool.sol";
-import {RegistryModuleOwnerCustom} from "@chainlink/contracts-ccip/contracts/tokenAdminRegistry/RegistryModuleOwnerCustom.sol";
+import {
+    RegistryModuleOwnerCustom
+} from "@chainlink/contracts-ccip/contracts/tokenAdminRegistry/RegistryModuleOwnerCustom.sol";
 import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
+import {FinalityCodec} from "@chainlink/contracts-ccip/contracts/libraries/FinalityCodec.sol";
 import {RateLimiter} from "@chainlink/contracts-ccip/contracts/libraries/RateLimiter.sol";
 import {BurnMintERC20} from "@chainlink/contracts/src/v0.8/shared/token/ERC20/BurnMintERC20.sol";
 
@@ -85,19 +88,13 @@ contract CCTBurnMintFasterThanFinalityForkTest is Test {
 
         vm.selectFork(s_sourceFork);
         _configureTrustedPool(
-            address(sourcePool),
-            s_destinationNetwork.chainSelector,
-            address(destinationPool),
-            address(destinationToken)
+            address(sourcePool), s_destinationNetwork.chainSelector, address(destinationPool), address(destinationToken)
         );
-        TokenPool(address(sourcePool)).setMinBlockConfirmations(BLOCK_CONFIRMATIONS);
+        TokenPool(address(sourcePool)).setAllowedFinalityConfig(FinalityCodec._encodeBlockDepth(BLOCK_CONFIRMATIONS));
 
         vm.selectFork(s_destinationFork);
         _configureTrustedPool(
-            address(destinationPool),
-            s_sourceNetwork.chainSelector,
-            address(sourcePool),
-            address(sourceToken)
+            address(destinationPool), s_sourceNetwork.chainSelector, address(sourcePool), address(sourceToken)
         );
 
         vm.selectFork(s_sourceFork);
@@ -116,7 +113,7 @@ contract CCTBurnMintFasterThanFinalityForkTest is Test {
             receiver: abi.encode(s_bob),
             data: "",
             tokenAmounts: tokenAmounts,
-            extraArgs: s_encoder.encodeV3Basic(GAS_LIMIT, BLOCK_CONFIRMATIONS),
+            extraArgs: s_encoder.encodeV3BasicBlockDepth(GAS_LIMIT, BLOCK_CONFIRMATIONS),
             feeToken: address(0)
         });
 
@@ -143,9 +140,12 @@ contract CCTBurnMintFasterThanFinalityForkTest is Test {
         ITokenAdminRegistry(network.tokenAdminRegistryAddress).setPool(token, pool);
     }
 
-    function _configureTrustedPool(address localPool, uint64 remoteChainSelector, address remotePool, address remoteToken)
-        internal
-    {
+    function _configureTrustedPool(
+        address localPool,
+        uint64 remoteChainSelector,
+        address remotePool,
+        address remoteToken
+    ) internal {
         bytes[] memory remotePoolAddresses = new bytes[](1);
         remotePoolAddresses[0] = abi.encode(remotePool);
 

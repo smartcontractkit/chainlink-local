@@ -24,7 +24,7 @@ contract TokenTransferFasterThanFinalityLocalTest is Test {
 
     function setUp() public {
         s_localSimulator = new CCIPLocalSimulator();
-        (uint64 chainSelector_, IRouterClient sourceRouter_,,, , BurnMintERC677Helper ccipBnM_,) =
+        (uint64 chainSelector_, IRouterClient sourceRouter_,,,, BurnMintERC677Helper ccipBnM_,) =
             s_localSimulator.configuration();
 
         s_chainSelector = chainSelector_;
@@ -43,7 +43,7 @@ contract TokenTransferFasterThanFinalityLocalTest is Test {
 
         uint32 gasLimit = 0;
         uint16 blockConfirmations = 1;
-        bytes memory extraArgs = s_encoder.encodeV3Basic(gasLimit, blockConfirmations);
+        bytes memory extraArgs = s_encoder.encodeV3BasicBlockDepth(gasLimit, blockConfirmations);
         Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
             receiver: abi.encode(s_bob),
             data: "",

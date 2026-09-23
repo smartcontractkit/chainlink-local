@@ -2,14 +2,13 @@
   "name": "@chainlink/local",
   "description": "Chainlink Local Simulator",
   "license": "MIT",
-  "version": "0.3.0-beta",
+  "version": "0.3.0-beta.0",
   "type": "module",
   "files": [
     "src/**/*.sol",
     "!src/test/**/*",
-    "scripts/ccipLocalSimulatorFork.js",
-    "scripts/data-streams/**/*.js",
-    "abi/**/*.json"
+    "scripts/CCIPLocalSimulatorFork.js",
+    "scripts/data-streams/**/*.js"
   ],
   "repository": {
     "type": "git",
@@ -22,6 +21,7 @@
     "hardhat-compile": "npx hardhat compile",
     "forge-compile": "forge build",
     "hardhat-test": "npx hardhat test",
+    "hardhat-test-js": "node --test --test-concurrency=1 --test-timeout=600000 test/smoke/data-streams/*.test.js test/e2e/ccip/*.test.js",
     "forge-test": "forge test",
     "test": "npm run hardhat-test && npm run forge-test",
     "prettier": "prettier --write 'api_reference/**/*'",
@@ -33,9 +33,11 @@
   },
   "devDependencies": {
     "@chainlink/ace": "^1.0.0",
+    "@nomicfoundation/hardhat-ethers": "4.0.5",
     "@openzeppelin/contracts-4.8.3": "npm:@openzeppelin/contracts@4.8.3",
     "@openzeppelin/contracts-5.3.0": "npm:@openzeppelin/contracts@5.3.0",
     "dotenv": "^16.4.5",
+    "ethers": "6.17.0",
     "forge-std": "github:foundry-rs/forge-std#v1.9.4",
     "hardhat": "^3.1.10",
     "jsdoc-to-markdown": "^8.0.1",
@@ -43,6 +45,6 @@
   },
   "dependencies": {
     "@chainlink/contracts": "1.5.0",
-    "@chainlink/contracts-ccip": "1.6.2"
+    "@chainlink/contracts-ccip": "2.0.0"
   }
 }

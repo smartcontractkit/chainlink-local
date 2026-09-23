@@ -83,6 +83,52 @@ contract Demo is Test {
 }
 ```
 
+### Fork mode and CCIP 2.0
+
+`CCIPLocalSimulatorFork` routes messages on forked networks for every CCIP era: pre-1.6 (`EVM2EVMOnRamp`), 1.6 and
+CCIP 2.0 (CCV-based lanes, which live testnet lanes run today). Requirements for fork tests:
+
+- `evm_version = "cancun"` in `foundry.toml` (Hardhat: `evmVersion: "cancun"`); deployed CCIP 2.0 contracts use Cancun
+  opcodes.
+- Foundry >= 1.5.1 (Hardhat 3 requires Node.js 22).
+
+```solidity
+CCIPLocalSimulatorFork ccipLocalSimulatorFork = new CCIPLocalSimulatorFork();
+vm.makePersistent(address(ccipLocalSimulatorFork));
+
+// Send through the router returned by getNetworkDetails(block.chainid).routerAddress, or through the dedicated
+// CCIP 2.0 router where one exists: ccipLocalSimulatorFork.getCCIPV2RouterAddress(block.chainid).
+// ...ccipSend(...)
+
+ccipLocalSimulatorFork.switchChainAndRouteMessage(destinationForkId);
+```
+
+Hardhat 3 JavaScript/TypeScript tests can route the same way with `scripts/CCIPLocalSimulatorFork.js` (requires
+`@nomicfoundation/hardhat-ethers`):
+
+```js
+import { network } from "hardhat";
+import { getCCIPMessages, routeMessage } from "@chainlink/local/scripts/CCIPLocalSimulatorFork.js";
+
+const source = await network.connect({ network: "sepoliaFork" });
+const destination = await network.connect({ network: "arbitrumSepoliaFork" });
+const receipt = await (await sourceRouter.ccipSend(destChainSelector, message, { value: fee })).wait();
+const [sent] = getCCIPMessages(source, receipt);
+await routeMessage(destination, destinationRouterAddress, sent);
+```
+
+| Environment | 0.3.x | 0.2.x |
+| --- | --- | --- |
+| Foundry, Hardhat 3 (Solidity tests, local + fork) | ✅ | Foundry only |
+| Hardhat 3 JavaScript/TypeScript helpers | ✅ | - |
+| Hardhat 2 JavaScript/TypeScript | - (Solidity contracts still compile) | ✅ pre-1.6 fork routing only |
+| Remix IDE (local mode) | ✅ | ✅ |
+
+On CCIP 2.0 lanes the destination OffRamp selects the CCVs and executes the message (`V2VerificationMode.OFFRAMP_DERIVED`,
+the default); CCV attestations are simulated. Fast Transfer messages with data are only delivered to receivers that
+opt in through `getCCVsAndFinalityConfig`, as in production. See [CHANGELOG.md](./CHANGELOG.md) for the 0.3.0 breaking
+changes, migration guide and known limitations.
+
 ### Learn more
 
 To view detailed documentation and more examples, visit the [Chainlink Local Documentation](https://docs.chain.link/chainlink-local).

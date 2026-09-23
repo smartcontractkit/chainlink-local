@@ -4,7 +4,7 @@ pragma solidity ^0.8.19;
 import {WETH9} from "../shared/WETH9.sol";
 import {LinkToken} from "../shared/LinkToken.sol";
 import {BurnMintERC677Helper} from "./BurnMintERC677Helper.sol";
-import {MockCCIPRouter} from "@chainlink/contracts-ccip/contracts/test/mocks/MockRouter.sol";
+import {CCIPLocalRouter} from "./CCIPLocalRouter.sol";
 import {IRouterClient} from "@chainlink/contracts-ccip/contracts/interfaces/IRouterClient.sol";
 import {IERC20} from "@openzeppelin/contracts@4.8.3/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts@4.8.3/token/ERC20/utils/SafeERC20.sol";
@@ -34,7 +34,7 @@ contract CCIPLocalSimulator {
     BurnMintERC677Helper internal immutable i_ccipLnM;
 
     /// @notice The mock CCIP router instance
-    MockCCIPRouter internal immutable i_mockRouter;
+    CCIPLocalRouter internal immutable i_mockRouter;
 
     /// @notice The list of supported token addresses
     address[] internal s_supportedTokens;
@@ -50,7 +50,7 @@ contract CCIPLocalSimulator {
         i_linkToken = new LinkToken();
         i_ccipBnM = new BurnMintERC677Helper("CCIP-BnM", "CCIP-BnM");
         i_ccipLnM = new BurnMintERC677Helper("CCIP-LnM", "CCIP-LnM");
-        i_mockRouter = new MockCCIPRouter();
+        i_mockRouter = new CCIPLocalRouter();
 
         s_supportedTokens.push(address(i_ccipBnM));
         s_supportedTokens.push(address(i_ccipLnM));

@@ -40,7 +40,7 @@ contract FasterThanFinalityTest is Test {
         uint32 gasLimit = 0;
         uint16 blockConfirmations = 1;
 
-        bytes memory extraArgs = ExtraArgsCodec._getBasicEncodedExtraArgsV3(gasLimit, blockConfirmations);
+        bytes memory extraArgs = ExtraArgsCodec._getBasicEncodedExtraArgsV3BlockDepth(gasLimit, blockConfirmations);
 
         Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
         tokenAmounts[0] = Client.EVMTokenAmount({token: address(ccipBnM), amount: amountToSend});

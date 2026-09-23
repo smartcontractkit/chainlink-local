@@ -5,6 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {CCIPLocalSimulatorFork, Register} from "@chainlink/local/src/ccip/CCIPLocalSimulatorFork.sol";
 import {IRouterClient} from "@chainlink/contracts-ccip/contracts/interfaces/IRouterClient.sol";
 import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
+import {FinalityCodec} from "@chainlink/contracts-ccip/contracts/libraries/FinalityCodec.sol";
 import {MockVerifier} from "@chainlink/contracts-ccip/contracts/test/mocks/MockVerifier.sol";
 
 import {BasicMessageReceiverWithCCVs} from "../../../src/test/ccip/BasicMessageReceiverWithCCVs.sol";
@@ -69,7 +70,7 @@ contract HelloWorldBasicMessageReceiverWithCCVsForkTest is Test {
         });
         receiver.applyCCVConfigUpdates(updates);
         uint16 minBlockDepth = 1;
-        receiver.setMinBlockDepth(s_sourceNetwork.chainSelector, minBlockDepth);
+        receiver.setAllowedFinalityConfig(s_sourceNetwork.chainSelector, FinalityCodec._encodeBlockDepth(minBlockDepth));
 
         vm.selectFork(s_sourceFork);
         bytes memory payload = bytes("Hello World");
@@ -80,7 +81,9 @@ contract HelloWorldBasicMessageReceiverWithCCVsForkTest is Test {
         ccvArgs[0] = "";
         uint32 gasLimit = 200_000;
         uint16 blockConfirmations = 1;
-        bytes memory extraArgs = s_encoder.encodeV3(gasLimit, blockConfirmations, ccvs, ccvArgs, address(0), "", "", "");
+        bytes memory extraArgs = s_encoder.encodeV3(
+            gasLimit, FinalityCodec._encodeBlockDepth(blockConfirmations), ccvs, ccvArgs, address(0), "", "", ""
+        );
 
         Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
             receiver: abi.encode(address(receiver)),
