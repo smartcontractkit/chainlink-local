@@ -31,9 +31,8 @@ contract BasicTokenSender {
         uint256 length = tokensToSendDetails.length;
 
         for (uint256 i = 0; i < length;) {
-            IERC20(tokensToSendDetails[i].token).safeTransferFrom(
-                msg.sender, address(this), tokensToSendDetails[i].amount
-            );
+            IERC20(tokensToSendDetails[i].token)
+                .safeTransferFrom(msg.sender, address(this), tokensToSendDetails[i].amount);
             IERC20(tokensToSendDetails[i].token).approve(i_router, tokensToSendDetails[i].amount);
 
             unchecked {

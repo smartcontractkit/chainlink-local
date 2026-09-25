@@ -16,6 +16,12 @@ function owner() external view returns (address);
 function applyInboundImplementationUpdates(InboundImplementationArgs[] calldata implementations) external;
 ```
 
+### getInboundImplementation
+
+```solidity
+function getInboundImplementation(bytes calldata verifierResults) external view returns (address);
+```
+
 ## Structs
 
 ### InboundImplementationArgs

@@ -35,24 +35,25 @@ contract BasicMessageReceiverWithCCVs is BasicMessageReceiver, Ownable2Step {
     event CCVConfigSet(
         uint64 indexed sourceChainSelector, address[] requiredCCVs, address[] optionalCCVs, uint8 optionalThreshold
     );
-    event MinBlockDepthSet(uint64 indexed sourceChainSelector, uint16 minBlockDepth);
+    event AllowedFinalityConfigSet(uint64 indexed sourceChainSelector, bytes4 allowedFinalityConfig);
 
     mapping(uint64 sourceChainSelector => CCVConfig ccvConfig) internal s_ccvConfigs;
-    mapping(uint64 sourceChainSelector => uint16 minBlockDepth) internal s_minBlockDepths;
+    mapping(uint64 sourceChainSelector => bytes4 allowedFinalityConfig) internal s_allowedFinalityConfigs;
 
     constructor(address router) BasicMessageReceiver(router) Ownable(msg.sender) {}
 
-    /// @notice Set minimum accepted block depth for a source chain.
-    /// @dev 0 means Default Finality is required for that source chain.
-    ///      Non-zero values allow Faster Than Finality with a minimum required depth - WARNING only use Faster Than Finality
-    ///      when you use a trusted sender on the source chain that manages the finality risk when sending messages.
-    function setMinBlockDepth(uint64 sourceChainSelector, uint16 minBlockDepth) external onlyOwner {
-        s_minBlockDepths[sourceChainSelector] = minBlockDepth;
-        emit MinBlockDepthSet(sourceChainSelector, minBlockDepth);
+    /// @notice Set the accepted finality for a source chain, encoded with `FinalityCodec`.
+    /// @dev `FinalityCodec.WAIT_FOR_FINALITY_FLAG` (`bytes4(0)`, the default) requires finality for that source chain.
+    ///      A block depth (`FinalityCodec._encodeBlockDepth(n)`) accepts Faster Than Finality messages requesting at least
+    ///      `n` blocks; `WAIT_FOR_SAFE_FLAG` accepts messages waiting for the `safe` tag - WARNING only use Faster Than
+    ///      Finality when you use a trusted sender on the source chain that manages the finality risk when sending messages.
+    function setAllowedFinalityConfig(uint64 sourceChainSelector, bytes4 allowedFinalityConfig) external onlyOwner {
+        s_allowedFinalityConfigs[sourceChainSelector] = allowedFinalityConfig;
+        emit AllowedFinalityConfigSet(sourceChainSelector, allowedFinalityConfig);
     }
 
-    /// @dev Override getCCVsAndMinBlockDepth
-    function getCCVsAndMinBlockDepth(
+    /// @dev Override getCCVsAndFinalityConfig
+    function getCCVsAndFinalityConfig(
         uint64 sourceChainSelector,
         bytes calldata /*sender*/
     )
@@ -63,12 +64,16 @@ contract BasicMessageReceiverWithCCVs is BasicMessageReceiver, Ownable2Step {
             address[] memory requiredCCVs,
             address[] memory optionalCCVs,
             uint8 optionalThreshold,
-            uint16 minBlockDepth
+            bytes4 allowedFinalityConfig
         )
     {
         CCVConfig memory config = s_ccvConfigs[sourceChainSelector];
-        return
-            (config.requiredCCVs, config.optionalCCVs, config.optionalThreshold, s_minBlockDepths[sourceChainSelector]);
+        return (
+            config.requiredCCVs,
+            config.optionalCCVs,
+            config.optionalThreshold,
+            s_allowedFinalityConfigs[sourceChainSelector]
+        );
     }
 
     /// @notice Set CCV configurations for source chains.

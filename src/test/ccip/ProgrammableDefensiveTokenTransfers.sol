@@ -326,11 +326,13 @@ contract ProgrammableDefensiveTokenTransfers is CCIPReceiver, OwnerIsCreator {
         override
         onlyRouter
         onlyAllowlisted(any2EvmMessage.sourceChainSelector, abi.decode(any2EvmMessage.sender, (address))) // Make sure the source chain and sender are allowlisted
+
     {
         /* solhint-disable no-empty-blocks */
         try this.processMessage(any2EvmMessage) {
-            // Intentionally empty in this example; no action needed if processMessage succeeds
-        } catch (bytes memory err) {
+        // Intentionally empty in this example; no action needed if processMessage succeeds
+        }
+        catch (bytes memory err) {
             // Could set different error codes based on the caught error. Each could be
             // handled differently.
             s_failedMessages.set(any2EvmMessage.messageId, uint256(ErrorCode.FAILED));
@@ -351,6 +353,7 @@ contract ProgrammableDefensiveTokenTransfers is CCIPReceiver, OwnerIsCreator {
         external
         onlySelf
         onlyAllowlisted(any2EvmMessage.sourceChainSelector, abi.decode(any2EvmMessage.sender, (address))) // Make sure the source chain and sender are allowlisted
+
     {
         // Simulate a revert for testing purposes
         if (s_simRevert) revert ErrorCase();

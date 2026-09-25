@@ -8,9 +8,10 @@ import {
     BurnMintERC677Helper
 } from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
 import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
+import {FinalityCodec} from "@chainlink/contracts-ccip/contracts/libraries/FinalityCodec.sol";
 import {IERC20} from "@openzeppelin/contracts@4.8.3/token/ERC20/IERC20.sol";
 
-import {BasicMessageReceiver} from "../../../src/test/ccip/BasicMessageReceiver.sol";
+import {BasicMessageReceiverWithCCVs} from "../../../src/test/ccip/BasicMessageReceiverWithCCVs.sol";
 import {EncodeExtraArgsOffchain} from "../../../src/test/ccip/utils/EncodeExtraArgsOffchain.sol";
 
 contract ProgrammableTokenTransferEOALocalTest is Test {
@@ -29,7 +30,6 @@ contract ProgrammableTokenTransferEOALocalTest is Test {
             IRouterClient sourceRouter_,
             IRouterClient destinationRouter_,,,
             BurnMintERC677Helper ccipBnM_,
-
         ) = simulator.configuration();
 
         s_chainSelector = chainSelector_;
@@ -43,7 +43,9 @@ contract ProgrammableTokenTransferEOALocalTest is Test {
     }
 
     function test_programmableTokenTransferEOA_local() external {
-        BasicMessageReceiver receiver = new BasicMessageReceiver(address(s_destinationRouter));
+        // As on CCIP 2.0 lanes, a data + token message sent Faster-Than-Finality needs a receiver that opts in.
+        BasicMessageReceiverWithCCVs receiver = new BasicMessageReceiverWithCCVs(address(s_destinationRouter));
+        receiver.setAllowedFinalityConfig(s_chainSelector, FinalityCodec._encodeBlockDepth(1));
 
         uint256 amountToSend = 0.25 ether;
         s_ccipBnM.drip(s_alice);
@@ -51,7 +53,7 @@ contract ProgrammableTokenTransferEOALocalTest is Test {
         bytes memory payload = bytes("Hello World");
         uint32 gasLimit = 200_000;
         uint16 blockConfirmations = 1;
-        bytes memory extraArgs = s_encoder.encodeV3Basic(gasLimit, blockConfirmations);
+        bytes memory extraArgs = s_encoder.encodeV3BasicBlockDepth(gasLimit, blockConfirmations);
 
         Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
         tokenAmounts[0] = Client.EVMTokenAmount({token: address(s_ccipBnM), amount: amountToSend});

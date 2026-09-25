@@ -24,8 +24,7 @@ contract UnsafeTokenAndDataTransferTest is Test {
         (
             uint64 chainSelector_,
             IRouterClient sourceRouter_,
-            IRouterClient destinationRouter_,
-            ,
+            IRouterClient destinationRouter_,,
             LinkToken linkToken_,
             BurnMintERC677Helper ccipBnM_,
         ) = ccipLocalSimulator.configuration();

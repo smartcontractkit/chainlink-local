@@ -37,6 +37,21 @@ function deriveVerificationInputs(address offRamp, DecodedMessage memory decoded
     returns (address[] memory ccvs, bytes[] memory verifierResults);
 ```
 
+### selectCCVs
+
+Selects the CCVs to execute a CCIP 2.0 message with, mirroring OffRamp 2.0
+`_ensureCCVQuorumIsReached`: every required CCV, plus `threshold` of the
+optional CCVs. The OffRamp counts each optional entry that is present in `ccvs`,
+so optional CCVs that are also required count first, and only the missing ones
+are added (in order). Duplicates are removed.
+
+```solidity
+function selectCCVs(address[] memory requiredCCVs, address[] memory optionalCCVs, uint8 threshold)
+    internal
+    pure
+    returns (address[] memory ccvs);
+```
+
 ### execute
 
 ```solidity
@@ -53,6 +68,12 @@ function execute(
 
 ```solidity
 function _decodeEVMAddress(bytes memory encodedAddress) private pure returns (address decodedAddress);
+```
+
+### \_contains
+
+```solidity
+function _contains(address[] memory list, uint256 length, address value) private pure returns (bool);
 ```
 
 ### \_resolveVerifierResults

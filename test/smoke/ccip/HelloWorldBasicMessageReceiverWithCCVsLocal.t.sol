@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {Test} from "forge-std/Test.sol";
 import {CCIPLocalSimulator, IRouterClient} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
 import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
+import {FinalityCodec} from "@chainlink/contracts-ccip/contracts/libraries/FinalityCodec.sol";
 import {MockVerifier} from "@chainlink/contracts-ccip/contracts/test/mocks/MockVerifier.sol";
 
 import {BasicMessageReceiverWithCCVs} from "../../../src/test/ccip/BasicMessageReceiverWithCCVs.sol";
@@ -57,7 +58,7 @@ contract HelloWorldBasicMessageReceiverWithCCVsLocalTest is Test {
         });
         receiver.applyCCVConfigUpdates(updates);
         uint16 minBlockDepth = 1;
-        receiver.setMinBlockDepth(s_chainSelector, minBlockDepth);
+        receiver.setAllowedFinalityConfig(s_chainSelector, FinalityCodec._encodeBlockDepth(minBlockDepth));
 
         address[] memory ccvs = new address[](3);
         ccvs[0] = address(s_mockVerifierA);
@@ -68,7 +69,9 @@ contract HelloWorldBasicMessageReceiverWithCCVsLocalTest is Test {
         bytes memory payload = bytes("Hello World");
         uint32 gasLimit = 200_000;
         uint16 blockConfirmations = 1;
-        bytes memory extraArgs = s_encoder.encodeV3(gasLimit, blockConfirmations, ccvs, ccvArgs, address(0), "", "", "");
+        bytes memory extraArgs = s_encoder.encodeV3(
+            gasLimit, FinalityCodec._encodeBlockDepth(blockConfirmations), ccvs, ccvArgs, address(0), "", "", ""
+        );
 
         Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
             receiver: abi.encode(address(receiver)),
@@ -89,7 +92,7 @@ contract HelloWorldBasicMessageReceiverWithCCVsLocalTest is Test {
         assertEq(receiver.latestMessage(), payload);
     }
 
-    function test_getCCVsAndMinBlockDepthReflectsUpdates_local() external {
+    function test_getCCVsAndFinalityConfigReflectsUpdates_local() external {
         BasicMessageReceiverWithCCVs receiver = new BasicMessageReceiverWithCCVs(address(s_destinationRouter));
 
         address[] memory requiredCCVs = new address[](1);
@@ -112,8 +115,8 @@ contract HelloWorldBasicMessageReceiverWithCCVsLocalTest is Test {
             address[] memory initialRequired,
             address[] memory initialOptional,
             uint8 initialThreshold,
-            uint16 initialMinBlockDepth
-        ) = receiver.getCCVsAndMinBlockDepth(s_chainSelector, "");
+            bytes4 initialFinalityConfig
+        ) = receiver.getCCVsAndFinalityConfig(s_chainSelector, "");
 
         assertEq(initialRequired.length, 1);
         assertEq(initialRequired[0], address(s_mockVerifierA));
@@ -121,20 +124,20 @@ contract HelloWorldBasicMessageReceiverWithCCVsLocalTest is Test {
         assertEq(initialOptional[0], address(s_mockVerifierB));
         assertEq(initialOptional[1], address(s_mockVerifierC));
         assertEq(initialThreshold, 1);
-        assertEq(initialMinBlockDepth, 0);
+        assertEq(initialFinalityConfig, FinalityCodec.WAIT_FOR_FINALITY_FLAG);
 
         uint16 minBlockDepth = 1;
-        receiver.setMinBlockDepth(s_chainSelector, minBlockDepth);
-        (,,, uint16 updatedMinBlockDepth) = receiver.getCCVsAndMinBlockDepth(s_chainSelector, "");
-        assertEq(updatedMinBlockDepth, minBlockDepth);
+        receiver.setAllowedFinalityConfig(s_chainSelector, FinalityCodec._encodeBlockDepth(minBlockDepth));
+        (,,, bytes4 updatedFinalityConfig) = receiver.getCCVsAndFinalityConfig(s_chainSelector, "");
+        assertEq(updatedFinalityConfig, FinalityCodec._encodeBlockDepth(minBlockDepth));
     }
 
-    function test_setMinBlockDepth_RevertIfNotOwner_local() external {
+    function test_setAllowedFinalityConfig_RevertIfNotOwner_local() external {
         BasicMessageReceiverWithCCVs receiver = new BasicMessageReceiverWithCCVs(address(s_destinationRouter));
         uint16 minBlockDepth = 1;
 
         vm.prank(s_alice);
         vm.expectRevert();
-        receiver.setMinBlockDepth(s_chainSelector, minBlockDepth);
+        receiver.setAllowedFinalityConfig(s_chainSelector, FinalityCodec._encodeBlockDepth(minBlockDepth));
     }
 }

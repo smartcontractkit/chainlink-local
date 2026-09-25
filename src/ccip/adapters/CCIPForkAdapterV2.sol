@@ -24,6 +24,18 @@ interface IOffRampExecuteV2 {
         bytes[] calldata verifierResults,
         uint32 gasLimitOverride
     ) external;
+
+    /// @notice Returns the `Internal.MessageExecutionState` of `messageId` (`keccak256(encodedMessage)`).
+    function getExecutionState(bytes32 messageId) external view returns (uint8);
+
+    /// @notice Permissionless execution entrypoint taking the opaque encoded message emitted by the
+    ///         source OnRamp, so routing does not depend on a locally decoded `MessageV1`.
+    function execute(
+        bytes calldata encodedMessage,
+        address[] calldata ccvs,
+        bytes[] calldata verifierResults,
+        uint32 gasLimitOverride
+    ) external;
 }
 
 library CCIPForkAdapterV2 {
@@ -71,7 +83,11 @@ library CCIPForkAdapterV2 {
         decodedMessage.message = decoder.decodeMessageV1(decodedMessage.encodedMessage);
     }
 
-    function extractOffRampAddress(DecodedMessage memory decodedMessage) internal pure returns (address offRampAddress) {
+    function extractOffRampAddress(DecodedMessage memory decodedMessage)
+        internal
+        pure
+        returns (address offRampAddress)
+    {
         return _decodeEVMAddress(decodedMessage.message.offRampAddress);
     }
 
@@ -83,29 +99,53 @@ library CCIPForkAdapterV2 {
         (address[] memory requiredCCVs, address[] memory optionalCCVs, uint8 threshold) =
             IOffRampExecuteV2(offRamp).getCCVsForMessage(decodedMessage.encodedMessage);
 
-        uint256 totalAvailable = requiredCCVs.length + optionalCCVs.length;
-        uint256 targetLength = requiredCCVs.length;
+        ccvs = selectCCVs(requiredCCVs, optionalCCVs, threshold);
+        verifierResults = _resolveVerifierResults(decodedMessage, ccvs.length);
 
-        if (targetLength < threshold) {
-            targetLength = threshold;
-        }
-        if (targetLength > totalAvailable) {
-            targetLength = totalAvailable;
-        }
-
-        ccvs = new address[](targetLength);
-        verifierResults = _resolveVerifierResults(decodedMessage, targetLength);
-
-        uint256 ccvCount;
-        for (uint256 i = 0; i < requiredCCVs.length && ccvCount < targetLength; ++i) {
-            ccvs[ccvCount++] = requiredCCVs[i];
-        }
-        for (uint256 i = 0; i < optionalCCVs.length && ccvCount < targetLength; ++i) {
-            ccvs[ccvCount++] = optionalCCVs[i];
-        }
-
-        for (uint256 i = 0; i < targetLength; ++i) {
+        for (uint256 i = 0; i < ccvs.length; ++i) {
             verifierResults[i] = _findVerifierResultForCCV(decodedMessage, ccvs[i]);
+        }
+    }
+
+    /// @notice Selects the CCVs to execute a CCIP 2.0 message with, mirroring OffRamp 2.0 `_ensureCCVQuorumIsReached`:
+    ///         every required CCV, plus `threshold` of the optional CCVs. The OffRamp counts each optional entry that is
+    ///         present in `ccvs`, so optional CCVs that are also required count first, and only the missing ones are added
+    ///         (in order). Duplicates are removed.
+    function selectCCVs(address[] memory requiredCCVs, address[] memory optionalCCVs, uint8 threshold)
+        internal
+        pure
+        returns (address[] memory ccvs)
+    {
+        ccvs = new address[](requiredCCVs.length + optionalCCVs.length);
+        uint256 count;
+        for (uint256 i = 0; i < requiredCCVs.length; ++i) {
+            if (!_contains(ccvs, count, requiredCCVs[i])) {
+                ccvs[count++] = requiredCCVs[i];
+            }
+        }
+
+        uint256 requiredCount = count;
+        uint256 needed = threshold;
+        bool[] memory counted = new bool[](optionalCCVs.length);
+        for (uint256 i = 0; i < optionalCCVs.length && needed > 0; ++i) {
+            if (_contains(ccvs, requiredCount, optionalCCVs[i])) {
+                counted[i] = true;
+                --needed;
+            }
+        }
+        for (uint256 i = 0; i < optionalCCVs.length && needed > 0; ++i) {
+            if (counted[i]) {
+                continue;
+            }
+            if (!_contains(ccvs, count, optionalCCVs[i])) {
+                ccvs[count++] = optionalCCVs[i];
+            }
+            --needed;
+        }
+
+        // Shrink to the number of selected CCVs.
+        assembly ("memory-safe") {
+            mstore(ccvs, count)
         }
     }
 
@@ -135,6 +175,15 @@ library CCIPForkAdapterV2 {
         }
 
         revert InvalidAddressEncoding(encodedAddress);
+    }
+
+    function _contains(address[] memory list, uint256 length, address value) private pure returns (bool) {
+        for (uint256 i = 0; i < length; ++i) {
+            if (list[i] == value) {
+                return true;
+            }
+        }
+        return false;
     }
 
     function _resolveVerifierResults(DecodedMessage memory decodedMessage, uint256 targetLength)

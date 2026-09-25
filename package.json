@@ -7,10 +7,14 @@
   "files": [
     "src/**/*.sol",
     "!src/test/**/*",
-    "scripts/ccipLocalSimulatorFork.js",
+    "scripts/CCIPLocalSimulatorFork.js",
+    "scripts/CCIPLocalSimulatorFork.d.ts",
     "scripts/data-streams/**/*.js",
-    "abi/**/*.json"
+    "remappings.txt"
   ],
+  "engines": {
+    "node": ">=22"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/smartcontractkit/chainlink-local.git"
@@ -22,27 +26,49 @@
     "hardhat-compile": "npx hardhat compile",
     "forge-compile": "forge build",
     "hardhat-test": "npx hardhat test",
+    "hardhat-test-js": "node --test --test-concurrency=1 --test-timeout=600000 test/smoke/data-streams/*.test.js test/e2e/ccip/*.test.js",
+    "js-unit-test": "npx hardhat build --no-tests --quiet && node --test test/unit/**/*.unit.test.js",
     "forge-test": "forge test",
-    "test": "npm run hardhat-test && npm run forge-test",
+    "test": "npm run hardhat-test && npm run js-unit-test && npm run forge-test",
     "prettier": "prettier --write 'api_reference/**/*'",
     "generate-solidity": "node helper_doc/generate-solidity-docs.mjs",
     "generate-jsdoc": "node helper_doc/generate-jsdoc.mjs",
     "generate-index": "node helper_doc/generate-index-files.mjs",
     "generate-docs": "npm run generate-solidity && npm run generate-jsdoc && npm run generate-index && npm run prettier",
-    "update-register": "node helper_doc/updateRegisterContract.cjs"
+    "update-register": "node helper_doc/updateRegisterContract.cjs",
+    "prepack": "cp remappings.txt .remappings.txt.dev-backup && cp remappings-npm.txt remappings.txt",
+    "postpack": "mv .remappings.txt.dev-backup remappings.txt"
   },
   "devDependencies": {
     "@chainlink/ace": "^1.0.0",
-    "@openzeppelin/contracts-4.8.3": "npm:@openzeppelin/contracts@4.8.3",
-    "@openzeppelin/contracts-5.3.0": "npm:@openzeppelin/contracts@5.3.0",
+    "@nomicfoundation/hardhat-ethers": "4.0.5",
     "dotenv": "^16.4.5",
-    "forge-std": "github:foundry-rs/forge-std#v1.9.4",
+    "ethers": "6.17.0",
     "hardhat": "^3.1.10",
     "jsdoc-to-markdown": "^8.0.1",
     "prettier": "^3.3.3"
   },
   "dependencies": {
     "@chainlink/contracts": "1.5.0",
-    "@chainlink/contracts-ccip": "1.6.2"
+    "@chainlink/contracts-ccip": "2.0.0",
+    "@openzeppelin/contracts-4.8.3": "npm:@openzeppelin/contracts@4.8.3",
+    "@openzeppelin/contracts-5.3.0": "npm:@openzeppelin/contracts@5.3.0",
+    "forge-std": "github:foundry-rs/forge-std#v1.9.4"
+  },
+  "peerDependencies": {
+    "@nomicfoundation/hardhat-ethers": "^4.0.5",
+    "ethers": "^6.17.0",
+    "hardhat": "^3.1.10"
+  },
+  "peerDependenciesMeta": {
+    "hardhat": {
+      "optional": true
+    },
+    "@nomicfoundation/hardhat-ethers": {
+      "optional": true
+    },
+    "ethers": {
+      "optional": true
+    }
   }
 }

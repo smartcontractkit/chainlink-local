@@ -28,7 +28,8 @@ contract TokenTransferorFork is Test {
 
         Register.NetworkDetails memory sepoliaNetworkDetails = ccipLocalSimulatorFork.getNetworkDetails(block.chainid);
         vm.selectFork(arbSepoliaFork);
-        Register.NetworkDetails memory arbSepoliaNetworkDetails = ccipLocalSimulatorFork.getNetworkDetails(block.chainid);
+        Register.NetworkDetails memory arbSepoliaNetworkDetails =
+            ccipLocalSimulatorFork.getNetworkDetails(block.chainid);
         arbSepoliaChainSelector = arbSepoliaNetworkDetails.chainSelector;
         vm.selectFork(sepoliaFork);
 

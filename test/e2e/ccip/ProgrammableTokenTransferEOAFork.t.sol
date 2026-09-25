@@ -5,9 +5,12 @@ import {Test} from "forge-std/Test.sol";
 import {CCIPLocalSimulatorFork, Register} from "@chainlink/local/src/ccip/CCIPLocalSimulatorFork.sol";
 import {IRouterClient} from "@chainlink/contracts-ccip/contracts/interfaces/IRouterClient.sol";
 import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
+import {ITokenAdminRegistry} from "@chainlink/contracts-ccip/contracts/interfaces/ITokenAdminRegistry.sol";
+import {TokenPool} from "@chainlink/contracts-ccip/contracts/pools/TokenPool.sol";
+import {FinalityCodec} from "@chainlink/contracts-ccip/contracts/libraries/FinalityCodec.sol";
 import {IERC20} from "@openzeppelin/contracts@4.8.3/token/ERC20/IERC20.sol";
 
-import {BasicMessageReceiver} from "../../../src/test/ccip/BasicMessageReceiver.sol";
+import {BasicMessageReceiverWithCCVs} from "../../../src/test/ccip/BasicMessageReceiverWithCCVs.sol";
 import {EncodeExtraArgsOffchain} from "../../../src/test/ccip/utils/EncodeExtraArgsOffchain.sol";
 
 contract ProgrammableTokenTransferEOAForkTest is Test {
@@ -44,7 +47,10 @@ contract ProgrammableTokenTransferEOAForkTest is Test {
 
     function test_programmableTokenTransferEOA_fork() external {
         vm.selectFork(s_destinationFork);
-        BasicMessageReceiver receiver = new BasicMessageReceiver(s_destinationNetwork.routerAddress);
+        // CCIP 2.0: a data + token message sent Faster-Than-Finality needs a receiver that opts in; the requested
+        // (pool-derived) depth must also meet the receiver's minimum.
+        BasicMessageReceiverWithCCVs receiver = new BasicMessageReceiverWithCCVs(s_destinationNetwork.routerAddress);
+        receiver.setAllowedFinalityConfig(s_sourceNetwork.chainSelector, FinalityCodec._encodeBlockDepth(1));
 
         vm.selectFork(s_sourceFork);
         _fundSourceTokenViaDrip(s_alice); // drip function mints 1e18 of the token
@@ -52,8 +58,8 @@ contract ProgrammableTokenTransferEOAForkTest is Test {
 
         bytes memory payload = bytes("Hello World");
         uint32 gasLimit = 200_000;
-        uint16 blockConfirmations = 1;
-        bytes memory extraArgs = s_encoder.encodeV3Basic(gasLimit, blockConfirmations);
+        bytes memory extraArgs =
+            s_encoder.encodeV3Basic(gasLimit, _poolAllowedFtfFinality(s_sourceNetwork.ccipBnMAddress));
 
         Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
         tokenAmounts[0] = Client.EVMTokenAmount({token: s_sourceNetwork.ccipBnMAddress, amount: amountToSend});
@@ -83,5 +89,18 @@ contract ProgrammableTokenTransferEOAForkTest is Test {
     function _fundSourceTokenViaDrip(address to) internal {
         (bool dripSuccess,) = s_sourceNetwork.ccipBnMAddress.call(abi.encodeWithSignature("drip(address)", to));
         require(dripSuccess, "drip(address) failed");
+    }
+
+    /// @dev Requests the smallest Faster-Than-Finality config the live source pool accepts, so the test keeps exercising
+    ///      FTF when testnet pool policy changes (e.g. the CCIP-BnM pool raised its minimum block depth to 32).
+    function _poolAllowedFtfFinality(address token) internal view returns (bytes4 finality) {
+        address pool = ITokenAdminRegistry(s_sourceNetwork.tokenAdminRegistryAddress).getPool(token);
+        bytes4 allowed = TokenPool(pool).getAllowedFinalityConfig();
+        uint16 blockDepth = uint16(uint32(allowed & FinalityCodec.BLOCK_DEPTH_MASK));
+        if (blockDepth != 0) {
+            return FinalityCodec._encodeBlockDepth(blockDepth);
+        }
+        require(allowed & FinalityCodec.WAIT_FOR_SAFE_FLAG != 0, "source pool does not allow Faster-Than-Finality");
+        return FinalityCodec.WAIT_FOR_SAFE_FLAG;
     }
 }

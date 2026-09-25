@@ -2,13 +2,12 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
-import {
-    CCIPLocalSimulator,
-    IRouterClient
-} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
+import {CCIPLocalSimulator, IRouterClient} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
 import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
+import {FinalityCodec} from "@chainlink/contracts-ccip/contracts/libraries/FinalityCodec.sol";
 
 import {BasicMessageReceiver} from "../../../src/test/ccip/BasicMessageReceiver.sol";
+import {BasicMessageReceiverWithCCVs} from "../../../src/test/ccip/BasicMessageReceiverWithCCVs.sol";
 import {EncodeExtraArgsOffchain} from "../../../src/test/ccip/utils/EncodeExtraArgsOffchain.sol";
 
 contract HelloWorldBasicMessageReceiverFasterThanFinalityLocalTest is Test {
@@ -21,7 +20,8 @@ contract HelloWorldBasicMessageReceiverFasterThanFinalityLocalTest is Test {
 
     function setUp() public {
         CCIPLocalSimulator simulator = new CCIPLocalSimulator();
-        (uint64 chainSelector_, IRouterClient sourceRouter_, IRouterClient destinationRouter_,,,,) = simulator.configuration();
+        (uint64 chainSelector_, IRouterClient sourceRouter_, IRouterClient destinationRouter_,,,,) =
+            simulator.configuration();
 
         s_chainSelector = chainSelector_;
         s_sourceRouter = sourceRouter_;
@@ -32,13 +32,16 @@ contract HelloWorldBasicMessageReceiverFasterThanFinalityLocalTest is Test {
         vm.deal(s_alice, 100 ether);
     }
 
+    /// @dev As on CCIP 2.0 lanes, a Faster-Than-Finality message with data is only delivered to a receiver that opts in
+    ///      through `getCCVsAndFinalityConfig`.
     function test_helloWorldBasicMessageReceiverFasterThanFinality_local() external {
-        BasicMessageReceiver receiver = new BasicMessageReceiver(address(s_destinationRouter));
+        BasicMessageReceiverWithCCVs receiver = new BasicMessageReceiverWithCCVs(address(s_destinationRouter));
+        receiver.setAllowedFinalityConfig(s_chainSelector, FinalityCodec._encodeBlockDepth(1));
 
         bytes memory payload = bytes("Hello World");
         uint32 gasLimit = 200_000;
         uint16 blockConfirmations = 1;
-        bytes memory extraArgs = s_encoder.encodeV3Basic(gasLimit, blockConfirmations);
+        bytes memory extraArgs = s_encoder.encodeV3BasicBlockDepth(gasLimit, blockConfirmations);
 
         Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
             receiver: abi.encode(address(receiver)),
@@ -57,5 +60,30 @@ contract HelloWorldBasicMessageReceiverFasterThanFinalityLocalTest is Test {
         assertEq(receiver.latestSourceChainSelector(), s_chainSelector);
         assertEq(receiver.latestSender(), s_alice);
         assertEq(receiver.latestMessage(), payload);
+    }
+
+    /// @dev Production parity: a receiver that does not opt into Faster-Than-Finality only accepts finalized messages.
+    function test_helloWorldFasterThanFinality_revertsForReceiverRequiringFinality_local() external {
+        BasicMessageReceiver receiver = new BasicMessageReceiver(address(s_destinationRouter));
+
+        Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
+            receiver: abi.encode(address(receiver)),
+            data: bytes("Hello World"),
+            tokenAmounts: new Client.EVMTokenAmount[](0),
+            extraArgs: s_encoder.encodeV3BasicBlockDepth(200_000, 1),
+            feeToken: address(0)
+        });
+
+        vm.startPrank(s_alice);
+        uint256 fee = s_sourceRouter.getFee(s_chainSelector, message);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                FinalityCodec.InvalidRequestedFinality.selector,
+                FinalityCodec._encodeBlockDepth(1),
+                FinalityCodec.WAIT_FOR_FINALITY_FLAG
+            )
+        );
+        s_sourceRouter.ccipSend{value: fee}(s_chainSelector, message);
+        vm.stopPrank();
     }
 }

@@ -6,27 +6,31 @@
 
 This contract allows storing and retrieving network details for various chains.
 
-Stores network details in a mapping based on chain IDs.
+Built-in network details are returned by a generated pure function (see
+`helper_doc/updateRegisterContract.cjs`) instead of being written to storage in
+the constructor: storing ~150 chains cost ~24M gas, which made
+`CCIPLocalSimulatorFork` too expensive to deploy on 30M-gas-limit forks.
+`setNetworkDetails` overrides are stored.
 
 ## State Variables
 
 ### s_networkDetails
 
-Mapping to store network details based on chain ID.
+Network details set with `setNetworkDetails`, overriding the built-in ones.
 
 ```solidity
 mapping(uint256 chainId => NetworkDetails) internal s_networkDetails
 ```
 
-## Functions
+### s_isOverridden
 
-### constructor
-
-Constructor to initialize the network details for various chains.
+Whether `setNetworkDetails` was called for a chain ID.
 
 ```solidity
-constructor() ;
+mapping(uint256 chainId => bool isOverridden) internal s_isOverridden
 ```
+
+## Functions
 
 ### getNetworkDetails
 
@@ -62,6 +66,15 @@ function setNetworkDetails(uint256 chainId, NetworkDetails memory networkDetails
 | ---------------- | ---------------- | -------------------------------------------------------- |
 | `chainId`        | `uint256`        | - The ID of the chain to set the details for.            |
 | `networkDetails` | `NetworkDetails` | - The network details to set for the specified chain ID. |
+
+### \_defaultNetworkDetails
+
+Built-in network details for `chainId`, or an all-zero struct for an unknown
+chain.
+
+```solidity
+function _defaultNetworkDetails(uint256 chainId) internal pure returns (NetworkDetails memory);
+```
 
 ## Structs
 
