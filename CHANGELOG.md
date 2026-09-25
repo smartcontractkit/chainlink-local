@@ -8,7 +8,7 @@ and this project adheres to
 
 ## [Unreleased]
 
-Target release: `0.3.0-beta.0` (V3). This is a **breaking** release: `CCIPLocalSimulatorFork` and the Hardhat 3
+Target release: `0.3.0-beta` (V3). This is a **breaking** release: `CCIPLocalSimulatorFork` and the Hardhat 3
 JavaScript fork helper now support CCIP 2.0 (CCV-based) lanes, which is the protocol version live testnet and mainnet
 lanes run today, alongside the pre-1.6 and 1.6 eras.
 
@@ -19,7 +19,7 @@ lanes run today, alongside the pre-1.6 and 1.6 eras.
 | Foundry (Solidity tests, local + fork) | Supported | Supported |
 | Hardhat 3 (Solidity tests, local + fork) | Supported | - |
 | Hardhat 3 (JavaScript/TypeScript, `scripts/*.js` helpers) | Supported (ESM, `@nomicfoundation/hardhat-ethers`) | - |
-| Hardhat 2 (JavaScript/TypeScript) | Not supported (Solidity contracts still compile) | Supported (pre-1.6 fork routing only) |
+| Hardhat 2 | Not supported: the contracts do not compile (Hardhat 2 cannot resolve the `@openzeppelin/contracts@4.8.3/` style imports, `HH411`) | Supported (pre-1.6 fork routing only) |
 | Remix IDE (local mode) | Supported | Supported |
 
 ### Dependencies
@@ -28,8 +28,18 @@ lanes run today, alongside the pre-1.6 and 1.6 eras.
 | ------------------------- | ------- |
 | @chainlink/contracts-ccip | 2.0.0   |
 | @chainlink/contracts      | 1.5.0   |
+| @openzeppelin/contracts-4.8.3 | npm:@openzeppelin/contracts@4.8.3 |
+| @openzeppelin/contracts-5.3.0 | npm:@openzeppelin/contracts@5.3.0 |
+| forge-std                 | github:foundry-rs/forge-std#v1.9.4 |
 
-`lib/chainlink-ccip` is pinned to tag `contracts-ccip-v2.0.0` (`c2c125c27f056db2e98d21501922b6eff5750f36`).
+The OpenZeppelin aliases and `forge-std` are now runtime `dependencies` (the shipped sources import them). `hardhat`,
+`@nomicfoundation/hardhat-ethers` and `ethers` are optional `peerDependencies`, needed only for the JavaScript helpers.
+`engines.node` is `>=22`. `forge-std` is a git dependency (the npm `forge-std` package is stale), so `npm install` needs
+access to GitHub.
+
+`lib/chainlink-ccip` is pinned to tag `contracts-ccip-v2.0.0` (`c2c125c27f056db2e98d21501922b6eff5750f36`) in the
+gitlink, `.gitmodules` (no `branch = develop`) and `foundry.lock`, so `forge install` and `forge update` resolve it
+to the tag.
 
 ### Breaking changes
 
@@ -42,18 +52,65 @@ lanes run today, alongside the pre-1.6 and 1.6 eras.
 - **Default `V2VerificationMode` is now `OFFRAMP_DERIVED`** (was `HYBRID`). CCIP 2.0 messages are executed through the
   destination OffRamp's permissionless `execute` with the CCVs it selects (`getCCVsForMessage`), without decoding the
   message locally. `STRICT`, `HYBRID` and `SYNTHETIC_ONLY` remain available through `setV2VerificationMode`.
+- **Fork routing is strict by default.** `switchChainAndRouteMessage` (and `executePendingV2Message`) now revert when a
+  captured CCIP message cannot be routed to any of the given forks
+  (`CCIPLocalSimulatorFork__MessageNotRouted(messageId, reason)`) or does not execute successfully
+  (`CCIPLocalSimulatorFork__MessageExecutionFailed(messageId, reason)`, with the decoded revert data, e.g.
+  `InvalidRequestedFinality(...)` or the receiver's revert). 0.2.6 to 0.2.9 logged execution failures and carried on, and
+  dropped unroutable messages without any output; 0.2.5 and earlier reverted. Call `setStrictRouting(false)` to log and
+  record failures instead (see `getMessageStatus`). A 1.6 or 2.0 message to a chain that is not in `forkIds` is not a
+  failure: it stays `QUEUED` and is routed by a later `switchChainAndRouteMessage` call that includes its destination
+  fork (0.2.x dropped it). Pre-1.6 logs do not name their destination, so route them in a call that includes it.
 - **Fast Transfer delivery follows production rules.** OffRamp 2.0 only delivers a Fast Transfer message with data (or a
   non-zero gas limit) to a receiver that opts in through `getCCVsAndFinalityConfig`. A plain `CCIPReceiver` only accepts
-  finalized messages, so the simulator records the execution as `FAILURE` and does not deliver it.
-- **Fork mode needs `evm_version = "cancun"`** (Foundry `foundry.toml`, Hardhat `evmVersion`): deployed CCIP 2.0
-  contracts use Cancun opcodes, and `paris` fails with `EvmError: NotActivated`.
+  finalized messages, so the OffRamp records the execution as `FAILURE`: routing reverts with
+  `InvalidRequestedFinality` in strict mode, or records it as `FAILED`.
+- **Fork mode needs `evm_version = "cancun"` or later** (not `paris`/`shanghai`): deployed CCIP 2.0 contracts use Cancun
+  opcodes, and `paris` fails with `EvmError: NotActivated`. Set it only for fork tests (see the migration guide), so
+  your deployed bytecode is not affected.
 - **Foundry >= 1.5.1 is required for fork tests.** forge 1.1.0 panics (`revm journaled_state.rs:402`) when an OffRamp
   2.0 execution records a `FAILURE`.
-- **Local mode enforces CCIP 2.0 finality rules.** `CCIPLocalSimulator` now uses `CCIPLocalRouter` (same ABI as the
-  upstream `MockCCIPRouter`). `ccipSend` reverts with `InvalidRequestedFinality(requested, allowed)` when a Fast Transfer message
-  with data or a non-zero gas limit targets a receiver that does not allow that finality, and with
-  `RequestedFinalityCanOnlyHaveOneMode` for a malformed finality config, matching what fork mode and production do.
-  Token-only transfers are not affected.
+- **Local mode applies the CCIP 2.0 OnRamp and OffRamp rules.** `CCIPLocalSimulator` now uses `CCIPLocalRouter`
+  (same ABI as the upstream `MockCCIPRouter`, which it replaces). `ccipSend` now reverts where production rejects the
+  message, with the production error:
+  - `InvalidRequestedFinality(requested, allowed)`: a Fast Transfer message with data or a non-zero gas limit to a
+    receiver that does not allow that finality. `RequestedFinalityCanOnlyHaveOneMode`: a malformed finality config.
+  - For every message that is not a token-only transfer to an `IAny2EVMMessageReceiverV2` receiver (finalized messages
+    included), `getCCVsAndFinalityConfig` is called and validated: its revert, `DuplicateCCVNotAllowed` or
+    `InvalidOptionalThreshold` fails the send.
+  - `TokenReceiverNotAllowed(destChainSelector)`: a non-empty `GenericExtraArgsV3.tokenReceiver` (rejected on EVM lanes).
+  - `CanOnlySendOneTokenPerMessage` (more than one token) and `CannotSendZeroTokens` (a zero amount).
+  - `MessageGasLimitTooHigh`: a `GenericExtraArgsV2` / `EVMExtraArgsV1` gas limit above `type(uint32).max` (the upstream
+    mock truncated it to 32 bits; production rejects it against the lane's `uint32` `maxPerMsgGasLimit`).
+
+  ExtraArgs shorter than 4 bytes are now treated as empty (default gas limit), as in production, instead of reverting
+  `InvalidExtraArgsTag`. **Local `messageId`s are now unique per send** (they include a nonce, the sender and the
+  destination), so IDs differ from earlier versions and identical sends no longer collide.
+- **`src/vendor/**` was removed** (70 files: vendored OpenZeppelin 4.7.3 / 4.8.3 / 5.0.2, `MockRouter`,
+  `BurnMintERC677` and shared Chainlink contracts). Sources import `@openzeppelin/contracts@4.8.3/...`,
+  `@openzeppelin/contracts@5.3.0/...` and `@chainlink/contracts(-ccip)` instead; `CCIPLocalSimulator`'s `AccessControl`
+  support now uses OpenZeppelin 5.3.0 (was 5.0.2). Imports of `@chainlink/local/src/vendor/...` must move to those
+  packages.
+- **`Register` keeps its built-in network details in code.** `getNetworkDetails`, `setNetworkDetails` and
+  `NetworkDetails` are unchanged. The details are returned by a generated pure function instead of being written to
+  storage in the constructor, and `CCIPLocalSimulatorFork` places its `Register` with `vm.etch`. Code that read
+  `Register` storage slots directly breaks.
+- **`Register` data is regenerated from the CCIP directory API** (`https://docs.chain.link/api/ccip/v1`, Sep 2026):
+  134 chains (was 148). Router addresses are unchanged for every chain in both versions.
+  - `wrappedNativeAddress` changes on 17 chains. The generator used the first non-LINK fee token, which was GHO on
+    e.g. Ethereum, Ethereum Sepolia, Arbitrum One, Arbitrum Sepolia and Base, and a bridged WETH on Monad Testnet and
+    Plasma Testnet; it now picks the wrapped native token (e.g. WETH, WAVAX, WMON). It is `address(0)` on Stable and
+    Botanix, where the API lists no unambiguous wrapped native token.
+  - Removed (no longer in the API, or without fee tokens): Blast, Blast Sepolia, Polygon zkEVM, Polygon zkEVM Cardona,
+    Scroll Sepolia, Mint, Mint Sepolia, Mind Network, Mind Network Testnet, Tac, Everclear, Memento, Memento Testnet,
+    Tempo (42429), Corn, Corn Testnet, Janction Testnet, B² Testnet, Kroma Sepolia, Fraxtal Testnet, Botanix Testnet,
+    MegaETH Testnet (6342), Superseed Sepolia, Berachain Bartio, Katana Tatara, Taiko Hekla, Bitlayer Testnet and
+    Treasure Topaz. `getNetworkDetails` returns an all-zero struct for them; use `setNetworkDetails`.
+  - Added: Avalanche, Kaia, Neo X, Robinhood Chain, Robinhood Chain Testnet, HyperEVM Testnet, Tempo Mainnet, Tempo
+    Testnet Moderato, MegaETH Testnet (6343), Mova Mainnet, Mova Testnet, 0G Galileo Testnet, Creditcoin Mainnet and
+    Ronin Sepolia.
+  - Changed on existing chains: 8 LINK addresses, 8 CCIP-BnM addresses and 3 `registryModuleOwnerCustomAddress`es, as
+    listed by the API.
 - **Hardhat JavaScript helpers target Hardhat 3** (ES modules; they did not load in Hardhat 3 before). Every function
   takes the `NetworkConnection` from `network.connect()` and needs `@nomicfoundation/hardhat-ethers`:
   - `scripts/CCIPLocalSimulatorFork.js`: `getEvm2EvmMessage(receipt)` -> `getCCIPMessages(connection, receipt)`
@@ -72,7 +129,7 @@ lanes run today, alongside the pre-1.6 and 1.6 eras.
 ### Added
 
 - CCIP 2.0 routing in `CCIPLocalSimulatorFork` (adapter architecture in `src/ccip/adapters/`, era detection from the
-  emitted event and the OnRamp `typeAndVersion`), including the `NO_EXECUTION_ADDRESS` queue
+  emitted event), including the `NO_EXECUTION_ADDRESS` queue
   (`V2ExecutionMode`, `getPendingV2MessageIds`, `executePendingV2Message`).
 - `V2VerificationMode.OFFRAMP_DERIVED` (Stefano Magini, magiodev-cll/chainlink-local#3): routes CCIP 2.0 messages
   without the local `MessageV1` codec, so fork tests keep working when the on-chain wire format moves ahead of the
@@ -82,8 +139,16 @@ lanes run today, alongside the pre-1.6 and 1.6 eras.
 - Hardhat 3 JavaScript fork routing for 1.6 and CCIP 2.0 in `scripts/CCIPLocalSimulatorFork.js` (pre-1.6 kept,
   including `EVM2EVMOffRamp` 1.2 and 1.5), with the same `typeAndVersion`-based OffRamp lookup and CCIP 2.0 execution as
   the Solidity simulator; `CCIP_V2_ROUTERS`; execution failures are thrown with a decoded reason. Tests:
-  `npm run hardhat-test-js`.
-- `src/ccip/CCIPLocalRouter.sol`, the local-mode router with CCIP 2.0 finality checks.
+  `npm run hardhat-test-js` (fork) and `npm run js-unit-test` (offline: log decoding for every era from pinned ABIs,
+  OffRamp lookup and execution against mocked OffRamps).
+- TypeScript declarations for the CCIP JavaScript helper (`scripts/CCIPLocalSimulatorFork.d.ts`, shipped in the npm
+  package).
+- CI workflow (`.github/workflows/test.yml`): Foundry build, `fmt --check` and non-fork tests, Hardhat Solidity and
+  JavaScript unit tests, and an npm-tarball consumer smoke test (`.github/scripts/consumer-smoke.sh`) for Hardhat 3 and
+  Foundry (npm). Fork suites run on manual dispatch with RPC secrets.
+- `src/ccip/CCIPLocalRouter.sol`, the local-mode router with the CCIP 2.0 OnRamp and OffRamp checks.
+- `CCIPLocalSimulatorFork.getMessageStatus(messageId)` returns `NOT_FOUND`, `QUEUED`, `FAILED` or `SUCCESS` and the
+  failure reason; `setStrictRouting(bool)` / `getStrictRouting()`.
 - Mainnet CCIP 2.0 fork test (Ethereum -> Arbitrum One; needs `ETHEREUM_MAINNET_RPC_URL` / `ARBITRUM_MAINNET_RPC_URL`).
 - CCIP 2.0 routers: `getCCIPV2RouterAddress(chainId)` / `setCCIPV2RouterAddress(chainId, router)`. Some chains run a
   dedicated CCIP 2.0 router next to the router `getNetworkDetails` returns (Ethereum Sepolia
@@ -112,7 +177,48 @@ lanes run today, alongside the pre-1.6 and 1.6 eras.
   the router was tried), and `RESPECT_NO_EXEC` / `MANUAL_ONLY` queueing now applies in this mode too.
 - CCIP 2.0: an unexpected `getCCVsForMessage` or verifier-resolver `owner()` response (including a CCV without code) no
   longer reverts routing.
-- v1.6: `Any2EVMRampMessage.sender` is `abi.encode(address)` (32 bytes) in the V3 adapter as well (port of #65).
+- v1.6: `Any2EVMRampMessage.sender` is `abi.encode(address)` (32 bytes, as production 1.6 lanes deliver) instead of
+  `abi.encodePacked` (20 bytes); receivers doing `abi.decode(message.sender, (address))` reverted (#62 / #65).
+- **CCIP 2.0 CCV selection matches the OffRamp quorum.** The simulator passed `max(required, threshold)` CCVs in total,
+  so a receiver with required CCVs plus optional CCVs (e.g. `required=[A], optional=[B,C], threshold=1`) failed with
+  `OptionalCCVQuorumNotReached` where production delivers. It now passes every required CCV plus `threshold` optional
+  ones (optional CCVs that are also required count toward the threshold), in the Solidity simulator, the local-codec
+  adapter and the JavaScript helper.
+- **1.6 messages execute only on their destination fork.** 1.6 OnRamps serve every destination from one address, so
+  with several destination forks a 1.6 message could execute on the first fork whose OffRamp served the source lane
+  (and be marked processed there). 1.6 logs are now filtered by `destChainSelector` like 2.0 logs.
+- **`CCIPLocalSimulatorFork` deploys in ~14.4M gas** (was ~36M): `new CCIPLocalSimulatorFork()` right after
+  `createSelectFork` ran out of gas on forks with a 30M block gas limit.
+- `setLaneDefaultCCVs` keeps the lane's `laneMandatedCCVs` (it cleared them, making the fork lane less strict than
+  production).
+- Routing hardening: a 32-byte OnRamp or owner word that is not an address is skipped instead of reverting the lookup;
+  a 2.0 log whose `messageId` topic differs from `keccak256(encodedMessage)` is rejected; a foreign event with a CCIP
+  event signature but fewer indexed topics no longer panics routing; the unused OnRamp era probe was removed (routing
+  always followed the event's era, and the probe classified `"EVM2EVMOnRamp 1.2.0"` as 2.0); the 2.0 destination filter reads `topics[1]` in every
+  `V2VerificationMode`, so a non-default mode no longer decodes `MessageV1` before the emitter check.
+- **The npm package compiles for Hardhat 3 and npm-based Foundry consumers.** It ships a `remappings.txt` for
+  `node_modules` layouts (`remappings-npm.txt`, swapped in by the `prepack` script and restored by `postpack`; git and
+  `forge install` consumers keep the `lib/` remappings), so Hardhat 3 no longer fails with `HHE902` on the
+  `@openzeppelin/contracts@4.8.3/...` imports.
+- The JavaScript helpers throw a clear error naming `@nomicfoundation/hardhat-ethers` when the connection has no
+  `ethers` (was `Cannot read properties of undefined (reading 'Interface')`), and decode `OptionalCCVQuorumNotReached`,
+  `InvalidOptionalThreshold`, `InvalidVerifierResultsLength`, `NoStateProgressMade` and `InvalidEVMAddress`.
+- 1.6 and pre-1.6 fork execution (Solidity and JavaScript) passes zero `tokenGasOverrides`, so each token keeps the `destGasAmount` stamped by the
+  source OnRamp, as when a DON executes the message. The message gas limit was passed as every token's release/mint
+  gas budget instead.
+- CCIP 2.0 (`OFFRAMP_DERIVED` and the JavaScript helper): the OffRamp stamped in the message
+  (`MessageV1.offRampAddress`) is used when it serves the lane. OffRamp 2.0 rejects a message stamped with another OffRamp (`InvalidOffRamp`), and the router lookup returned
+  the newest OffRamp of the lane, which differs while an OffRamp is being replaced.
+- The synthetic CCV setup is read from the resolver on every route instead of being cached, and the no-op verifier is
+  redeployed when it has no code: after `vm.rollFork` or a snapshot revert on the destination fork, 2.0 messages failed
+  with the cached (now missing) configuration.
+- The single-fork `switchChainAndRouteMessage(forkId)` always returns with `forkId` selected, as documented (it stayed on
+  the source fork when nothing was routed).
+- `CCIPLocalRouter` declares `pragma solidity ^0.8.20`, the floor its OpenZeppelin 5.3.0 imports already required.
+- The JavaScript helper checks that a 1.6 message's destination is the connected chain before executing it (1.6 OnRamps
+  serve several destinations, and `executeSingleMessage` does not check it), and every execution transaction's revert
+  is thrown with the decoded reason (the original error is kept as `cause`); it also decodes `TokenHandlingError`,
+  `ReleaseOrMintBalanceMismatch`, `InvalidMessageDestChainSelector` and `CursedByRMN`.
 - The npm package lists the CCIP JavaScript helper with its actual file name (`scripts/CCIPLocalSimulatorFork.js`); the
   lowercase entry did not match on case-sensitive file systems, so published packages could omit the helper.
 
@@ -134,8 +240,28 @@ lanes run today, alongside the pre-1.6 and 1.6 eras.
 - **Dedicated CCIP 2.0 routers are known for Ethereum Sepolia and Avalanche Fuji only.** Set others with
   `setCCIPV2RouterAddress`. As of Sep 2026 these routers reject CCIP-BnM (`UnsupportedToken`); CCIP-BnM token transfers
   over CCIP 2.0 work through the Register routers' 2.0 lanes.
-- **Local mode does not simulate token pools**, so pool finality policies (e.g. a minimum Fast Transfer block depth) are only
-  enforced in fork mode.
+- **Local mode limitations** (use fork mode for these):
+  - No token pools: pool policies (e.g. a minimum Fast Transfer block depth, `FTFNotSupportedOnPoolV1`, rate limits)
+    are not enforced, and tokens are transferred directly to the receiver.
+  - No CCVs and no block confirmations: messages are delivered synchronously inside `ccipSend`, and receiver CCV lists
+    are only validated, not verified.
+  - The supported-token list (`getSupportedTokens`) is not enforced by the router.
+  - `NO_EXECUTION_ADDRESS` messages are executed immediately (fork mode queues them for `executePendingV2Message`).
+  - There is no per-lane `maxPerMsgGasLimit` cap: production reverts `MessageGasLimitTooHigh` above the lane's cap, local
+    mode only above `type(uint32).max`.
+- **Fork mode executes 1.6 and pre-1.6 messages by impersonating the OffRamp** and calling `executeSingleMessage`, which
+  skips the checks of the OffRamp's `execute` entrypoint (commit/merkle proofs, RMN). CCIP 2.0 messages go through the
+  permissionless `execute`, so all 2.0 OffRamp checks run.
+- **Hard-coded values can go stale**: the dedicated CCIP 2.0 router map (Ethereum Sepolia and Avalanche Fuji only),
+  `Register` data and the known OffRamp `typeAndVersion` prefixes. A message on a lane the simulator cannot resolve now
+  fails loudly in strict mode (`CCIPLocalSimulatorFork__MessageNotRouted`) instead of being dropped. Override with
+  `setCCIPV2RouterAddress` / `setNetworkDetails`.
+- **Synthetic CCV verification persists on the fork**: routing registers a no-op verifier for the `"FORK"` result
+  version on real resolver CCVs, so after a routed 2.0 message, a forged message with `"FORK"` results can also execute
+  on that fork.
+- **Recorded logs are consumed** by `switchChainAndRouteMessage`. 1.6 and 2.0 messages whose destination fork was not
+  passed are kept (`QUEUED`) for a later call; one whose destination fork is never passed is never routed, so check
+  `getMessageStatus` when in doubt. Pre-1.6 messages must be routed in the call that includes their destination.
 - **The Hardhat JavaScript helper executes CCIP 2.0 messages with a fixed 15M gas limit** (capped at the block gas
   limit), because OffRamp 2.0 `execute` records `FAILURE` instead of reverting when it runs out of gas.
 - Hardhat 3 runs every fork test in parallel; with a rate-limited RPC provider fork `setUp` can fail. Run fork suites
@@ -144,9 +270,19 @@ lanes run today, alongside the pre-1.6 and 1.6 eras.
 ### Migration guide (0.2.x -> 0.3.0)
 
 1. Bump `@chainlink/contracts-ccip` to `2.0.0` (Foundry: `lib/chainlink-ccip` at `contracts-ccip-v2.0.0`) and
-   `@chainlink/local` to `0.3.0-beta.0`. Use Node.js 22 for Hardhat 3.
-2. Set `evm_version = "cancun"` in `foundry.toml` (or `evmVersion: "cancun"` in the Hardhat solidity settings) and use
-   Foundry >= 1.5.1.
+   `@chainlink/local` to `0.3.0-beta` (published under the `beta` tag: `npm install @chainlink/local@0.3.0-beta`,
+   `forge install smartcontractkit/chainlink-local@v0.3.0-beta`). Use Node.js 22 for Hardhat 3. Hardhat 3 Solidity
+   tests need no remappings; Foundry projects installing from npm list the package's dependencies in `remappings.txt`
+   (see the README).
+2. Fork tests: compile them with `cancun` or later, without changing the EVM version your contracts are deployed with,
+   and use Foundry >= 1.5.1 (forge 1.1.0 panics on a failed CCIP 2.0 execution). For example, add a fork profile to
+   `foundry.toml` and run fork tests with `FOUNDRY_PROFILE=fork forge test`:
+   ```toml
+   [profile.fork]
+   evm_version = "cancun"
+   ```
+   or pass `--evm-version cancun` to `forge test`. In Hardhat 3, set `evmVersion: "cancun"` in the Solidity settings of
+   the build profile you run fork tests with.
 3. Extra args V3: replace block confirmations with a `FinalityCodec` config.
    ```solidity
    // before: ExtraArgsCodec._getBasicEncodedExtraArgsV3(gasLimit, uint16(blockConfirmations))
@@ -179,21 +315,19 @@ lanes run today, alongside the pre-1.6 and 1.6 eras.
    ```
    Pass an array of routers (e.g. `[routerAddress, CCIP_V2_ROUTERS[chainId]]`) to route through dedicated CCIP 2.0
    routers, and `{ forceExecution: true }` to execute a `NO_EXECUTION_ADDRESS` message.
-9. To use a dedicated CCIP 2.0 router, send through `getCCIPV2RouterAddress(block.chainid)` and deploy receivers with
+9. Strict routing: tests that tolerated failed or unroutable messages now revert. Assert the failure with
+   `vm.expectRevert(abi.encodeWithSelector(CCIPLocalSimulatorFork.CCIPLocalSimulatorFork__MessageExecutionFailed.selector, messageId, expectedReason))`,
+   or call `setStrictRouting(false)` and check `getMessageStatus(messageId)`.
+10. Local mode: sends with more than one token, a zero token amount, a non-empty V3 `tokenReceiver` or a V1/V2 gas limit
+    above `type(uint32).max` now revert, as in production; V2 receivers' `getCCVsAndFinalityConfig` must not revert and must return a valid config; do not rely on
+    local `messageId` values being equal for identical sends.
+11. `Register`: if you used `wrappedNativeAddress` on the chains listed under Breaking changes, it now points at the
+    wrapped native token (it was GHO on e.g. Ethereum Sepolia). For a removed chain, set its details with
+    `setNetworkDetails`.
+12. Replace `@chainlink/local/src/vendor/...` imports with `@openzeppelin/contracts@4.8.3/...`,
+    `@openzeppelin/contracts@5.3.0/...` or `@chainlink/contracts-ccip/...`.
+13. To use a dedicated CCIP 2.0 router, send through `getCCIPV2RouterAddress(block.chainid)` and deploy receivers with
    the destination chain's CCIP 2.0 router (the destination router must be the one whose OffRamp delivers the message).
-
-## [0.2.10-beta] - 21 September 2026
-
-### Dependencies
-
-| Package                   | Version |
-| ------------------------- | ------- |
-| @chainlink/contracts-ccip | 1.6.2   |
-| @chainlink/contracts      | 1.5.0   |
-
-### Fixed
-
-- For v1.6 messages, `CCIPLocalSimulatorFork.switchChainAndRouteMessage` now builds `Internal.Any2EVMRampMessage.sender` with `abi.encode(address)` (32-byte word) instead of `abi.encodePacked(address)` (20 bytes), matching what production v1.6 lanes deliver for EVM source chains. Receivers doing `abi.decode(message.sender, (address))` previously reverted, and receivers comparing the raw bytes against `abi.encode(trustedRemote)` took their untrusted-sender branch.
 
 ## [0.2.9] - 19 May 2026
 
@@ -871,4 +1005,4 @@ lanes run today, alongside the pre-1.6 and 1.6 eras.
 [0.2.9-beta]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.9-beta
 [0.2.9-beta.0]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.9-beta.0
 [0.2.9]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.9
-[unreleased]: https://github.com/smartcontractkit/chainlink-local/compare/v0.2.9...HEAD
+[0.3.0-beta]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.3.0-beta

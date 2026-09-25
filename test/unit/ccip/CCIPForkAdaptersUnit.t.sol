@@ -8,6 +8,7 @@ import {FinalityCodec} from "@chainlink/contracts-ccip/contracts/libraries/Final
 import {CCIPLocalSimulatorFork} from "../../../src/ccip/CCIPLocalSimulatorFork.sol";
 import {CCIPForkAdapterTypes} from "../../../src/ccip/adapters/CCIPForkAdapterTypes.sol";
 import {CCIPForkAdapterV1dot6} from "../../../src/ccip/adapters/CCIPForkAdapterV1dot6.sol";
+import {CCIPForkAdapterPreV1dot6} from "../../../src/ccip/adapters/CCIPForkAdapterPreV1dot6.sol";
 import {CCIPForkAdapterV2, IMessageV1Decoder} from "../../../src/ccip/adapters/CCIPForkAdapterV2.sol";
 import {MessageV1CodecDecoder} from "../../../src/ccip/adapters/MessageV1CodecDecoder.sol";
 
@@ -38,6 +39,28 @@ contract MockV1dot6OffRamp {
 
     function sourcePoolAddress() external view returns (bytes memory) {
         return s_sourcePoolAddress;
+    }
+
+    function gasOverride() external view returns (uint32) {
+        return s_gasOverride;
+    }
+}
+
+contract MockPreV1dot6OffRamp {
+    uint256 internal s_numOverrides;
+    uint32 internal s_gasOverride = type(uint32).max;
+
+    function executeSingleMessage(
+        CCIPForkAdapterTypes.PreV1dot6Message calldata,
+        bytes[] calldata,
+        uint32[] calldata tokenGasOverrides
+    ) external {
+        s_numOverrides = tokenGasOverrides.length;
+        s_gasOverride = tokenGasOverrides[0];
+    }
+
+    function numOverrides() external view returns (uint256) {
+        return s_numOverrides;
     }
 
     function gasOverride() external view returns (uint32) {
@@ -119,28 +142,10 @@ contract MockV2OffRamp {
     }
 }
 
-contract MockOnRampV2 {
-    function typeAndVersion() external pure returns (string memory) {
-        return "OnRamp 2.0.0-dev";
-    }
-}
-
-contract MockOnRampV1dot6BySelector {
-    function getExpectedNextSequenceNumber(uint64) external pure returns (uint64) {
-        return 1;
-    }
-}
-
-contract MockOnRampPreV1dot6 {}
-
 contract CCIPLocalSimulatorForkHarness is CCIPLocalSimulatorFork {
     /// @dev These tests cover the opt-in local-codec V2 path, which was the default before OFFRAMP_DERIVED.
     constructor() {
         s_v2VerificationMode = V2VerificationMode.HYBRID;
-    }
-
-    function detectEra(address onRamp) external view returns (uint8) {
-        return uint8(_detectEra(onRamp));
     }
 
     function routeV2Message(Vm.Log memory entry) external returns (bool attempted) {
@@ -277,7 +282,26 @@ contract CCIPForkAdaptersUnitTest is Test {
         assertEq(offRamp.receiver(), expectedReceiver);
         assertEq(offRamp.destToken(), expectedDestToken);
         assertEq(abi.decode(offRamp.sourcePoolAddress(), (address)), expectedSourcePool);
-        assertEq(offRamp.gasOverride(), expectedGasLimit);
+        // A zero token gas override keeps the source-stamped `destGasAmount` (OffRamp only overrides when non-zero).
+        assertEq(offRamp.gasOverride(), 0);
+    }
+
+    /// @dev EVM2EVMOffRamp 1.5 only overrides `destGasAmount` with a non-zero value, so the adapter must pass zeros.
+    function test_preV1dot6AdapterPassesZeroTokenGasOverrides() public {
+        MockPreV1dot6OffRamp offRamp = new MockPreV1dot6OffRamp();
+
+        Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
+        tokenAmounts[0] = Client.EVMTokenAmount({token: makeAddr("token"), amount: 1});
+        CCIPForkAdapterTypes.PreV1dot6Message memory message;
+        message.receiver = makeAddr("receiver");
+        message.gasLimit = 555_555;
+        message.tokenAmounts = tokenAmounts;
+        message.sourceTokenData = new bytes[](1);
+
+        (bool success,) = CCIPForkAdapterPreV1dot6.execute(address(offRamp), message);
+        assertTrue(success);
+        assertEq(offRamp.numOverrides(), 1);
+        assertEq(offRamp.gasOverride(), 0);
     }
 
     function test_v2AdapterDecodesEventAndRoutesUsingVerifierBlobs() public {
@@ -289,7 +313,9 @@ contract CCIPForkAdaptersUnitTest is Test {
         address[] memory optionalCCVs = new address[](1);
         optionalCCVs[0] = ccv2;
 
-        MockV2OffRamp offRamp = new MockV2OffRamp(requiredCCVs, optionalCCVs, 2);
+        // required=[ccv1], optional=[ccv2], threshold=1: the OffRamp needs ccv1 plus ccv2. (A threshold above the number
+        // of optional CCVs is rejected by the OffRamp with `InvalidOptionalThreshold`.)
+        MockV2OffRamp offRamp = new MockV2OffRamp(requiredCCVs, optionalCCVs, 1);
         MessageV1CodecDecoder decoder = new MessageV1CodecDecoder();
 
         MessageV1Codec.MessageV1 memory message = MessageV1Codec.MessageV1({
@@ -354,14 +380,6 @@ contract CCIPForkAdaptersUnitTest is Test {
         assertEq(offRamp.numCCVs(), 2);
         assertEq(offRamp.numVerifierResults(), 2);
         assertEq(offRamp.offRampAddressFromMessage(), address(offRamp));
-    }
-
-    function test_detectEraUsesTypeAndVersionThenSelectorProbeFallback() public {
-        CCIPLocalSimulatorForkHarness simulator = new CCIPLocalSimulatorForkHarness();
-
-        assertEq(simulator.detectEra(address(new MockOnRampV2())), 3);
-        assertEq(simulator.detectEra(address(new MockOnRampV1dot6BySelector())), 2);
-        assertEq(simulator.detectEra(address(new MockOnRampPreV1dot6())), 1);
     }
 
     function test_routeV2MessageRetriesWithSyntheticVerifierInputsWhenProofsFail() public {
@@ -538,8 +556,17 @@ contract CCIPForkAdaptersUnitTest is Test {
 
         CCIPLocalSimulatorForkHarness strictSimulator = new CCIPLocalSimulatorForkHarness();
         strictSimulator.setV2VerificationMode(CCIPLocalSimulatorFork.V2VerificationMode.STRICT);
+        // Strict routing (default): the rejected proofs surface as a revert instead of a silent non-delivery.
+        vm.expectPartialRevert(CCIPLocalSimulatorFork.CCIPLocalSimulatorFork__MessageExecutionFailed.selector);
+        strictSimulator.routeV2Message(entry);
+        assertEq(offRamp.successfulExecutions(), 0);
+
+        // Without strict routing, the failure is recorded instead.
+        strictSimulator.setStrictRouting(false);
         assertTrue(strictSimulator.routeV2Message(entry));
         assertEq(offRamp.successfulExecutions(), 0);
+        (CCIPLocalSimulatorFork.MessageStatus status,) = strictSimulator.getMessageStatus(topics[3]);
+        assertEq(uint8(status), uint8(CCIPLocalSimulatorFork.MessageStatus.FAILED));
 
         CCIPLocalSimulatorForkHarness syntheticOnlySimulator = new CCIPLocalSimulatorForkHarness();
         syntheticOnlySimulator.setV2VerificationMode(CCIPLocalSimulatorFork.V2VerificationMode.SYNTHETIC_ONLY);

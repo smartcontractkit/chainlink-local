@@ -6,9 +6,9 @@
     }
   },
   "lib/chainlink-ccip": {
-    "branch": {
-      "name": "develop",
-      "rev": "347f5118b21da4e0d139c195937bc991cdc782c5"
+    "tag": {
+      "name": "contracts-ccip-v2.0.0",
+      "rev": "c2c125c27f056db2e98d21501922b6eff5750f36"
     }
   },
   "lib/chainlink-evm": {

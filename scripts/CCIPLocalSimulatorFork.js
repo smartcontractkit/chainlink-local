@@ -59,6 +59,10 @@ const ABI = {
     ],
     v1_6OffRamp: [
         "function getSourceChainConfig(uint64 sourceChainSelector) view returns (tuple(address router, bool isEnabled, uint64 minSeqNr, bool isRMNVerificationDisabled, bytes onRamp))",
+        // `StaticConfig.chainSelector` (destination/local chain selector) is the first field on both the 1.6.0 and
+        // 2.0.0 OffRamp (verified against the pinned `lib/chainlink-ccip` OffRamp.sol `StaticConfig` struct, and the
+        // 1.6.0 source embedded in `lib/chainlink-ccip/chains/evm/gobindings/generated/v1_6_0/offramp/offramp_metadata.go`).
+        "function getStaticConfig() view returns (tuple(uint64 chainSelector, uint16 gasForCallExactCheck, address rmnRemote, address tokenAdminRegistry, address nonceManager))",
         `function executeSingleMessage(${V1_6_ANY2EVM_MESSAGE} message, bytes[] offchainTokenData, uint32[] tokenGasOverrides)`,
     ],
     v2OffRamp: [
@@ -68,7 +72,14 @@ const ABI = {
         "function getExecutionState(bytes32 messageId) view returns (uint8)",
         "event ExecutionStateChanged(uint64 indexed sourceChainSelector, uint64 indexed messageNumber, bytes32 indexed messageId, uint8 state, bytes returnData)",
     ],
-    // Errors decoded in failure messages.
+    // Errors decoded in failure messages. Signatures are copied from pinned sources:
+    // - CCIP 2.0 errors: `lib/chainlink-ccip/chains/evm/contracts/offRamp/OffRamp.sol` (tag contracts-ccip-v2.0.0).
+    // - 1.6.0 `TokenHandlingError`/`ReleaseOrMintBalanceMismatch`: the 1.6.0 OffRamp source embedded (as solc
+    //   standard-json input) in `lib/chainlink-ccip/chains/evm/gobindings/generated/v1_6_0/offramp/offramp_metadata.go`
+    //   (`contracts/offRamp/OffRamp.sol` in that input) — the 1.6.0 and 2.0.0 `CursedByRMN`/`InvalidMessageDestChainSelector`
+    //   signatures are identical to 2.0.0's, so only one entry each is needed.
+    // - Pre-1.6 `TokenHandlingError(bytes)`: `git show v0.2.9:abi/EVM2EVMOffRamp.json` (the 0.2.x npm package shipped
+    //   this ABI; `ReceiverError(bytes)` there matches the 2.0/1.6 signature too).
     knownErrors: [
         "error NotEnoughGasForCall()",
         "error InvalidRequestedFinality(bytes4 requestedFinality, bytes4 allowedFinality)",
@@ -78,6 +89,20 @@ const ABI = {
         "error InboundImplementationNotFound(address ccv, bytes verifierResults)",
         "error SourceChainNotEnabled(uint64 sourceChainSelector)",
         "error SkippedAlreadyExecutedMessage(bytes32 messageId, uint64 sourceChainSelector, uint64 messageNumber)",
+        "error OptionalCCVQuorumNotReached(uint256 wanted, uint256 got)",
+        "error InvalidOptionalThreshold(uint8 wanted, uint256 got)",
+        "error InvalidVerifierResultsLength(uint256 expected, uint256 got)",
+        // `VersionedVerifierResolver.getInboundImplementation` (`ccvs/VersionedVerifierResolver.sol`): results < 4 bytes.
+        "error InvalidVerifierResultsLength()",
+        "error NoStateProgressMade(bytes32 messageId, bytes err)",
+        "error InvalidEVMAddress(bytes encodedAddress)",
+        // Pre-1.6 `EVM2EVMOffRamp` (v0.2.9 ABI): 1-argument shape, different selector than the 1.6/2.0 error below.
+        "error TokenHandlingError(bytes err)",
+        // 1.6.0 / 2.0.0 `OffRamp`.
+        "error TokenHandlingError(address target, bytes err)",
+        "error ReleaseOrMintBalanceMismatch(uint256 amountReleased, uint256 balancePre, uint256 balancePost)",
+        "error InvalidMessageDestChainSelector(uint64 messageDestChainSelector)",
+        "error CursedByRMN(uint64 sourceChainSelector)",
     ],
     ccvResolver: [
         "function owner() view returns (address)",
@@ -95,6 +120,7 @@ const ABI = {
  * @returns {Promise<string>} The transaction hash of the transfer
  */
 export async function requestLinkFromTheFaucet(connection, linkAddress, to, amount) {
+    _requireEthers(connection);
     const { ethers } = connection;
     const faucet = await _impersonate(connection, LINK_FAUCET_ADDRESS);
     const tx = await new ethers.Contract(linkAddress, ABI.link, faucet).transfer(to, amount);
@@ -120,6 +146,7 @@ export async function requestLinkFromTheFaucet(connection, linkAddress, to, amou
  * @returns {CCIPSentMessage[]} The sent messages, in log order (empty if none)
  */
 export function getCCIPMessages(connection, receipt) {
+    _requireEthers(connection);
     const { ethers } = connection;
     const preV1_6 = new ethers.Interface(ABI.preV1_6OnRamp);
     const v1_6 = new ethers.Interface(ABI.v1_6OnRamp);
@@ -236,8 +263,13 @@ export function getCCIPMessages(connection, receipt) {
  * @throws {Error} If no OffRamp serves the lane, or if execution fails (receiver revert, finality or CCV rejection)
  */
 export async function routeMessage(connection, routerAddresses, sent, options = {}) {
+    _requireEthers(connection);
     const routers = (Array.isArray(routerAddresses) ? routerAddresses : [routerAddresses]).filter(Boolean);
-    const lane = await _findOffRamp(connection, routers, sent.sourceChainSelector, sent.onRamp);
+    // CCIP 2.0: prefer the OffRamp stamped into the wire-format message (see `_stampedOffRamp`) so a router that
+    // lists several 2.0 OffRamps for the same OnRamp (migration) executes on the one the message was actually built
+    // for, instead of whichever the generic reverse-order lookup happens to pick.
+    const preferredOffRamp = sent.era === "V2" ? _stampedOffRamp(connection, sent.message.encodedMessage) : null;
+    const lane = await _findOffRamp(connection, routers, sent.sourceChainSelector, sent.onRamp, preferredOffRamp);
     if (!lane) {
         throw new Error(
             `No OffRamp found for source chain ${sent.sourceChainSelector} and OnRamp ${sent.onRamp} on routers ${routers.join(", ")}`
@@ -272,8 +304,28 @@ export async function routeMessage(connection, routerAddresses, sent, options = 
  * of unknown shape is skipped.
  * @private
  */
-async function _findOffRamp(connection, routerAddresses, sourceChainSelector, sourceOnRamp) {
+async function _findOffRamp(connection, routerAddresses, sourceChainSelector, sourceOnRamp, preferredOffRamp) {
     const { ethers } = connection;
+
+    // If the message stamped a preferred OffRamp (CCIP 2.0), and it is actually listed for this source chain on one
+    // of the routers and serves the lane, use it directly instead of the generic reverse-order search below.
+    if (preferredOffRamp) {
+        for (const routerAddress of routerAddresses) {
+            let offRamps;
+            try {
+                offRamps = await new ethers.Contract(routerAddress, ABI.router, ethers.provider).getOffRamps();
+            } catch {
+                continue;
+            }
+            for (const [candidateSelector, candidate] of offRamps) {
+                if (candidateSelector !== BigInt(sourceChainSelector)) continue;
+                if (candidate.toLowerCase() !== preferredOffRamp.toLowerCase()) continue;
+                const typeAndVersion = await _matchOffRamp(connection, candidate, sourceChainSelector, sourceOnRamp);
+                if (typeAndVersion !== null) return { offRamp: candidate, typeAndVersion };
+            }
+        }
+    }
+
     for (const routerAddress of routerAddresses) {
         let offRamps;
         try {
@@ -289,6 +341,36 @@ async function _findOffRamp(connection, routerAddresses, sourceChainSelector, so
         }
     }
     return null;
+}
+
+/**
+ * Parses the OffRamp address stamped into a CCIP 2.0 `encodedMessage` (MessageV1 wire format), if present and well
+ * formed. Layout (verified against `MessageV1Codec._decodeMessageV1` / `_encodeMessageV1` in
+ * `lib/chainlink-ccip/chains/evm/contracts/libraries/MessageV1Codec.sol`, tag contracts-ccip-v2.0.0):
+ * fixed header (69 bytes: 1 version + 8 sourceChainSelector + 8 destChainSelector + 8 messageNumber +
+ * 4 executionGasLimit + 4 ccipReceiveGasLimit + 4 finality + 32 ccvAndExecutorHash), then
+ * `onRampAddressLength` (1 byte) + onRamp bytes, then `offRampAddressLength` (1 byte) + offRamp bytes. `offRamp` is
+ * only meaningful when it is exactly 20 bytes (an EVM address); anything else (bounds overrun, other length) yields
+ * `null` and callers fall back to the generic lookup.
+ * @private
+ * @returns {?string} The stamped OffRamp address, or null if absent / malformed / not a 20-byte address
+ */
+export function _stampedOffRamp(connection, encodedMessage) {
+    const { ethers } = connection;
+    try {
+        const bytes = ethers.getBytes(encodedMessage);
+        const HEADER_SIZE = 69;
+        if (bytes.length <= HEADER_SIZE) return null;
+        const onRampLen = bytes[HEADER_SIZE];
+        const offRampLenOffset = HEADER_SIZE + 1 + onRampLen;
+        if (offRampLenOffset >= bytes.length) return null;
+        const offRampLen = bytes[offRampLenOffset];
+        const offRampStart = offRampLenOffset + 1;
+        if (offRampLen !== 20 || offRampStart + offRampLen > bytes.length) return null;
+        return ethers.getAddress(ethers.hexlify(bytes.slice(offRampStart, offRampStart + offRampLen)));
+    } catch {
+        return null;
+    }
 }
 
 /**
@@ -345,12 +427,16 @@ async function _executePreV1_6(connection, lane, message) {
     const { ethers } = connection;
     const offRamp = new ethers.Contract(lane.offRamp, ABI.preV1_6OffRamp, await _impersonate(connection, lane.offRamp));
     const offchainTokenData = message.tokenAmounts.map(() => "0x");
-    // EVM2EVMOffRamp 1.5 takes per-token gas overrides; older versions do not.
+    // Pre-1.6 lanes are single-destination: the OnRamp (and therefore the OffRamp bound to it) only ever serves one
+    // destination chain, so there is no `destChainSelector` to check against the connected chain here (unlike 1.6
+    // below). EVM2EVMOffRamp 1.5 takes per-token gas overrides; older versions do not.
     if (lane.typeAndVersion.startsWith("EVM2EVMOffRamp 1.5")) {
-        const tokenGasOverrides = message.tokenAmounts.map(() => message.gasLimit);
-        await _send(offRamp["executeSingleMessage((uint64,address,address,uint64,uint256,bool,uint64,address,uint256,bytes,(address,uint256)[],bytes[],bytes32),bytes[],uint32[])"](message, offchainTokenData, tokenGasOverrides));
+        // Zero overrides: the OffRamp only replaces a token's `destGasAmount` (stamped by the source OnRamp) when its
+        // override is non-zero. The message gas limit is not a token pool budget.
+        const tokenGasOverrides = message.tokenAmounts.map(() => 0);
+        await _send(connection, offRamp["executeSingleMessage((uint64,address,address,uint64,uint256,bool,uint64,address,uint256,bytes,(address,uint256)[],bytes[],bytes32),bytes[],uint32[])"](message, offchainTokenData, tokenGasOverrides));
     } else {
-        await _send(offRamp["executeSingleMessage((uint64,address,address,uint64,uint256,bool,uint64,address,uint256,bytes,(address,uint256)[],bytes[],bytes32),bytes[])"](message, offchainTokenData));
+        await _send(connection, offRamp["executeSingleMessage((uint64,address,address,uint64,uint256,bool,uint64,address,uint256,bytes,(address,uint256)[],bytes[],bytes32),bytes[])"](message, offchainTokenData));
     }
 }
 
@@ -358,6 +444,17 @@ async function _executeV1_6(connection, offRampAddress, message) {
     const { ethers } = connection;
     const coder = ethers.AbiCoder.defaultAbiCoder();
     const gasLimit = _gasLimitFromExtraArgs(connection, message.extraArgs);
+
+    // 1.6 OnRamps serve several destinations, and `executeSingleMessage` does not check the destination, so a message
+    // routed to the wrong connection would execute there. `getStaticConfig().chainSelector` is the OffRamp's own chain.
+    // CCIP 2.0 needs no check: `execute` reverts `InvalidMessageDestChainSelector` (decoded by `_describeError`).
+    const staticConfigOffRamp = new ethers.Contract(offRampAddress, ABI.v1_6OffRamp, ethers.provider);
+    const staticConfig = await staticConfigOffRamp.getStaticConfig();
+    if (staticConfig.chainSelector !== BigInt(message.header.destChainSelector)) {
+        throw new Error(
+            `1.6 message ${message.header.messageId} targets destination chain selector ${message.header.destChainSelector}, but the connected OffRamp ${offRampAddress} is on chain selector ${staticConfig.chainSelector}`
+        );
+    }
 
     const any2EVMMessage = {
         header: message.header,
@@ -376,13 +473,58 @@ async function _executeV1_6(connection, offRampAddress, message) {
     };
 
     const offRamp = new ethers.Contract(offRampAddress, ABI.v1_6OffRamp, await _impersonate(connection, offRampAddress));
+    // Zero token gas overrides, as for pre-1.6 above.
     await _send(
+        connection,
         offRamp.executeSingleMessage(
             any2EVMMessage,
             message.tokenAmounts.map(() => "0x"),
-            message.tokenAmounts.map(() => gasLimit)
+            message.tokenAmounts.map(() => 0)
         )
     );
+}
+
+/**
+ * Selects the CCVs to pass to `OffRamp.execute`, mirroring `OffRamp._ensureCCVQuorumIsReached`: every required CCV
+ * must be present, plus enough optional CCVs (in order) to reach `threshold` — an optional CCV that is also required
+ * already counts towards the threshold because it is already present. Exported for testing; not part of the public
+ * module API.
+ *
+ * @param {string[]} required Required CCVs (may contain duplicates; deduplicated keeping first occurrence order)
+ * @param {string[]} optional Optional CCVs, in priority order
+ * @param {number|bigint} threshold Number of optional CCVs that must be present
+ * @returns {string[]} The CCVs to submit to `execute`
+ * @private
+ */
+export function _selectCCVs(required, optional, threshold) {
+    const ccvs = [];
+    const present = new Set();
+    for (const ccv of required) {
+        if (!present.has(ccv)) {
+            present.add(ccv);
+            ccvs.push(ccv);
+        }
+    }
+
+    // Optional CCVs that are also required already count (the OffRamp finds them in `ccvs`); count them first so no
+    // unneeded optional CCV is added. Same rule as `CCIPForkAdapterV2.selectCCVs` in Solidity.
+    let remaining = Number(threshold);
+    const counted = new Set();
+    optional.forEach((ccv, i) => {
+        if (remaining > 0 && present.has(ccv)) {
+            counted.add(i);
+            remaining--;
+        }
+    });
+    optional.forEach((ccv, i) => {
+        if (remaining <= 0 || counted.has(i)) return;
+        if (!present.has(ccv)) {
+            present.add(ccv);
+            ccvs.push(ccv);
+        }
+        remaining--;
+    });
+    return ccvs;
 }
 
 async function _executeV2(connection, offRampAddress, encodedMessage) {
@@ -400,8 +542,8 @@ async function _executeV2(connection, offRampAddress, encodedMessage) {
             `CCIP 2.0 message ${messageId} cannot be executed: OffRamp.getCCVsForMessage reverted with ${_describeError(connection, revertData)}`
         );
     }
-    // Same selection as the OffRamp quorum: all required CCVs, plus `threshold` optional ones.
-    const ccvs = [...required, ...optional].slice(0, Math.max(required.length, Math.min(required.length + optional.length, Number(threshold))));
+    // Same selection as the OffRamp quorum: all required CCVs, plus enough optional ones to reach `threshold`.
+    const ccvs = _selectCCVs(required, optional, threshold);
     const verifierResults = [];
     for (const ccv of ccvs) {
         verifierResults.push((await _pointResolverAtSyntheticVerifier(connection, ccv)) ? SYNTHETIC_VERIFIER_VERSION : "0x");
@@ -410,7 +552,7 @@ async function _executeV2(connection, offRampAddress, encodedMessage) {
     const [executor] = await ethers.getSigners();
     const latestBlock = await ethers.provider.getBlock("latest");
     const gasLimit = latestBlock.gasLimit < V2_EXECUTE_GAS_LIMIT ? latestBlock.gasLimit : V2_EXECUTE_GAS_LIMIT;
-    const receipt = await _send(offRampView.connect(executor).execute(encodedMessage, ccvs, verifierResults, 0, { gasLimit }));
+    const receipt = await _send(connection, offRampView.connect(executor).execute(encodedMessage, ccvs, verifierResults, 0, { gasLimit }));
 
     // `execute` does not revert when the inner execution fails on a first attempt: it records FAILURE.
     const state = await offRampView.getExecutionState(messageId);
@@ -452,7 +594,7 @@ async function _pointResolverAtSyntheticVerifier(connection, ccv) {
 
     try {
         const resolver = new ethers.Contract(ccv, ABI.ccvResolver, await _impersonate(connection, owner));
-        await _send(resolver.applyInboundImplementationUpdates([{ version: SYNTHETIC_VERIFIER_VERSION, verifier }]));
+        await _send(connection, resolver.applyInboundImplementationUpdates([{ version: SYNTHETIC_VERIFIER_VERSION, verifier }]));
         return true;
     } catch {
         return false;
@@ -463,15 +605,44 @@ async function _pointResolverAtSyntheticVerifier(connection, ccv) {
 // │                           Utilities                          │
 // ================================================================
 
+/**
+ * Guards against calling into this module with a plain Hardhat 3 `NetworkConnection` that was not created with the
+ * `@nomicfoundation/hardhat-ethers` plugin, which otherwise fails deep inside with
+ * `Cannot read properties of undefined (reading 'Interface')`.
+ * @private
+ */
+function _requireEthers(connection) {
+    if (!connection?.ethers) {
+        throw new Error(
+            "@chainlink/local: requires the @nomicfoundation/hardhat-ethers plugin (add it to `plugins` in hardhat.config)"
+        );
+    }
+}
+
 async function _impersonate(connection, address) {
     await connection.provider.request({ method: "hardhat_impersonateAccount", params: [address] });
     await connection.provider.request({ method: "hardhat_setBalance", params: [address, "0x56BC75E2D63100000"] }); // 100 ETH
     return connection.ethers.getSigner(address);
 }
 
-async function _send(txPromise) {
-    const tx = await txPromise;
-    return tx.wait();
+/**
+ * Awaits a transaction and its receipt. On revert (either at submission, e.g. gas estimation, or when the mined
+ * transaction's status is 0), re-throws an `Error` whose message includes the decoded revert reason (name + args,
+ * from `ABI.knownErrors`) or the raw revert hex when it is not a known error — the original error is kept as
+ * `.cause`. Covers `execute`, `executeSingleMessage` (1.6 and pre-1.6), and any other transaction routed through it.
+ * @private
+ */
+async function _send(connection, txPromise) {
+    try {
+        const tx = await txPromise;
+        return await tx.wait();
+    } catch (error) {
+        const revertData = error?.data ?? error?.info?.error?.data;
+        if (revertData) {
+            throw new Error(`transaction reverted: ${_describeError(connection, revertData)}`, { cause: error });
+        }
+        throw error;
+    }
 }
 
 /**
@@ -486,7 +657,7 @@ function _describeError(connection, data) {
     return String(data);
 }
 
-function _decodeEVMAddress(connection, encoded) {
+export function _decodeEVMAddress(connection, encoded) {
     const { ethers } = connection;
     const bytes = ethers.getBytes(encoded);
     if (bytes.length === 32) return ethers.AbiCoder.defaultAbiCoder().decode(["address"], encoded)[0];
@@ -494,7 +665,7 @@ function _decodeEVMAddress(connection, encoded) {
     throw new Error(`Invalid EVM address encoding: ${encoded}`);
 }
 
-function _gasLimitFromExtraArgs(connection, extraArgs) {
+export function _gasLimitFromExtraArgs(connection, extraArgs) {
     const { ethers } = connection;
     if (ethers.getBytes(extraArgs).length === 0) return DEFAULT_GAS_LIMIT;
     const tag = ethers.dataSlice(extraArgs, 0, 4);

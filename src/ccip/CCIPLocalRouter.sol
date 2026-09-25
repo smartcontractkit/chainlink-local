@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.20;
 
 import {IAny2EVMMessageReceiver} from "@chainlink/contracts-ccip/contracts/interfaces/IAny2EVMMessageReceiver.sol";
 import {IAny2EVMMessageReceiverV2} from "@chainlink/contracts-ccip/contracts/interfaces/IAny2EVMMessageReceiverV2.sol";
 import {IRouter} from "@chainlink/contracts-ccip/contracts/interfaces/IRouter.sol";
 import {IRouterClient} from "@chainlink/contracts-ccip/contracts/interfaces/IRouterClient.sol";
+import {CCVConfigValidation} from "@chainlink/contracts-ccip/contracts/libraries/CCVConfigValidation.sol";
 import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
 import {ExtraArgsCodec} from "@chainlink/contracts-ccip/contracts/libraries/ExtraArgsCodec.sol";
 import {FinalityCodec} from "@chainlink/contracts-ccip/contracts/libraries/FinalityCodec.sol";
@@ -31,6 +32,17 @@ contract CCIPLocalRouter is IRouter, IRouterClient {
     error InvalidAddress(bytes encodedAddress);
     error InvalidExtraArgsTag();
     error ReceiverError(bytes err);
+    /// @dev Mirrors `OnRamp.TokenReceiverNotAllowed`: `GenericExtraArgsV3.tokenReceiver` is rejected on all EVM lanes
+    ///      (`DestChainConfig.tokenReceiverAllowed` is always false for EVM per its NatSpec).
+    error TokenReceiverNotAllowed(uint64 destChainSelector);
+    /// @dev Mirrors `FeeQuoter.MessageGasLimitTooHigh`.
+    error MessageGasLimitTooHigh();
+    /// @dev Mirrors `OnRamp.CanOnlySendOneTokenPerMessage`.
+    error CanOnlySendOneTokenPerMessage();
+    /// @dev Mirrors `OnRamp.CannotSendZeroTokens`.
+    error CannotSendZeroTokens();
+    /// @dev Mirrors `OffRamp.InvalidOptionalThreshold`.
+    error InvalidOptionalThreshold(uint8 wanted, uint256 got);
 
     event MessageExecuted(bytes32 messageId, uint64 sourceChainSelector, address offRamp, bytes32 calldataHash);
     event MsgExecuted(bool success, bytes retData, uint256 gasUsed);
@@ -41,6 +53,8 @@ contract CCIPLocalRouter is IRouter, IRouterClient {
     uint64 internal constant SOURCE_CHAIN_SELECTOR = 16015286601757825753;
 
     uint256 internal s_mockFeeTokenAmount; //use setFee() to change to non-zero to test fees
+    /// @dev Nonce used to guarantee a unique messageId per send, see `ccipSend`.
+    uint256 internal s_nonce;
 
     function routeMessage(
         Client.Any2EVMMessage calldata message,
@@ -98,8 +112,15 @@ contract CCIPLocalRouter is IRouter, IRouterClient {
         }
 
         address receiver = address(uint160(decodedReceiver));
-        (uint256 gasLimit, bytes4 requestedFinality) = _parseExtraArgs(message.extraArgs);
-        bytes32 mockMsgId = keccak256(abi.encode(message));
+        (uint256 gasLimit, bytes4 requestedFinality) = _parseExtraArgs(destinationChainSelector, message.extraArgs);
+
+        // Mirrors OnRamp 2.0: more than one token per message, or a zero-amount token, are rejected at send time.
+        if (message.tokenAmounts.length > 1) revert CanOnlySendOneTokenPerMessage();
+        if (message.tokenAmounts.length == 1 && message.tokenAmounts[0].amount == 0) revert CannotSendZeroTokens();
+
+        // Unique per send: distinguishes otherwise-identical messages (same sender/receiver/data/dest) that would
+        // otherwise collide on `keccak256(abi.encode(message))`.
+        bytes32 mockMsgId = keccak256(abi.encode(++s_nonce, msg.sender, destinationChainSelector, message));
 
         Client.Any2EVMMessage memory executableMsg = Client.Any2EVMMessage({
             messageId: mockMsgId,
@@ -129,59 +150,94 @@ contract CCIPLocalRouter is IRouter, IRouterClient {
             || !receiver.supportsInterface(type(IAny2EVMMessageReceiver).interfaceId);
     }
 
-    /// @dev OffRamp 2.0 `_getCCVsFromReceiver` finality check. Token-only transfers skip it, as the pool enforces
-    ///      finality for them in production (pools are not simulated in local mode).
+    /// @dev Mirrors OffRamp 2.0 `_getCCVsFromReceiver`, which is called for every message that is not a token-only
+    ///      transfer regardless of requested finality (including fully finalized messages, not only Faster-Than-
+    ///      Finality ones). Token-only transfers skip it entirely, as the pool enforces finality for them in
+    ///      production (pools are not simulated in local mode).
+    /// @dev Local mode has no CCV verifiers to query for quorum, so this only reproduces the validation and finality
+    ///      parts of `_getCCVsFromReceiver`: duplicate required/optional CCVs and `optionalThreshold >
+    ///      optionalCCVs.length` are rejected the same way, and the receiver's allowed finality is enforced.
+    /// @dev If `getCCVsAndFinalityConfig` reverts, that revert is bubbled as-is (not wrapped in `ReceiverError`).
+    ///      In production the OffRamp does not distinguish this from any other revert during message execution: it
+    ///      simply records `ExecutionStateChanged(..., FAILURE, returnData)` with the getter's raw revert data.
+    ///      `ReceiverError` is reserved for the narrower case of the receiver's own `ccipReceive` call failing (see
+    ///      `_routeMessage`/`OffRamp._callReceiver`), so bubbling here (rather than wrapping) keeps that error
+    ///      meaning precise while still failing the local send, consistent with this contract's "fails in
+    ///      production" -> "ccipSend reverts locally" mapping.
     function _ensureReceiverAllowsFinality(
         address receiver,
         Client.Any2EVMMessage memory message,
         uint256 gasLimit,
         bytes4 requestedFinality
     ) internal view {
-        if (requestedFinality == FinalityCodec.WAIT_FOR_FINALITY_FLAG) {
-            return;
-        }
         if (_isTokenOnlyTransfer(message.data.length, gasLimit, receiver)) {
             return;
         }
 
         bytes4 allowedFinality = FinalityCodec.WAIT_FOR_FINALITY_FLAG;
         if (receiver.supportsInterface(type(IAny2EVMMessageReceiverV2).interfaceId)) {
-            (,,, allowedFinality) = IAny2EVMMessageReceiverV2(receiver)
+            (
+                address[] memory requiredCCVs,
+                address[] memory optionalCCVs,
+                uint8 optionalThreshold,
+                bytes4 receiverFinality
+            ) = IAny2EVMMessageReceiverV2(receiver)
                 .getCCVsAndFinalityConfig(message.sourceChainSelector, message.sender);
+
+            CCVConfigValidation._assertNoDuplicates(requiredCCVs);
+            CCVConfigValidation._assertNoDuplicates(optionalCCVs);
+
+            if (optionalThreshold > optionalCCVs.length) {
+                revert InvalidOptionalThreshold(optionalThreshold, optionalCCVs.length);
+            }
+
+            allowedFinality = receiverFinality;
         }
         FinalityCodec._ensureRequestedFinalityAllowed(requestedFinality, allowedFinality);
     }
 
+    /// @param destinationChainSelector Destination chain selector, used only for the `TokenReceiverNotAllowed` error.
     /// @return gasLimit Callback gas limit.
     /// @return requestedFinality `GenericExtraArgsV3.requestedFinalityConfig`, or WAIT_FOR_FINALITY for older tags.
-    function _parseExtraArgs(bytes calldata extraArgs)
+    function _parseExtraArgs(uint64 destinationChainSelector, bytes calldata extraArgs)
         internal
         pure
         returns (uint256 gasLimit, bytes4 requestedFinality)
     {
-        if (extraArgs.length == 0) {
-            return (DEFAULT_GAS_LIMIT, FinalityCodec.WAIT_FOR_FINALITY_FLAG);
-        }
+        // Mirrors FeeQuoter._parseUnvalidatedEVMExtraArgsFromBytes/_parseSVMExtraArgsFromBytes etc.: extraArgs
+        // shorter than 4 bytes (including empty) are treated as unset, not as an invalid tag.
         if (extraArgs.length < 4) {
-            revert InvalidExtraArgsTag();
+            return (DEFAULT_GAS_LIMIT, FinalityCodec.WAIT_FOR_FINALITY_FLAG);
         }
 
         bytes4 extraArgsTag = bytes4(extraArgs);
         if (extraArgsTag == ExtraArgsCodec.GENERIC_EXTRA_ARGS_V3_TAG) {
             ExtraArgsCodec.GenericExtraArgsV3 memory decoded = ExtraArgsCodec._decodeGenericExtraArgsV3(extraArgs);
+            // Mirrors OnRamp 2.0 `_parseExtraArgsWithDefaults`: tokenReceiver is rejected on all EVM lanes.
+            if (decoded.tokenReceiver.length != 0) {
+                revert TokenReceiverNotAllowed(destinationChainSelector);
+            }
             // OnRamp 2.0 validates the wire shape of the requested finality at send time.
             FinalityCodec._validateRequestedFinality(decoded.requestedFinalityConfig);
             return (decoded.gasLimit, decoded.requestedFinalityConfig);
         } else if (extraArgsTag == Client.GENERIC_EXTRA_ARGS_V2_TAG) {
             return (
-                uint32(abi.decode(extraArgs[4:], (Client.GenericExtraArgsV2)).gasLimit),
+                _legacyGasLimit(abi.decode(extraArgs[4:], (Client.GenericExtraArgsV2)).gasLimit),
                 FinalityCodec.WAIT_FOR_FINALITY_FLAG
             );
         } else if (extraArgsTag == Client.EVM_EXTRA_ARGS_V1_TAG) {
-            return (uint32(abi.decode(extraArgs[4:], (uint256))), FinalityCodec.WAIT_FOR_FINALITY_FLAG);
+            return (_legacyGasLimit(abi.decode(extraArgs[4:], (uint256))), FinalityCodec.WAIT_FOR_FINALITY_FLAG);
         }
 
         revert InvalidExtraArgsTag();
+    }
+
+    /// @dev FeeQuoter compares the full uint256 V1/V2 gas limit against the lane's uint32 `maxPerMsgGasLimit` and reverts
+    ///      `MessageGasLimitTooHigh`, so a value above uint32 is rejected everywhere; the upstream mock truncated it.
+    ///      Local mode has no lane config, so lower lane caps are not enforced.
+    function _legacyGasLimit(uint256 gasLimit) internal pure returns (uint256) {
+        if (gasLimit > type(uint32).max) revert MessageGasLimitTooHigh();
+        return gasLimit;
     }
 
     /// @notice Always returns true to make sure this check can be performed on any chain.

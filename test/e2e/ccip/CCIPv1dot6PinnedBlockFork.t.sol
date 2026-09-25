@@ -90,6 +90,88 @@ contract CCIPv1dot6PinnedBlockForkTest is Test {
         assertEq(IERC20(s_destinationNetwork.ccipBnMAddress).balanceOf(bob), balanceBefore + amount);
     }
 
+    /// @dev 1.6 OnRamps serve every destination from one address, so a 1.6 message must only execute on the fork of
+    ///      its destination chain. Base Sepolia is listed first: without the destination filter, its 1.6 OffRamp for
+    ///      Sepolia (bound to the same OnRamp) executed the Arbitrum-bound message there and marked it processed, and
+    ///      Arbitrum Sepolia never received it. Needs BASE_SEPOLIA_RPC_URL (archive).
+    function test_v1dot6_multiDestination_executesOnlyOnDestinationFork() external {
+        uint256 sourceTimestamp = block.timestamp;
+        uint256 baseFork = _forkAtTimestamp(vm.envString("BASE_SEPOLIA_RPC_URL"), sourceTimestamp + 60);
+
+        vm.selectFork(s_destinationFork);
+        BasicMessageReceiver receiver = new BasicMessageReceiver(s_destinationNetwork.routerAddress);
+
+        bytes32 messageId = _send(address(receiver), bytes("only Arbitrum"), new Client.EVMTokenAmount[](0), 200_000);
+
+        uint256[] memory forks = new uint256[](2);
+        forks[0] = baseFork;
+        forks[1] = s_destinationFork;
+        vm.selectFork(s_sourceFork);
+        s_forkSimulator.switchChainAndRouteMessage(forks);
+
+        vm.selectFork(s_destinationFork);
+        assertEq(receiver.latestMessageId(), messageId);
+        (CCIPLocalSimulatorFork.MessageStatus status,) = s_forkSimulator.getMessageStatus(messageId);
+        assertEq(uint8(status), uint8(CCIPLocalSimulatorFork.MessageStatus.SUCCESS));
+    }
+
+    /// @dev The single-fork overload leaves the destination fork selected, even when nothing was captured.
+    function test_switchChainAndRouteMessage_selectsDestinationForkWithoutMessages_fork() external {
+        vm.selectFork(s_sourceFork);
+        s_forkSimulator.switchChainAndRouteMessage(s_destinationFork);
+        assertEq(vm.activeFork(), s_destinationFork);
+    }
+
+    /// @dev Routing one destination fork per call: a message to a chain that is not in `forkIds` is kept (QUEUED, not a
+    ///      strict-mode failure) and routed by the later call for its destination. Before, the first call reverted with
+    ///      MessageNotRouted in strict mode (or dropped the message in non-strict mode, as the logs were consumed).
+    ///      Needs BASE_SEPOLIA_RPC_URL (archive).
+    function test_v1dot6_routesEachDestinationInItsOwnCall_fork() external {
+        uint256 sourceTimestamp = block.timestamp;
+        uint256 baseFork = _forkAtTimestamp(vm.envString("BASE_SEPOLIA_RPC_URL"), sourceTimestamp + 60);
+        Register.NetworkDetails memory baseNetwork = s_forkSimulator.getNetworkDetails(block.chainid);
+        BasicMessageReceiver baseReceiver = new BasicMessageReceiver(baseNetwork.routerAddress);
+
+        vm.selectFork(s_destinationFork);
+        BasicMessageReceiver arbReceiver = new BasicMessageReceiver(s_destinationNetwork.routerAddress);
+
+        bytes32 arbMessageId =
+            _send(address(arbReceiver), bytes("to Arbitrum"), new Client.EVMTokenAmount[](0), 200_000);
+        bytes32 baseMessageId = _sendTo(
+            baseNetwork.chainSelector, address(baseReceiver), bytes("to Base"), new Client.EVMTokenAmount[](0), 200_000
+        );
+
+        vm.selectFork(s_sourceFork);
+        s_forkSimulator.switchChainAndRouteMessage(s_destinationFork);
+
+        assertEq(vm.activeFork(), s_destinationFork);
+        assertEq(arbReceiver.latestMessageId(), arbMessageId);
+        (CCIPLocalSimulatorFork.MessageStatus status,) = s_forkSimulator.getMessageStatus(baseMessageId);
+        assertEq(uint8(status), uint8(CCIPLocalSimulatorFork.MessageStatus.QUEUED));
+
+        s_forkSimulator.switchChainAndRouteMessage(baseFork);
+
+        assertEq(vm.activeFork(), baseFork);
+        assertEq(baseReceiver.latestMessageId(), baseMessageId);
+        assertEq(baseReceiver.latestSourceChainSelector(), s_sourceNetwork.chainSelector);
+        (status,) = s_forkSimulator.getMessageStatus(baseMessageId);
+        assertEq(uint8(status), uint8(CCIPLocalSimulatorFork.MessageStatus.SUCCESS));
+    }
+
+    /// @dev Forks `rpcUrl` at the last block whose timestamp is <= `timestamp` (binary search, archive RPC).
+    function _forkAtTimestamp(string memory rpcUrl, uint256 timestamp) internal returns (uint256 forkId) {
+        forkId = vm.createSelectFork(rpcUrl);
+        uint256 high = block.number;
+        uint256 low = 1;
+        while (high - low > 1) {
+            uint256 mid = (low + high) / 2;
+            vm.rollFork(mid);
+            if (block.timestamp <= timestamp) low = mid;
+            else high = mid;
+        }
+        vm.rollFork(low);
+    }
+
     function _onRamp() internal view returns (address) {
         (bool ok, bytes memory data) = s_sourceNetwork.routerAddress
             .staticcall(abi.encodeWithSignature("getOnRamp(uint64)", s_destinationNetwork.chainSelector));
@@ -101,6 +183,16 @@ contract CCIPv1dot6PinnedBlockForkTest is Test {
         internal
         returns (bytes32 messageId)
     {
+        return _sendTo(s_destinationNetwork.chainSelector, receiver, data, tokenAmounts, gasLimit);
+    }
+
+    function _sendTo(
+        uint64 destinationChainSelector,
+        address receiver,
+        bytes memory data,
+        Client.EVMTokenAmount[] memory tokenAmounts,
+        uint256 gasLimit
+    ) internal returns (bytes32 messageId) {
         vm.selectFork(s_sourceFork);
         Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
             receiver: abi.encode(receiver),
@@ -116,10 +208,8 @@ contract CCIPv1dot6PinnedBlockForkTest is Test {
         for (uint256 i; i < tokenAmounts.length; ++i) {
             IERC20(tokenAmounts[i].token).approve(s_sourceNetwork.routerAddress, tokenAmounts[i].amount);
         }
-        uint256 fee = IRouterClient(s_sourceNetwork.routerAddress).getFee(s_destinationNetwork.chainSelector, message);
-        messageId = IRouterClient(s_sourceNetwork.routerAddress).ccipSend{value: fee}(
-            s_destinationNetwork.chainSelector, message
-        );
+        uint256 fee = IRouterClient(s_sourceNetwork.routerAddress).getFee(destinationChainSelector, message);
+        messageId = IRouterClient(s_sourceNetwork.routerAddress).ccipSend{value: fee}(destinationChainSelector, message);
         vm.stopPrank();
     }
 }

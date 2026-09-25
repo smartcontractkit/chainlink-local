@@ -66,17 +66,49 @@ contract HelloWorldBasicMessageReceiverFasterThanFinalityForkTest is Test {
     }
 
     /// @dev Production parity: a receiver that does not opt into Faster-Than-Finality only accepts finalized messages,
-    ///      so the OffRamp records the execution as FAILURE and the message is not delivered.
+    ///      so the OffRamp records FAILURE with `InvalidRequestedFinality`. Strict routing (the default) surfaces exactly
+    ///      that reason; without strict routing it is recorded in `getMessageStatus`.
     function test_helloWorldFasterThanFinality_notDeliveredToReceiverRequiringFinality_fork() external {
         vm.selectFork(s_destinationFork);
         BasicMessageReceiver receiver = new BasicMessageReceiver(s_destinationNetwork.routerAddress);
 
-        _sendFasterThanFinality(address(receiver), bytes("Hello World"), 1);
+        bytes32 messageId = _sendFasterThanFinality(address(receiver), bytes("Hello World"), 1);
+        bytes memory finalityRejection = abi.encodeWithSelector(
+            FinalityCodec.InvalidRequestedFinality.selector,
+            FinalityCodec._encodeBlockDepth(1),
+            FinalityCodec.WAIT_FOR_FINALITY_FLAG
+        );
 
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                CCIPLocalSimulatorFork.CCIPLocalSimulatorFork__MessageExecutionFailed.selector,
+                messageId,
+                finalityRejection
+            )
+        );
+        s_forkSimulator.switchChainAndRouteMessage(s_destinationFork);
+    }
+
+    function test_helloWorldFasterThanFinality_nonStrict_recordsFinalityRejection_fork() external {
+        vm.selectFork(s_destinationFork);
+        BasicMessageReceiver receiver = new BasicMessageReceiver(s_destinationNetwork.routerAddress);
+
+        bytes32 messageId = _sendFasterThanFinality(address(receiver), bytes("Hello World"), 1);
+        s_forkSimulator.setStrictRouting(false);
         s_forkSimulator.switchChainAndRouteMessage(s_destinationFork);
 
         vm.selectFork(s_destinationFork);
         assertEq(receiver.latestMessageId(), bytes32(0));
+        (CCIPLocalSimulatorFork.MessageStatus status, bytes memory reason) = s_forkSimulator.getMessageStatus(messageId);
+        assertEq(uint8(status), uint8(CCIPLocalSimulatorFork.MessageStatus.FAILED));
+        assertEq(
+            reason,
+            abi.encodeWithSelector(
+                FinalityCodec.InvalidRequestedFinality.selector,
+                FinalityCodec._encodeBlockDepth(1),
+                FinalityCodec.WAIT_FOR_FINALITY_FLAG
+            )
+        );
     }
 
     function _sendFasterThanFinality(address receiver, bytes memory payload, uint16 blockDepth)

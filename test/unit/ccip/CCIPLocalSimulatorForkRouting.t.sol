@@ -206,6 +206,33 @@ contract MockOffRampV2NoTypeAndVersion {
     }
 }
 
+/// @dev 2.0 OffRamp whose lane lists a raw 32-byte OnRamp word that is not an EVM address (e.g. a non-EVM source).
+contract MockOffRampV2RawOnRamps {
+    uint64 internal immutable i_sourceChainSelector;
+    bytes[] internal s_onRamps;
+
+    constructor(uint64 sourceChainSelector_, bytes[] memory onRamps_) {
+        i_sourceChainSelector = sourceChainSelector_;
+        for (uint256 i; i < onRamps_.length; ++i) {
+            s_onRamps.push(onRamps_[i]);
+        }
+    }
+
+    function typeAndVersion() external pure returns (string memory) {
+        return "OffRamp 2.0.0";
+    }
+
+    function getSourceChainConfig(uint64 sourceChainSelector)
+        external
+        view
+        returns (IOffRampSourceConfigV2Fork.SourceChainConfig memory cfg)
+    {
+        if (sourceChainSelector != i_sourceChainSelector) return cfg;
+        cfg.isEnabled = true;
+        cfg.onRamps = s_onRamps;
+    }
+}
+
 /// @dev Faithful OffRamp 1.6.x view surface, including the 5-word `getStaticConfig`.
 contract MockOffRampV16Real {
     uint64 internal immutable i_sourceChainSelector;
@@ -485,5 +512,17 @@ contract CCIPLocalSimulatorForkRoutingTest is Test {
         assertEq(harness.exposedFindOffRamp(_ramps(order), SOURCE_SELECTOR, onRamp), v2);
         assertEq(harness.exposedFindOffRamp(_ramps(order), SOURCE_SELECTOR, address(0x1618)), v16);
         assertEq(harness.exposedFindOffRamp(_ramps(order), SOURCE_SELECTOR, address(0)), address(0));
+    }
+
+    /// @dev A 32-byte OnRamp word with high bits set is not an address: it must be skipped, not revert `abi.decode`.
+    function test_findOffRamp_nonAddressOnRampWord_isSkipped() public {
+        address onRamp = address(0x2025);
+        bytes[] memory onRamps = new bytes[](2);
+        onRamps[0] = abi.encode(type(uint256).max);
+        onRamps[1] = abi.encode(onRamp);
+        address v2 = address(new MockOffRampV2RawOnRamps(SOURCE_SELECTOR, onRamps));
+
+        assertEq(harness.exposedFindOffRamp(_ramps(_one(v2)), SOURCE_SELECTOR, onRamp), v2);
+        assertEq(harness.exposedFindOffRamp(_ramps(_one(v2)), SOURCE_SELECTOR, address(0x9999)), address(0));
     }
 }

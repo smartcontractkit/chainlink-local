@@ -15,6 +15,20 @@ import {
 } from "./ReportVersions.js";
 
 /**
+ * Guards against constructing this class with a `NetworkConnection` that was not created with the
+ * `@nomicfoundation/hardhat-ethers` plugin, which otherwise fails deep inside with
+ * `Cannot read properties of undefined (reading 'Interface')`.
+ * @private
+ */
+function _requireEthers(connection) {
+    if (!connection?.ethers) {
+        throw new Error(
+            "@chainlink/local: requires the @nomicfoundation/hardhat-ethers plugin (add it to `plugins` in hardhat.config)"
+        );
+    }
+}
+
+/**
  * Utility that builds deterministic mock Data Streams signed reports for local testing.
  */
 class MockReportGenerator {
@@ -27,6 +41,7 @@ class MockReportGenerator {
      * @param {bigint|number} initialPrice Initial benchmark price used for generated reports.
      */
     constructor(connection, initialPrice) {
+        _requireEthers(connection);
         this.#ethers = connection.ethers;
         // uint256(keccak256(abi.encodePacked("Mock Data Streams DON")));
         this.i_donDigest = BigInt(this.#ethers.keccak256(this.#ethers.toUtf8Bytes("Mock Data Streams DON")));

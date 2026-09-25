@@ -6,6 +6,20 @@
 const LINK_FAUCET_ADDRESS = "0x4281eCF07378Ee595C564a59048801330f3084eE";
 
 /**
+ * Guards against calling into this module with a `NetworkConnection` that was not created with the
+ * `@nomicfoundation/hardhat-ethers` plugin, which otherwise fails deep inside with
+ * `Cannot read properties of undefined (reading 'Interface')`.
+ * @private
+ */
+function _requireEthers(connection) {
+    if (!connection?.ethers) {
+        throw new Error(
+            "@chainlink/local: requires the @nomicfoundation/hardhat-ethers plugin (add it to `plugins` in hardhat.config)"
+        );
+    }
+}
+
+/**
  * Requests LINK tokens from the faucet and returns the transaction hash
  *
  * @param {object} connection Network connection from `network.connect()`
@@ -15,6 +29,7 @@ const LINK_FAUCET_ADDRESS = "0x4281eCF07378Ee595C564a59048801330f3084eE";
  * @returns {Promise<string>} Promise resolving to the transaction hash of the fund transfer
  */
 export async function requestLinkFromFaucet(connection, linkAddress, to, amount) {
+    _requireEthers(connection);
     const { ethers } = connection;
     await connection.provider.request({ method: "hardhat_impersonateAccount", params: [LINK_FAUCET_ADDRESS] });
     await requestNativeFromFaucet(connection, LINK_FAUCET_ADDRESS, ethers.parseEther("100"));

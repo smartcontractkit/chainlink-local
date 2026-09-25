@@ -45,11 +45,9 @@ library CCIPForkAdapterV1dot6 {
 
         uint256 numberOfTokens = message.tokenAmounts.length;
         bytes[] memory offchainTokenData = new bytes[](numberOfTokens);
+        // Zero overrides: OffRamp 1.6 only replaces a token's `destGasAmount` when its override is non-zero, so the
+        // release/mint keeps the gas the source OnRamp stamped (the message gas limit is not a token pool budget).
         uint32[] memory tokenGasOverrides = new uint32[](numberOfTokens);
-
-        for (uint256 i = 0; i < numberOfTokens; ++i) {
-            tokenGasOverrides[i] = uint32(gasLimit);
-        }
 
         bytes memory callData = abi.encodeWithSelector(
             IOffRampExecuteV1dot6.executeSingleMessage.selector, any2EVMMessage, offchainTokenData, tokenGasOverrides

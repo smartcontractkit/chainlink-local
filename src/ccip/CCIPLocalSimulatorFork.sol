@@ -100,6 +100,8 @@ interface IVersionedVerifierResolverAdminFork {
     function owner() external view returns (address);
 
     function applyInboundImplementationUpdates(InboundImplementationArgs[] calldata implementations) external;
+
+    function getInboundImplementation(bytes calldata verifierResults) external view returns (address);
 }
 
 contract CCIPLocalSimulatorV2NoOpVerifier {
@@ -133,6 +135,38 @@ contract CCIPLocalSimulatorFork is Test {
         MANUAL_ONLY
     }
 
+    /// @notice Outcome of a captured CCIP message (see `getMessageStatus`).
+    /// @dev NOT_FOUND: never captured by this simulator. QUEUED: a CCIP 2.0 `NO_EXECUTION_ADDRESS` message waiting for
+    ///      `executePendingV2Message`, or a 1.6 / 2.0 message whose destination fork was not passed to
+    ///      `switchChainAndRouteMessage` yet (a later call that includes it routes the message; the reason says so).
+    ///      FAILED: not routed, or execution did not succeed (the reason is recorded).
+    enum MessageStatus {
+        NOT_FOUND,
+        QUEUED,
+        FAILED,
+        SUCCESS
+    }
+
+    struct MessageOutcome {
+        MessageStatus status;
+        bytes reason;
+    }
+
+    /// @notice Strict routing: a captured CCIP message was not routed to any destination fork.
+    error CCIPLocalSimulatorFork__MessageNotRouted(bytes32 messageId, string reason);
+    /// @notice Strict routing: a routed message did not execute successfully. `reason` is the revert data of the
+    ///         execution (for CCIP 2.0, the OffRamp's recorded failure).
+    error CCIPLocalSimulatorFork__MessageExecutionFailed(bytes32 messageId, bytes reason);
+
+    /// @dev A captured 1.6 / 2.0 message whose destination fork was not in `forkIds`, kept for a later routing call.
+    struct AwaitingDestinationMessage {
+        uint256 sourceForkId;
+        uint64 sourceChainSelector;
+        address emitter;
+        bytes32[] topics;
+        bytes data;
+    }
+
     struct PendingV2Message {
         bool exists;
         uint64 sourceChainSelector;
@@ -153,12 +187,16 @@ contract CCIPLocalSimulatorFork is Test {
     /// @notice Mapping to track processed messages
     mapping(bytes32 messageId => bool isProcessed) internal s_processedMessages;
 
-    bytes4 private constant GET_EXPECTED_NEXT_MESSAGE_NUMBER_SELECTOR =
-        bytes4(keccak256("getExpectedNextMessageNumber(uint64)"));
-    bytes4 private constant GET_EXPECTED_NEXT_SEQUENCE_NUMBER_SELECTOR =
-        bytes4(keccak256("getExpectedNextSequenceNumber(uint64)"));
+    /// @notice Outcome of every captured message, see `getMessageStatus`.
+    mapping(bytes32 messageId => MessageOutcome outcome) internal s_messageOutcomes;
+
+    /// @notice When true (the default), routing reverts on a message that is not routed or does not execute successfully.
+    bool internal s_strictRouting;
+
     /// @dev `Internal.MessageExecutionState.SUCCESS`.
     uint256 private constant V2_EXECUTION_STATE_SUCCESS = 2;
+    /// @dev OffRamp 2.0 `NoStateProgressMade(bytes32 messageId, bytes err)`: a retry of a FAILURE message reverts with it.
+    bytes4 private constant NO_STATE_PROGRESS_MADE_SELECTOR = bytes4(keccak256("NoStateProgressMade(bytes32,bytes)"));
     bytes4 private constant SYNTHETIC_V2_VERIFIER_VERSION = 0x464f524b; // "FORK"
     bytes4 private constant INVALID_VERIFIER_RESULTS_SELECTOR = bytes4(keccak256("InvalidVerifierResults()"));
     bytes4 private constant INVALID_VERIFIER_RESULTS_LENGTH_SELECTOR =
@@ -167,11 +205,12 @@ contract CCIPLocalSimulatorFork is Test {
         bytes4(keccak256("InboundImplementationNotFound(address,bytes)"));
 
     mapping(uint256 routeScope => address verifier) internal s_syntheticV2VerifierByScope;
-    mapping(uint256 routeScope => mapping(address resolver => bool isConfigured)) internal
-        s_isSyntheticResolverConfiguredByScope;
     mapping(uint256 routeScope => mapping(bytes32 messageId => PendingV2Message pendingMessage)) internal
         s_pendingV2MessagesByScope;
     mapping(uint256 routeScope => bytes32[] messageIds) internal s_pendingV2MessageIdsByScope;
+
+    /// @notice Captured messages waiting for their destination fork, in send order.
+    AwaitingDestinationMessage[] internal s_awaitingDestination;
 
     /// @notice CCIP 2.0 routers deployed next to the Register router (which `getNetworkDetails` returns).
     /// @dev Hand-maintained: `Register` is generated from the CCIP docs API and only carries one router per chain.
@@ -185,13 +224,20 @@ contract CCIPLocalSimulatorFork is Test {
      */
     constructor() {
         vm.recordLogs();
-        i_register = new Register();
+        // Register keeps its network details in code, and is placed with `vm.etch` rather than deployed: deploying it
+        // would cost the size of that code in gas on the active fork, and the simulator is usually created right
+        // after `createSelectFork`, under the forked chain's block gas limit. The address is unique per simulator.
+        address registerAddress =
+            address(uint160(uint256(keccak256(abi.encode("chainlink-local.CCIPLocalSimulatorFork.Register", this)))));
+        vm.etch(registerAddress, type(Register).runtimeCode);
+        i_register = Register(registerAddress);
         i_messageV1Decoder = new MessageV1CodecDecoder();
 
         vm.makePersistent(address(i_register));
         vm.makePersistent(address(i_messageV1Decoder));
 
         s_v2VerificationMode = V2VerificationMode.OFFRAMP_DERIVED;
+        s_strictRouting = true;
 
         // CCIP 2.0 routers verified on-chain (Sep 2026). Lanes of the Register router may be CCIP 2.0 as well.
         s_ccipV2Routers[11155111] = 0x784d49a71BB4C48eB7dA4cD7e6Ecb424f9b5EAB1; // Ethereum Sepolia
@@ -203,7 +249,9 @@ contract CCIPLocalSimulatorFork is Test {
      * @notice  To be called after the sending of the cross-chain message (`ccipSend`).
      *          Goes through the list of past logs and looks for the supported CCIP send events.
      *          Switches to a destination network fork. Routes the sent cross-chain message on the destination network.
-     *          If you sent more than one message, it will try to route all of them to `forkId`.
+     *          If you sent more than one message, it will try to route all of them to `forkId`. A 1.6 or 2.0 message
+     *          to another chain is kept (status QUEUED) and routed by a later call that includes its destination fork.
+     *          `forkId` is the active fork when the call returns.
      *
      * @param forkId - The ID of the destination network fork. This is the returned value of `createFork()` or `createSelectFork()`
      */
@@ -212,12 +260,14 @@ contract CCIPLocalSimulatorFork is Test {
         forkIds[0] = forkId;
 
         _routeCapturedMessages(forkIds, vm.activeFork());
+        vm.selectFork(forkId);
     }
 
     /**
      * @notice  To be called after the sending of the cross-chain message (`ccipSend`).
      *          Override variant of the `switchChainAndRouteMessage(uint256 forkId)` function in case of multiple destination forks.
-     *          Goes through provided `forkIds` and tries to route messages to the matching destination.
+     *          Goes through provided `forkIds` and tries to route messages to the matching destination. A 1.6 or 2.0
+     *          message to a chain that is not in `forkIds` is kept (status QUEUED) for a later call.
      *
      * @param forkIds - The IDs of the destination network forks. These are the returned values of `createFork()` or `createSelectFork()`
      */
@@ -279,7 +329,7 @@ contract CCIPLocalSimulatorFork is Test {
      * @notice Points a destination lane's default CCVs at `ccv` by impersonating the OffRamp owner.
      *         Fork-only testing helper for CCIP 2.0 lanes: the mocked CCV must be configured on the
      *         destination lane before a captured message can be routed through the permissionless
-     *         execution path. Router, enabled flag and OnRamp bindings are preserved.
+     *         execution path. Router, enabled flag, OnRamp bindings and lane-mandated CCVs are preserved.
      *
      * @param forkId - The ID of the destination network fork.
      * @param offRamp - The destination OffRamp that holds the lane config.
@@ -289,7 +339,11 @@ contract CCIPLocalSimulatorFork is Test {
     function setLaneDefaultCCVs(uint256 forkId, address offRamp, uint64 sourceChainSelector, address ccv) external {
         uint256 previousForkId = vm.activeFork();
         vm.selectFork(forkId);
+        _setLaneDefaultCCVs(offRamp, sourceChainSelector, ccv);
+        vm.selectFork(previousForkId);
+    }
 
+    function _setLaneDefaultCCVs(address offRamp, uint64 sourceChainSelector, address ccv) internal {
         IOffRampSourceConfigV2Fork.SourceChainConfig memory current =
             IOffRampSourceConfigV2Fork(offRamp).getSourceChainConfig(sourceChainSelector);
         require(current.isEnabled, "CCIPLocalSimulatorFork: lane not enabled");
@@ -305,15 +359,14 @@ contract CCIPLocalSimulatorFork is Test {
             isEnabled: true,
             onRamps: current.onRamps,
             defaultCCVs: defaultCCVs,
-            laneMandatedCCVs: new address[](0)
+            // Lane-mandated CCVs are kept, so the fork lane is never less strict than production.
+            laneMandatedCCVs: current.laneMandatedCCVs
         });
 
         address owner = IOffRampSourceConfigV2Fork(offRamp).owner();
         vm.startPrank(owner);
         IOffRampSourceConfigV2Fork(offRamp).applySourceChainConfigUpdates(updates);
         vm.stopPrank();
-
-        vm.selectFork(previousForkId);
     }
 
     /**
@@ -325,6 +378,35 @@ contract CCIPLocalSimulatorFork is Test {
         vm.startPrank(LINK_FAUCET);
         success = IERC20(linkAddress).transfer(to, amount);
         vm.stopPrank();
+    }
+
+    /**
+     * @notice Enables or disables strict routing (enabled by default). When enabled, `switchChainAndRouteMessage` and
+     *         `executePendingV2Message` revert with `CCIPLocalSimulatorFork__MessageNotRouted` when a captured CCIP
+     *         message cannot be routed to any of the given forks, and with
+     *         `CCIPLocalSimulatorFork__MessageExecutionFailed` when a routed message does not execute successfully.
+     *         When disabled, failures are logged and recorded (see `getMessageStatus`) and routing continues.
+     */
+    function setStrictRouting(bool strict) external {
+        s_strictRouting = strict;
+    }
+
+    function getStrictRouting() external view returns (bool strict) {
+        return s_strictRouting;
+    }
+
+    /**
+     * @notice Returns the outcome of a captured CCIP message.
+     *
+     * @param messageId - The CCIP message ID.
+     *
+     * @return status - NOT_FOUND, QUEUED, FAILED or SUCCESS.
+     * @return reason - For FAILED: the revert data of the execution, or an `Error(string)` explaining why the message
+     *                  was not routed. Empty otherwise.
+     */
+    function getMessageStatus(bytes32 messageId) external view returns (MessageStatus status, bytes memory reason) {
+        MessageOutcome storage outcome = s_messageOutcomes[messageId];
+        return (outcome.status, outcome.reason);
     }
 
     function setV2VerificationMode(V2VerificationMode mode) external {
@@ -360,6 +442,9 @@ contract CCIPLocalSimulatorFork is Test {
 
         Vm.Log memory entry = _pendingV2MessageToLog(pending);
         attempted = _routeV2Message(entry, pending.sourceChainSelector, true);
+        if (!attempted) {
+            _recordNotRouted(messageId, "no OffRamp on the current fork serves this message's lane");
+        }
 
         if (s_processedMessages[messageId]) {
             _dequeuePendingV2Message(routeScope, messageId);
@@ -377,6 +462,17 @@ contract CCIPLocalSimulatorFork is Test {
         uint256 logsLength = entries.length;
         uint64 sourceChainSelector = i_register.getNetworkDetails(block.chainid).chainSelector;
 
+        // Messages from earlier calls go first, in send order. Those whose destination is still missing are kept again.
+        AwaitingDestinationMessage[] memory awaiting = s_awaitingDestination;
+        delete s_awaitingDestination;
+        for (uint256 i; i < awaiting.length; ++i) {
+            Vm.Log memory entry;
+            entry.topics = awaiting[i].topics;
+            entry.data = awaiting[i].data;
+            entry.emitter = awaiting[i].emitter;
+            _routeCapturedMessage(entry, forkIds, awaiting[i].sourceForkId, awaiting[i].sourceChainSelector);
+        }
+
         for (uint256 i; i < logsLength; ++i) {
             _routeCapturedMessage(entries[i], forkIds, sourceForkId, sourceChainSelector);
         }
@@ -393,39 +489,147 @@ contract CCIPLocalSimulatorFork is Test {
             return;
         }
 
-        uint64 v2DestinationChainSelector;
-        if (logEra == CCIPEra.V2) {
-            if (s_v2VerificationMode == V2VerificationMode.OFFRAMP_DERIVED) {
-                v2DestinationChainSelector = uint64(uint256(entry.topics[1]));
-            } else {
-                CCIPForkAdapterV2.DecodedMessage memory decodedMessage = CCIPForkAdapterV2.decodeMessage(
-                    entry.topics, entry.data, IMessageV1Decoder(address(i_messageV1Decoder))
-                );
-                v2DestinationChainSelector = decodedMessage.message.destChainSelector;
-            }
+        (bool isCCIPMessage, bytes32 messageId) = _messageIdFromLog(entry, logEra);
+        if (!isCCIPMessage) {
+            // Same event signature as a CCIP OnRamp, but not a decodable CCIP message: not ours to route.
+            console2.log("CCIPLocalSimulatorFork: skipped a log with a CCIP event signature that is not a CCIP message");
+            return;
         }
 
+        // 1.6 and 2.0 OnRamps serve several destinations, so their logs name the destination (topics[1]). Pre-1.6
+        // EVM2EVMOnRamps serve one lane each, so the emitter check below selects the destination.
+        (bool hasDestination, uint64 logDestinationChainSelector) = _logDestinationChainSelector(entry, logEra);
+
+        // How far routing got, for the failure reason: 0 = no destination fork, 1 = emitter not an OnRamp for it,
+        // 2 = no OffRamp on the destination serves the lane.
+        uint256 progress;
         for (uint256 j; j < forkIds.length; ++j) {
             vm.selectFork(forkIds[j]);
             uint64 destinationChainSelector = i_register.getNetworkDetails(block.chainid).chainSelector;
 
-            if (logEra == CCIPEra.V2 && v2DestinationChainSelector != destinationChainSelector) {
+            if (hasDestination && logDestinationChainSelector != destinationChainSelector) {
                 continue;
             }
+            if (progress < 1) progress = 1;
 
             vm.selectFork(sourceForkId);
             address onRampContract = _findSourceOnRamp(destinationChainSelector, entry.emitter);
             if (onRampContract == address(0)) {
                 continue;
             }
-
-            CCIPEra routingEra = _selectRoutingEra(logEra, _detectEra(onRampContract));
+            if (progress < 2) progress = 2;
 
             vm.selectFork(forkIds[j]);
-            if (_routeMessageForEra(entry, routingEra, onRampContract, sourceChainSelector)) {
-                break;
+            if (_routeMessageForEra(entry, logEra, onRampContract, sourceChainSelector)) {
+                return;
             }
         }
+
+        if (progress == 0 && hasDestination) {
+            _awaitDestination(messageId, entry, sourceForkId, sourceChainSelector);
+        } else if (progress == 0) {
+            _recordNotRouted(messageId, "none of the given forks is the message's destination chain");
+        } else if (progress == 1) {
+            _recordNotRouted(
+                messageId,
+                "the log emitter is not the OnRamp of the Register router or the CCIP 2.0 router on the source chain"
+            );
+        } else {
+            _recordNotRouted(messageId, "no OffRamp on the destination routers serves this lane");
+        }
+    }
+
+    /// @return hasDestination Whether the log names its destination chain (1.6 and 2.0 `CCIPMessageSent`).
+    /// @return destinationChainSelector The destination chain selector (`topics[1]`).
+    function _logDestinationChainSelector(Vm.Log memory entry, CCIPEra logEra)
+        internal
+        pure
+        returns (bool hasDestination, uint64 destinationChainSelector)
+    {
+        if (
+            (logEra == CCIPEra.V1_DOT_6 && entry.topics.length >= 3)
+                || (logEra == CCIPEra.V2 && entry.topics.length >= 4)
+        ) {
+            return (true, uint64(uint256(entry.topics[1])));
+        }
+        return (false, 0);
+    }
+
+    /// @return isCCIPMessage False when the log has a CCIP event signature but does not decode as a CCIP message.
+    /// @return messageId The CCIP message ID.
+    function _messageIdFromLog(Vm.Log memory entry, CCIPEra logEra)
+        internal
+        view
+        returns (bool isCCIPMessage, bytes32 messageId)
+    {
+        if (logEra == CCIPEra.V2) {
+            if (entry.topics.length < 4) {
+                return (false, bytes32(0));
+            }
+            return (true, entry.topics[3]);
+        }
+        try this.decodeMessageId(uint8(logEra), entry.data) returns (bytes32 decoded) {
+            return (true, decoded);
+        } catch {
+            return (false, bytes32(0));
+        }
+    }
+
+    /// @notice External decode helper for pre-1.6 and 1.6 message IDs. Do not call directly.
+    /// @dev Decoding runs in an external self-call so a mis-shaped log fails inside `try/catch`.
+    function decodeMessageId(uint8 logEra, bytes calldata data) external pure returns (bytes32) {
+        if (CCIPEra(logEra) == CCIPEra.PRE_V1_DOT_6) {
+            return CCIPForkAdapterPreV1dot6.decodeMessage(data).messageId;
+        }
+        return CCIPForkAdapterV1dot6.decodeMessage(data).header.messageId;
+    }
+
+    /// @dev Not a failure, even in strict mode: routing one destination fork per call is the documented usage.
+    function _awaitDestination(bytes32 messageId, Vm.Log memory entry, uint256 sourceForkId, uint64 sourceChainSelector)
+        internal
+    {
+        AwaitingDestinationMessage storage awaiting = s_awaitingDestination.push();
+        awaiting.sourceForkId = sourceForkId;
+        awaiting.sourceChainSelector = sourceChainSelector;
+        awaiting.emitter = entry.emitter;
+        awaiting.topics = entry.topics;
+        awaiting.data = entry.data;
+        s_messageOutcomes[messageId] = MessageOutcome({
+            status: MessageStatus.QUEUED,
+            reason: abi.encodeWithSignature(
+                "Error(string)", "waiting for a switchChainAndRouteMessage call that includes the destination fork"
+            )
+        });
+    }
+
+    function _recordSuccess(bytes32 messageId) internal {
+        s_processedMessages[messageId] = true;
+        delete s_messageOutcomes[messageId].reason;
+        s_messageOutcomes[messageId].status = MessageStatus.SUCCESS;
+    }
+
+    function _recordQueued(bytes32 messageId) internal {
+        s_messageOutcomes[messageId].status = MessageStatus.QUEUED;
+    }
+
+    function _recordExecutionFailure(bytes32 messageId, bytes memory reason) internal {
+        if (s_strictRouting) {
+            revert CCIPLocalSimulatorFork__MessageExecutionFailed(messageId, reason);
+        }
+        s_messageOutcomes[messageId] = MessageOutcome({status: MessageStatus.FAILED, reason: reason});
+        console2.log("CCIPLocalSimulatorFork: message execution failed");
+        console2.logBytes32(messageId);
+        console2.logBytes(reason);
+    }
+
+    function _recordNotRouted(bytes32 messageId, string memory reason) internal {
+        if (s_strictRouting) {
+            revert CCIPLocalSimulatorFork__MessageNotRouted(messageId, reason);
+        }
+        s_messageOutcomes[messageId] =
+            MessageOutcome({status: MessageStatus.FAILED, reason: abi.encodeWithSignature("Error(string)", reason)});
+        console2.log("CCIPLocalSimulatorFork: message not routed:", reason);
+        console2.logBytes32(messageId);
     }
 
     function _routeMessageForEra(
@@ -466,9 +670,9 @@ contract CCIPLocalSimulatorFork is Test {
         vm.stopPrank();
 
         if (success) {
-            s_processedMessages[message.messageId] = true;
+            _recordSuccess(message.messageId);
         } else {
-            console2.logBytes(returnData);
+            _recordExecutionFailure(message.messageId, returnData);
         }
 
         return true;
@@ -491,9 +695,9 @@ contract CCIPLocalSimulatorFork is Test {
         vm.stopPrank();
 
         if (success) {
-            s_processedMessages[message.header.messageId] = true;
+            _recordSuccess(message.header.messageId);
         } else {
-            console2.logBytes(returnData);
+            _recordExecutionFailure(message.header.messageId, returnData);
         }
 
         return true;
@@ -532,15 +736,27 @@ contract CCIPLocalSimulatorFork is Test {
 
         (,, bytes memory encodedMessage, CCIPForkAdapterTypes.V2Receipt[] memory receipts,) =
             abi.decode(entry.data, (address, uint256, bytes, CCIPForkAdapterTypes.V2Receipt[], bytes[]));
+        // The OffRamp keys execution state on keccak256(encodedMessage). A log whose messageId topic differs is not a
+        // genuine CCIP 2.0 message.
+        if (keccak256(encodedMessage) != messageId) {
+            _recordNotRouted(messageId, "messageId topic does not match keccak256(encodedMessage)");
+            return true;
+        }
 
-        // The OnRamp emits the event, so the log emitter is the source OnRamp (queued messages keep it too).
-        address offRamp = _findOffRampOnCurrentFork(sourceChainSelector, entry.emitter);
+        // The OnRamp emits the event, so the log emitter is the source OnRamp (queued messages keep it too). OffRamp 2.0
+        // only executes a message stamped with its own address, so the stamped OffRamp wins when it serves the lane
+        // (the router lookup returns the newest OffRamp of the lane, which differs while an OffRamp is being replaced).
+        address offRamp = _stampedV2OffRamp(encodedMessage);
+        if (offRamp == address(0) || !_offRampServesOnRamp(offRamp, sourceChainSelector, entry.emitter)) {
+            offRamp = _findOffRampOnCurrentFork(sourceChainSelector, entry.emitter);
+        }
         if (offRamp == address(0)) {
             return false;
         }
 
         if (!forceExecution && _shouldQueueV2Message(receipts)) {
             _enqueuePendingV2Message(messageId, entry, sourceChainSelector);
+            _recordQueued(messageId);
             return true;
         }
 
@@ -548,18 +764,61 @@ contract CCIPLocalSimulatorFork is Test {
             _buildSyntheticV2VerificationInputs(offRamp, encodedMessage, new bytes[](0));
 
         try IOffRampExecuteV2(offRamp).execute(encodedMessage, ccvs, verifierResults, uint32(0)) {
-            if (_isV2ExecutionSuccess(offRamp, keccak256(encodedMessage))) {
-                s_processedMessages[messageId] = true;
+            if (_isV2ExecutionSuccess(offRamp, messageId)) {
+                _recordSuccess(messageId);
                 _dequeuePendingV2Message(_routeScope(), messageId);
             } else {
-                console2.log("CCIPLocalSimulatorFork: CCIP 2.0 execution did not succeed for message");
-                console2.logBytes32(messageId);
+                _recordExecutionFailure(messageId, _v2FailureReason(offRamp, encodedMessage, ccvs, verifierResults));
             }
         } catch (bytes memory err) {
-            console2.logBytes(err);
+            _recordExecutionFailure(messageId, err);
         }
 
         return true;
+    }
+
+    /// @dev Reads `offRampAddress` from a MessageV1 wire encoding: a 69-byte fixed header, then `onRampAddress` and
+    ///      `offRampAddress`, each prefixed with a 1-byte length (see `MessageV1Codec`). address(0) when malformed or
+    ///      not a 20-byte EVM address.
+    function _stampedV2OffRamp(bytes memory encodedMessage) internal pure returns (address offRamp) {
+        if (encodedMessage.length < 70) {
+            return address(0);
+        }
+        uint256 offRampLengthIndex = 70 + uint8(encodedMessage[69]);
+        if (encodedMessage.length < offRampLengthIndex + 21 || uint8(encodedMessage[offRampLengthIndex]) != 20) {
+            return address(0);
+        }
+        assembly {
+            // Word at `encodedMessage + 32 + offRampLengthIndex + 1`: the 20 address bytes, left-aligned.
+            offRamp := shr(96, mload(add(add(encodedMessage, 33), offRampLengthIndex)))
+        }
+    }
+
+    /// @dev OffRamp 2.0 `execute` records FAILURE without reverting, and does not return the reason. A second attempt
+    ///      of a FAILURE message reverts `NoStateProgressMade(messageId, err)` with the original failure, and a reverted
+    ///      call leaves no state behind, so the retry recovers the reason without side effects.
+    function _v2FailureReason(
+        address offRamp,
+        bytes memory encodedMessage,
+        address[] memory ccvs,
+        bytes[] memory verifierResults
+    ) internal returns (bytes memory reason) {
+        (bool ok, bytes memory err) = offRamp.call(
+            abi.encodeWithSelector(IOffRampExecuteV2.execute.selector, encodedMessage, ccvs, verifierResults, uint32(0))
+        );
+        if (ok || err.length < 4 || bytes4(err) != NO_STATE_PROGRESS_MADE_SELECTOR) {
+            return err;
+        }
+        try this.decodeNoStateProgressMade(err) returns (bytes memory innerErr) {
+            return innerErr;
+        } catch {
+            return err;
+        }
+    }
+
+    /// @notice External decode helper for `NoStateProgressMade(bytes32,bytes)` revert data. Do not call directly.
+    function decodeNoStateProgressMade(bytes calldata revertData) external pure returns (bytes memory innerErr) {
+        (, innerErr) = abi.decode(revertData[4:], (bytes32, bytes));
     }
 
     /// @dev Reads `getExecutionState(messageId)` from an OffRamp 2.0 without trusting the return shape.
@@ -589,6 +848,7 @@ contract CCIPLocalSimulatorFork is Test {
 
         if (!forceExecution && _shouldQueueV2Message(decodedMessage.receipts)) {
             _enqueuePendingV2Message(decodedMessage.messageId, entry, decodedMessage.message.sourceChainSelector);
+            _recordQueued(decodedMessage.messageId);
             return true;
         }
 
@@ -615,10 +875,10 @@ contract CCIPLocalSimulatorFork is Test {
         }
 
         if (success) {
-            s_processedMessages[decodedMessage.messageId] = true;
+            _recordSuccess(decodedMessage.messageId);
             _dequeuePendingV2Message(_routeScope(), decodedMessage.messageId);
         } else {
-            console2.logBytes(returnData);
+            _recordExecutionFailure(decodedMessage.messageId, returnData);
         }
 
         return true;
@@ -710,43 +970,27 @@ contract CCIPLocalSimulatorFork is Test {
             return new address[](0);
         }
 
-        uint256 totalAvailable = requiredCCVs.length + optionalCCVs.length;
-        uint256 targetLength = requiredCCVs.length;
-
-        if (targetLength < threshold) {
-            targetLength = threshold;
-        }
-        if (targetLength > totalAvailable) {
-            targetLength = totalAvailable;
-        }
-
-        ccvs = new address[](targetLength);
-        uint256 ccvCount;
-        for (uint256 i = 0; i < requiredCCVs.length && ccvCount < targetLength; ++i) {
-            ccvs[ccvCount++] = requiredCCVs[i];
-        }
-        for (uint256 i = 0; i < optionalCCVs.length && ccvCount < targetLength; ++i) {
-            ccvs[ccvCount++] = optionalCCVs[i];
-        }
+        ccvs = CCIPForkAdapterV2.selectCCVs(requiredCCVs, optionalCCVs, threshold);
     }
 
     function _configureResolverForSyntheticV2Verification(address resolver, address syntheticVerifier)
         internal
         returns (bool configured)
     {
-        uint256 routeScope = _routeScope();
-        if (s_isSyntheticResolverConfiguredByScope[routeScope][resolver]) {
+        // Read from the resolver every time instead of cached: `vm.rollFork` or a snapshot revert on the destination
+        // fork drops the update, while this (usually persistent) simulator's storage keeps it.
+        if (_resolvesSyntheticVersionTo(resolver, syntheticVerifier)) {
             return true;
         }
 
         // Low-level probe: a high-level `try` does not catch the no-code check or a mis-shaped return value.
         (bool ok, bytes memory data) =
             resolver.staticcall(abi.encodeWithSelector(IVersionedVerifierResolverAdminFork.owner.selector));
-        if (!ok || data.length != 32) {
+        if (!ok) {
             return false;
         }
-        address resolverOwner = abi.decode(data, (address));
-        if (resolverOwner == address(0)) {
+        (bool isAddress, address resolverOwner) = _decodeAddressWord(data);
+        if (!isAddress || resolverOwner == address(0)) {
             return false;
         }
 
@@ -763,16 +1007,27 @@ contract CCIPLocalSimulatorFork is Test {
             configured = false;
         }
         vm.stopPrank();
+    }
 
-        if (configured) {
-            s_isSyntheticResolverConfiguredByScope[routeScope][resolver] = true;
+    function _resolvesSyntheticVersionTo(address resolver, address syntheticVerifier) internal view returns (bool) {
+        (bool ok, bytes memory data) = resolver.staticcall(
+            abi.encodeWithSelector(
+                IVersionedVerifierResolverAdminFork.getInboundImplementation.selector,
+                abi.encodePacked(SYNTHETIC_V2_VERIFIER_VERSION)
+            )
+        );
+        if (!ok) {
+            return false;
         }
+        (bool isAddress, address implementation) = _decodeAddressWord(data);
+        return isAddress && implementation == syntheticVerifier;
     }
 
     function _getOrCreateSyntheticV2Verifier() internal returns (address verifier) {
         uint256 routeScope = _routeScope();
         verifier = s_syntheticV2VerifierByScope[routeScope];
-        if (verifier == address(0)) {
+        // A verifier without code was dropped by a fork state reset (see `_configureResolverForSyntheticV2Verification`).
+        if (verifier == address(0) || verifier.code.length == 0) {
             verifier = address(new CCIPLocalSimulatorV2NoOpVerifier());
             s_syntheticV2VerifierByScope[routeScope] = verifier;
         }
@@ -966,7 +1221,8 @@ contract CCIPLocalSimulatorFork is Test {
                 return false;
             }
             for (uint256 i; i < cfg.onRamps.length; ++i) {
-                if (cfg.onRamps[i].length == 32 && abi.decode(cfg.onRamps[i], (address)) == sourceOnRamp) {
+                (bool isAddress, address onRamp) = _decodeAddressWord(cfg.onRamps[i]);
+                if (isAddress && onRamp == sourceOnRamp) {
                     return true;
                 }
             }
@@ -988,7 +1244,8 @@ contract CCIPLocalSimulatorFork is Test {
         }
 
         try this.decodeSourceChainConfigV1dot6(data) returns (IOffRampSourceConfigFork.SourceChainConfig memory cfg) {
-            return cfg.isEnabled && cfg.onRamp.length == 32 && abi.decode(cfg.onRamp, (address)) == sourceOnRamp;
+            (bool isAddress, address onRamp) = _decodeAddressWord(cfg.onRamp);
+            return cfg.isEnabled && isAddress && onRamp == sourceOnRamp;
         } catch {
             return false;
         }
@@ -1064,7 +1321,11 @@ contract CCIPLocalSimulatorFork is Test {
             }
             (bool ok, bytes memory data) =
                 routers[i].staticcall(abi.encodeWithSelector(IRouterFork.getOnRamp.selector, destChainSelector));
-            if (ok && data.length == 32 && abi.decode(data, (address)) == emitter && emitter != address(0)) {
+            if (!ok) {
+                continue;
+            }
+            (bool isAddress, address configuredOnRamp) = _decodeAddressWord(data);
+            if (isAddress && configuredOnRamp == emitter && emitter != address(0)) {
                 return emitter;
             }
         }
@@ -1116,50 +1377,6 @@ contract CCIPLocalSimulatorFork is Test {
         return abi.decode(data, (CCIPForkAdapterTypes.RouterOffRamp[]));
     }
 
-    function _detectEra(address onRamp) internal view returns (CCIPEra era) {
-        CCIPEra byTypeAndVersion = _detectEraByTypeAndVersion(onRamp);
-        if (byTypeAndVersion != CCIPEra.UNKNOWN) {
-            return byTypeAndVersion;
-        }
-
-        if (_probeSelector(onRamp, GET_EXPECTED_NEXT_MESSAGE_NUMBER_SELECTOR)) {
-            return CCIPEra.V2;
-        }
-
-        if (_probeSelector(onRamp, GET_EXPECTED_NEXT_SEQUENCE_NUMBER_SELECTOR)) {
-            return CCIPEra.V1_DOT_6;
-        }
-
-        return CCIPEra.PRE_V1_DOT_6;
-    }
-
-    function _detectEraByTypeAndVersion(address onRamp) internal view returns (CCIPEra era) {
-        try ITypeAndVersionProbe(onRamp).typeAndVersion() returns (string memory typeAndVersion) {
-            bytes memory value = bytes(typeAndVersion);
-
-            if (_contains(value, bytes("2."))) {
-                return CCIPEra.V2;
-            }
-
-            if (_contains(value, bytes("1.6"))) {
-                return CCIPEra.V1_DOT_6;
-            }
-
-            if (_contains(value, bytes("1."))) {
-                return CCIPEra.PRE_V1_DOT_6;
-            }
-        } catch {
-            return CCIPEra.UNKNOWN;
-        }
-
-        return CCIPEra.UNKNOWN;
-    }
-
-    function _probeSelector(address target, bytes4 selector) internal view returns (bool supported) {
-        (bool success, bytes memory returnData) = target.staticcall(abi.encodeWithSelector(selector, uint64(0)));
-        return success && returnData.length >= 32;
-    }
-
     function _detectEraFromLog(Vm.Log memory entry) internal pure returns (CCIPEra era) {
         if (entry.topics.length == 0) {
             return CCIPEra.UNKNOWN;
@@ -1182,20 +1399,17 @@ contract CCIPLocalSimulatorFork is Test {
         return CCIPEra.UNKNOWN;
     }
 
-    function _selectRoutingEra(CCIPEra logEra, CCIPEra detectedEra) internal pure returns (CCIPEra) {
-        if (logEra == CCIPEra.UNKNOWN) {
-            return detectedEra;
+    /// @dev Decodes an ABI-encoded address word without reverting: `abi.decode(data, (address))` reverts in the calling
+    ///      frame (not catchable) when the word has non-zero high bits, e.g. a non-EVM OnRamp address.
+    function _decodeAddressWord(bytes memory data) internal pure returns (bool isAddress, address decoded) {
+        if (data.length != 32) {
+            return (false, address(0));
         }
-
-        if (detectedEra == CCIPEra.UNKNOWN) {
-            return logEra;
+        uint256 word = abi.decode(data, (uint256));
+        if (word >> 160 != 0) {
+            return (false, address(0));
         }
-
-        if (detectedEra != logEra) {
-            return logEra;
-        }
-
-        return detectedEra;
+        return (true, address(uint160(word)));
     }
 
     function _startsWith(bytes memory value, bytes memory prefix) internal pure returns (bool) {
@@ -1208,27 +1422,5 @@ contract CCIPLocalSimulatorFork is Test {
             }
         }
         return true;
-    }
-
-    function _contains(bytes memory haystack, bytes memory needle) internal pure returns (bool) {
-        if (needle.length == 0 || needle.length > haystack.length) {
-            return false;
-        }
-
-        for (uint256 i; i <= haystack.length - needle.length; ++i) {
-            bool matchFound = true;
-            for (uint256 j; j < needle.length; ++j) {
-                if (haystack[i + j] != needle[j]) {
-                    matchFound = false;
-                    break;
-                }
-            }
-
-            if (matchFound) {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

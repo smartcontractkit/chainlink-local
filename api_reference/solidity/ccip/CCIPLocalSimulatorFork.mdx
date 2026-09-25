@@ -42,18 +42,21 @@ Mapping to track processed messages
 mapping(bytes32 messageId => bool isProcessed) internal s_processedMessages
 ```
 
-### GET_EXPECTED_NEXT_MESSAGE_NUMBER_SELECTOR
+### s_messageOutcomes
+
+Outcome of every captured message, see `getMessageStatus`.
 
 ```solidity
-bytes4 private constant GET_EXPECTED_NEXT_MESSAGE_NUMBER_SELECTOR =
-    bytes4(keccak256("getExpectedNextMessageNumber(uint64)"))
+mapping(bytes32 messageId => MessageOutcome outcome) internal s_messageOutcomes
 ```
 
-### GET_EXPECTED_NEXT_SEQUENCE_NUMBER_SELECTOR
+### s_strictRouting
+
+When true (the default), routing reverts on a message that is not routed or does
+not execute successfully.
 
 ```solidity
-bytes4 private constant GET_EXPECTED_NEXT_SEQUENCE_NUMBER_SELECTOR =
-    bytes4(keccak256("getExpectedNextSequenceNumber(uint64)"))
+bool internal s_strictRouting
 ```
 
 ### V2_EXECUTION_STATE_SUCCESS
@@ -62,6 +65,15 @@ bytes4 private constant GET_EXPECTED_NEXT_SEQUENCE_NUMBER_SELECTOR =
 
 ```solidity
 uint256 private constant V2_EXECUTION_STATE_SUCCESS = 2
+```
+
+### NO_STATE_PROGRESS_MADE_SELECTOR
+
+OffRamp 2.0 `NoStateProgressMade(bytes32 messageId, bytes err)`: a retry of a
+FAILURE message reverts with it.
+
+```solidity
+bytes4 private constant NO_STATE_PROGRESS_MADE_SELECTOR = bytes4(keccak256("NoStateProgressMade(bytes32,bytes)"))
 ```
 
 ### SYNTHETIC_V2_VERIFIER_VERSION
@@ -96,13 +108,6 @@ bytes4 private constant INBOUND_IMPLEMENTATION_NOT_FOUND_SELECTOR =
 mapping(uint256 routeScope => address verifier) internal s_syntheticV2VerifierByScope
 ```
 
-### s_isSyntheticResolverConfiguredByScope
-
-```solidity
-mapping(uint256 routeScope => mapping(address resolver => bool isConfigured)) internal
-    s_isSyntheticResolverConfiguredByScope
-```
-
 ### s_pendingV2MessagesByScope
 
 ```solidity
@@ -114,6 +119,14 @@ mapping(uint256 routeScope => mapping(bytes32 messageId => PendingV2Message pend
 
 ```solidity
 mapping(uint256 routeScope => bytes32[] messageIds) internal s_pendingV2MessageIdsByScope
+```
+
+### s_awaitingDestination
+
+Captured messages waiting for their destination fork, in send order.
+
+```solidity
+AwaitingDestinationMessage[] internal s_awaitingDestination
 ```
 
 ### s_ccipV2Routers
@@ -156,7 +169,9 @@ To be called after the sending of the cross-chain message (`ccipSend`). Goes
 through the list of past logs and looks for the supported CCIP send events.
 Switches to a destination network fork. Routes the sent cross-chain message on
 the destination network. If you sent more than one message, it will try to route
-all of them to `forkId`.
+all of them to `forkId`. A 1.6 or 2.0 message to another chain is kept (status
+QUEUED) and routed by a later call that includes its destination fork. `forkId`
+is the active fork when the call returns.
 
 ```solidity
 function switchChainAndRouteMessage(uint256 forkId) external;
@@ -173,7 +188,8 @@ function switchChainAndRouteMessage(uint256 forkId) external;
 To be called after the sending of the cross-chain message (`ccipSend`). Override
 variant of the `switchChainAndRouteMessage(uint256 forkId)` function in case of
 multiple destination forks. Goes through provided `forkIds` and tries to route
-messages to the matching destination.
+messages to the matching destination. A 1.6 or 2.0 message to a chain that is
+not in `forkIds` is kept (status QUEUED) for a later call.
 
 ```solidity
 function switchChainAndRouteMessage(uint256[] memory forkIds) external;
@@ -252,8 +268,8 @@ function getOffRampForLane(uint256 forkId, uint64 sourceChainSelector, address s
 Points a destination lane's default CCVs at `ccv` by impersonating the OffRamp
 owner. Fork-only testing helper for CCIP 2.0 lanes: the mocked CCV must be
 configured on the destination lane before a captured message can be routed
-through the permissionless execution path. Router, enabled flag and OnRamp
-bindings are preserved.
+through the permissionless execution path. Router, enabled flag, OnRamp bindings
+and lane-mandated CCVs are preserved.
 
 ```solidity
 function setLaneDefaultCCVs(uint256 forkId, address offRamp, uint64 sourceChainSelector, address ccv) external;
@@ -268,6 +284,12 @@ function setLaneDefaultCCVs(uint256 forkId, address offRamp, uint64 sourceChainS
 | `sourceChainSelector` | `uint64`  | - The chain selector of the source chain.             |
 | `ccv`                 | `address` | - The CCV address to set as the lane default.         |
 
+### \_setLaneDefaultCCVs
+
+```solidity
+function _setLaneDefaultCCVs(address offRamp, uint64 sourceChainSelector, address ccv) internal;
+```
+
 ### requestLinkFromFaucet
 
 Requests LINK tokens from the faucet.
@@ -275,6 +297,47 @@ Requests LINK tokens from the faucet.
 ```solidity
 function requestLinkFromFaucet(address to, uint256 amount) external returns (bool success);
 ```
+
+### setStrictRouting
+
+Enables or disables strict routing (enabled by default). When enabled,
+`switchChainAndRouteMessage` and `executePendingV2Message` revert with
+`CCIPLocalSimulatorFork__MessageNotRouted` when a captured CCIP message cannot
+be routed to any of the given forks, and with
+`CCIPLocalSimulatorFork__MessageExecutionFailed` when a routed message does not
+execute successfully. When disabled, failures are logged and recorded (see
+`getMessageStatus`) and routing continues.
+
+```solidity
+function setStrictRouting(bool strict) external;
+```
+
+### getStrictRouting
+
+```solidity
+function getStrictRouting() external view returns (bool strict);
+```
+
+### getMessageStatus
+
+Returns the outcome of a captured CCIP message.
+
+```solidity
+function getMessageStatus(bytes32 messageId) external view returns (MessageStatus status, bytes memory reason);
+```
+
+**Parameters**
+
+| Name        | Type      | Description            |
+| ----------- | --------- | ---------------------- |
+| `messageId` | `bytes32` | - The CCIP message ID. |
+
+**Returns**
+
+| Name     | Type            | Description                                                                                                                       |
+| -------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `status` | `MessageStatus` | - NOT_FOUND, QUEUED, FAILED or SUCCESS.                                                                                           |
+| `reason` | `bytes`         | - For FAILED: the revert data of the execution, or an `Error(string)` explaining why the message was not routed. Empty otherwise. |
 
 ### setV2VerificationMode
 
@@ -345,6 +408,83 @@ function _routeCapturedMessage(
 ) internal;
 ```
 
+### \_logDestinationChainSelector
+
+```solidity
+function _logDestinationChainSelector(Vm.Log memory entry, CCIPEra logEra)
+    internal
+    pure
+    returns (bool hasDestination, uint64 destinationChainSelector);
+```
+
+**Returns**
+
+| Name                       | Type     | Description                                                                  |
+| -------------------------- | -------- | ---------------------------------------------------------------------------- |
+| `hasDestination`           | `bool`   | Whether the log names its destination chain (1.6 and 2.0 `CCIPMessageSent`). |
+| `destinationChainSelector` | `uint64` | The destination chain selector (`topics[1]`).                                |
+
+### \_messageIdFromLog
+
+```solidity
+function _messageIdFromLog(Vm.Log memory entry, CCIPEra logEra)
+    internal
+    view
+    returns (bool isCCIPMessage, bytes32 messageId);
+```
+
+**Returns**
+
+| Name            | Type      | Description                                                                          |
+| --------------- | --------- | ------------------------------------------------------------------------------------ |
+| `isCCIPMessage` | `bool`    | False when the log has a CCIP event signature but does not decode as a CCIP message. |
+| `messageId`     | `bytes32` | The CCIP message ID.                                                                 |
+
+### decodeMessageId
+
+External decode helper for pre-1.6 and 1.6 message IDs. Do not call directly.
+
+Decoding runs in an external self-call so a mis-shaped log fails inside
+`try/catch`.
+
+```solidity
+function decodeMessageId(uint8 logEra, bytes calldata data) external pure returns (bytes32);
+```
+
+### \_awaitDestination
+
+Not a failure, even in strict mode: routing one destination fork per call is the
+documented usage.
+
+```solidity
+function _awaitDestination(bytes32 messageId, Vm.Log memory entry, uint256 sourceForkId, uint64 sourceChainSelector)
+    internal;
+```
+
+### \_recordSuccess
+
+```solidity
+function _recordSuccess(bytes32 messageId) internal;
+```
+
+### \_recordQueued
+
+```solidity
+function _recordQueued(bytes32 messageId) internal;
+```
+
+### \_recordExecutionFailure
+
+```solidity
+function _recordExecutionFailure(bytes32 messageId, bytes memory reason) internal;
+```
+
+### \_recordNotRouted
+
+```solidity
+function _recordNotRouted(bytes32 messageId, string memory reason) internal;
+```
+
 ### \_routeMessageForEra
 
 ```solidity
@@ -401,6 +541,42 @@ reports `SUCCESS`.
 function _routeV2MessageOffRampDerived(Vm.Log memory entry, uint64 sourceChainSelector, bool forceExecution)
     internal
     returns (bool attempted);
+```
+
+### \_stampedV2OffRamp
+
+Reads `offRampAddress` from a MessageV1 wire encoding: a 69-byte fixed header,
+then `onRampAddress` and `offRampAddress`, each prefixed with a 1-byte length
+(see `MessageV1Codec`). address(0) when malformed or not a 20-byte EVM address.
+
+```solidity
+function _stampedV2OffRamp(bytes memory encodedMessage) internal pure returns (address offRamp);
+```
+
+### \_v2FailureReason
+
+OffRamp 2.0 `execute` records FAILURE without reverting, and does not return the
+reason. A second attempt of a FAILURE message reverts
+`NoStateProgressMade(messageId, err)` with the original failure, and a reverted
+call leaves no state behind, so the retry recovers the reason without side
+effects.
+
+```solidity
+function _v2FailureReason(
+    address offRamp,
+    bytes memory encodedMessage,
+    address[] memory ccvs,
+    bytes[] memory verifierResults
+) internal returns (bytes memory reason);
+```
+
+### decodeNoStateProgressMade
+
+External decode helper for `NoStateProgressMade(bytes32,bytes)` revert data. Do
+not call directly.
+
+```solidity
+function decodeNoStateProgressMade(bytes calldata revertData) external pure returns (bytes memory innerErr);
 ```
 
 ### \_isV2ExecutionSuccess
@@ -460,6 +636,12 @@ function _deriveV2CCVSelection(address offRamp, bytes memory encodedMessage)
 function _configureResolverForSyntheticV2Verification(address resolver, address syntheticVerifier)
     internal
     returns (bool configured);
+```
+
+### \_resolvesSyntheticVersionTo
+
+```solidity
+function _resolvesSyntheticVersionTo(address resolver, address syntheticVerifier) internal view returns (bool);
 ```
 
 ### \_getOrCreateSyntheticV2Verifier
@@ -683,34 +865,20 @@ function decodeRouterOffRamps(bytes calldata data)
     returns (CCIPForkAdapterTypes.RouterOffRamp[] memory);
 ```
 
-### \_detectEra
-
-```solidity
-function _detectEra(address onRamp) internal view returns (CCIPEra era);
-```
-
-### \_detectEraByTypeAndVersion
-
-```solidity
-function _detectEraByTypeAndVersion(address onRamp) internal view returns (CCIPEra era);
-```
-
-### \_probeSelector
-
-```solidity
-function _probeSelector(address target, bytes4 selector) internal view returns (bool supported);
-```
-
 ### \_detectEraFromLog
 
 ```solidity
 function _detectEraFromLog(Vm.Log memory entry) internal pure returns (CCIPEra era);
 ```
 
-### \_selectRoutingEra
+### \_decodeAddressWord
+
+Decodes an ABI-encoded address word without reverting:
+`abi.decode(data, (address))` reverts in the calling frame (not catchable) when
+the word has non-zero high bits, e.g. a non-EVM OnRamp address.
 
 ```solidity
-function _selectRoutingEra(CCIPEra logEra, CCIPEra detectedEra) internal pure returns (CCIPEra);
+function _decodeAddressWord(bytes memory data) internal pure returns (bool isAddress, address decoded);
 ```
 
 ### \_startsWith
@@ -719,13 +887,50 @@ function _selectRoutingEra(CCIPEra logEra, CCIPEra detectedEra) internal pure re
 function _startsWith(bytes memory value, bytes memory prefix) internal pure returns (bool);
 ```
 
-### \_contains
+## Errors
+
+### CCIPLocalSimulatorFork\_\_MessageNotRouted
+
+Strict routing: a captured CCIP message was not routed to any destination fork.
 
 ```solidity
-function _contains(bytes memory haystack, bytes memory needle) internal pure returns (bool);
+error CCIPLocalSimulatorFork__MessageNotRouted(bytes32 messageId, string reason);
+```
+
+### CCIPLocalSimulatorFork\_\_MessageExecutionFailed
+
+Strict routing: a routed message did not execute successfully. `reason` is the
+revert data of the execution (for CCIP 2.0, the OffRamp's recorded failure).
+
+```solidity
+error CCIPLocalSimulatorFork__MessageExecutionFailed(bytes32 messageId, bytes reason);
 ```
 
 ## Structs
+
+### MessageOutcome
+
+```solidity
+struct MessageOutcome {
+    MessageStatus status;
+    bytes reason;
+}
+```
+
+### AwaitingDestinationMessage
+
+A captured 1.6 / 2.0 message whose destination fork was not in `forkIds`, kept
+for a later routing call.
+
+```solidity
+struct AwaitingDestinationMessage {
+    uint256 sourceForkId;
+    uint64 sourceChainSelector;
+    address emitter;
+    bytes32[] topics;
+    bytes data;
+}
+```
 
 ### PendingV2Message
 
@@ -774,5 +979,25 @@ enum V2ExecutionMode {
     AUTO,
     RESPECT_NO_EXEC,
     MANUAL_ONLY
+}
+```
+
+### MessageStatus
+
+Outcome of a captured CCIP message (see `getMessageStatus`).
+
+NOT_FOUND: never captured by this simulator. QUEUED: a CCIP 2.0
+`NO_EXECUTION_ADDRESS` message waiting for `executePendingV2Message`, or a 1.6 /
+2.0 message whose destination fork was not passed to
+`switchChainAndRouteMessage` yet (a later call that includes it routes the
+message; the reason says so). FAILED: not routed, or execution did not succeed
+(the reason is recorded).
+
+```solidity
+enum MessageStatus {
+    NOT_FOUND,
+    QUEUED,
+    FAILED,
+    SUCCESS
 }
 ```

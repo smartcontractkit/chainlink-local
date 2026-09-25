@@ -50,6 +50,14 @@ uint64 internal constant SOURCE_CHAIN_SELECTOR = 16015286601757825753
 uint256 internal s_mockFeeTokenAmount
 ```
 
+### s_nonce
+
+Nonce used to guarantee a unique messageId per send, see `ccipSend`.
+
+```solidity
+uint256 internal s_nonce
+```
+
 ## Functions
 
 ### routeMessage
@@ -101,9 +109,26 @@ function _isTokenOnlyTransfer(uint256 dataLength, uint256 gasLimit, address rece
 
 ### \_ensureReceiverAllowsFinality
 
-OffRamp 2.0 `_getCCVsFromReceiver` finality check. Token-only transfers skip it,
-as the pool enforces finality for them in production (pools are not simulated in
-local mode).
+Mirrors OffRamp 2.0 `_getCCVsFromReceiver`, which is called for every message
+that is not a token-only transfer regardless of requested finality (including
+fully finalized messages, not only Faster-Than- Finality ones). Token-only
+transfers skip it entirely, as the pool enforces finality for them in production
+(pools are not simulated in local mode).
+
+Local mode has no CCV verifiers to query for quorum, so this only reproduces the
+validation and finality parts of `_getCCVsFromReceiver`: duplicate
+required/optional CCVs and `optionalThreshold > optionalCCVs.length` are
+rejected the same way, and the receiver's allowed finality is enforced.
+
+If `getCCVsAndFinalityConfig` reverts, that revert is bubbled as-is (not wrapped
+in `ReceiverError`). In production the OffRamp does not distinguish this from
+any other revert during message execution: it simply records
+`ExecutionStateChanged(..., FAILURE, returnData)` with the getter's raw revert
+data. `ReceiverError` is reserved for the narrower case of the receiver's own
+`ccipReceive` call failing (see `_routeMessage`/`OffRamp._callReceiver`), so
+bubbling here (rather than wrapping) keeps that error meaning precise while
+still failing the local send, consistent with this contract's "fails in
+production" -> "ccipSend reverts locally" mapping.
 
 ```solidity
 function _ensureReceiverAllowsFinality(
@@ -117,11 +142,18 @@ function _ensureReceiverAllowsFinality(
 ### \_parseExtraArgs
 
 ```solidity
-function _parseExtraArgs(bytes calldata extraArgs)
+function _parseExtraArgs(uint64 destinationChainSelector, bytes calldata extraArgs)
     internal
     pure
     returns (uint256 gasLimit, bytes4 requestedFinality);
 ```
+
+**Parameters**
+
+| Name                       | Type     | Description                                                                    |
+| -------------------------- | -------- | ------------------------------------------------------------------------------ |
+| `destinationChainSelector` | `uint64` | Destination chain selector, used only for the `TokenReceiverNotAllowed` error. |
+| `extraArgs`                | `bytes`  |                                                                                |
 
 **Returns**
 
@@ -129,6 +161,17 @@ function _parseExtraArgs(bytes calldata extraArgs)
 | ------------------- | --------- | ---------------------------------------------------------------------------------- |
 | `gasLimit`          | `uint256` | Callback gas limit.                                                                |
 | `requestedFinality` | `bytes4`  | `GenericExtraArgsV3.requestedFinalityConfig`, or WAIT_FOR_FINALITY for older tags. |
+
+### \_legacyGasLimit
+
+FeeQuoter compares the full uint256 V1/V2 gas limit against the lane's uint32
+`maxPerMsgGasLimit` and reverts `MessageGasLimitTooHigh`, so a value above
+uint32 is rejected everywhere; the upstream mock truncated it. Local mode has no
+lane config, so lower lane caps are not enforced.
+
+```solidity
+function _legacyGasLimit(uint256 gasLimit) internal pure returns (uint256);
+```
 
 ### isChainSupported
 
@@ -223,4 +266,46 @@ error InvalidExtraArgsTag();
 
 ```solidity
 error ReceiverError(bytes err);
+```
+
+### TokenReceiverNotAllowed
+
+Mirrors `OnRamp.TokenReceiverNotAllowed`: `GenericExtraArgsV3.tokenReceiver` is
+rejected on all EVM lanes (`DestChainConfig.tokenReceiverAllowed` is always
+false for EVM per its NatSpec).
+
+```solidity
+error TokenReceiverNotAllowed(uint64 destChainSelector);
+```
+
+### MessageGasLimitTooHigh
+
+Mirrors `FeeQuoter.MessageGasLimitTooHigh`.
+
+```solidity
+error MessageGasLimitTooHigh();
+```
+
+### CanOnlySendOneTokenPerMessage
+
+Mirrors `OnRamp.CanOnlySendOneTokenPerMessage`.
+
+```solidity
+error CanOnlySendOneTokenPerMessage();
+```
+
+### CannotSendZeroTokens
+
+Mirrors `OnRamp.CannotSendZeroTokens`.
+
+```solidity
+error CannotSendZeroTokens();
+```
+
+### InvalidOptionalThreshold
+
+Mirrors `OffRamp.InvalidOptionalThreshold`.
+
+```solidity
+error InvalidOptionalThreshold(uint8 wanted, uint256 got);
 ```

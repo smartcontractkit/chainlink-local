@@ -12,7 +12,23 @@ const OUTPUT_TMP_DIR = path.join(API_REFERENCE_DIR, "solidity.tmp");
 const EXCLUDED_PATH_SEGMENTS = new Set(["test", "vendor", "lib", "script", "scripts"]);
 const DEF_DOC_RE = /^(contract|interface|library|abstract)\.(.+)\.md$/;
 
+// `forge doc` changed its output layout and page format after 1.5 (1.8 writes `src/pages/src/**/*.mdx`), and this
+// script's post-processing only matches the 1.5 format, so the API reference must be generated with forge 1.5.x.
+function assertSupportedForge() {
+  const result = spawnSync("forge", ["--version"], { cwd: ROOT, encoding: "utf8" });
+  const match = /forge Version: (\d+)\.(\d+)\./.exec(result.stdout ?? "");
+  if (!match) return;
+  const [major, minor] = [Number(match[1]), Number(match[2])];
+  if (major !== 1 || minor > 5) {
+    throw new Error(
+      `generate-docs needs forge 1.5.x for \`forge doc\` (found ${match[1]}.${match[2]}). ` +
+        "Install it with `foundryup --install 1.5.1` (or put a 1.5.x forge first on PATH) and run it again."
+    );
+  }
+}
+
 function runForgeDoc() {
+  assertSupportedForge();
   const result = spawnSync("forge", ["doc", "-o", FORGE_DOC_TMP_DIR], {
     cwd: ROOT,
     stdio: "inherit",
