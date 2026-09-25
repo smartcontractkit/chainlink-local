@@ -784,7 +784,8 @@ contract CCIPLocalSimulatorFork is Test {
         if (encodedMessage.length < 70) {
             return address(0);
         }
-        uint256 offRampLengthIndex = 70 + uint8(encodedMessage[69]);
+        // Widen before adding: `70 + uint8(...)` is uint8 arithmetic and overflows for onRamps longer than 185 bytes.
+        uint256 offRampLengthIndex = 70 + uint256(uint8(encodedMessage[69]));
         if (encodedMessage.length < offRampLengthIndex + 21 || uint8(encodedMessage[offRampLengthIndex]) != 20) {
             return address(0);
         }

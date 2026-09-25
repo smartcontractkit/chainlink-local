@@ -362,6 +362,16 @@ contract CCIPLocalSimulatorForkV2RoutingTest is Test {
         assertEq(harness.exposedStampedV2OffRamp(MessageV1Codec._encodeMessageV1(message)), offRamp);
     }
 
+    /// @dev OnRamp addresses longer than 185 bytes overflowed a uint8 offset (found by the fuzz test in CI).
+    function test_stampedV2OffRamp_longOnRampAddress() public view {
+        MessageV1Codec.MessageV1 memory message;
+        message.onRampAddress = new bytes(255);
+        message.offRampAddress = abi.encodePacked(address(0xFEED));
+        message.sender = abi.encode(address(0xA11CE));
+        message.receiver = abi.encodePacked(address(0xB0B));
+        assertEq(harness.exposedStampedV2OffRamp(MessageV1Codec._encodeMessageV1(message)), address(0xFEED));
+    }
+
     function test_stampedV2OffRamp_malformedReturnsZero() public view {
         assertEq(harness.exposedStampedV2OffRamp("message"), address(0));
         assertEq(harness.exposedStampedV2OffRamp(abi.encodePacked(new bytes(69), uint8(32))), address(0));
