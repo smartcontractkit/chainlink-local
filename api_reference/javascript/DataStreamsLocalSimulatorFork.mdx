@@ -1,0 +1,82 @@
+## Constants
+
+<dl>
+  <dt>
+    <a href="#LINK_FAUCET_ADDRESS">LINK_FAUCET_ADDRESS</a>
+  </dt>
+  <dd>
+    <p>
+      Hardhat 3 helpers for Data Streams fork tests. Every function takes the{' '}
+      <code>NetworkConnection</code> returned by
+      <code>network.connect()</code> and requires the{' '}
+      <code>@nomicfoundation/hardhat-ethers</code> plugin (it uses{' '}
+      <code>connection.ethers</code>).
+    </p>
+  </dd>
+</dl>
+
+## Functions
+
+<dl>
+  <dt>
+    <a href="#requestLinkFromFaucet">
+      requestLinkFromFaucet(connection, linkAddress, to, amount)
+    </a>{' '}
+    ⇒ <code>Promise.&lt;string&gt;</code>
+  </dt>
+  <dd>
+    <p>Requests LINK tokens from the faucet and returns the transaction hash</p>
+  </dd>
+  <dt>
+    <a href="#requestNativeFromFaucet">
+      requestNativeFromFaucet(connection, to, amount)
+    </a>
+  </dt>
+  <dd>
+    <p>
+      Requests native coins from the faucet (sets the balance of <code>to</code>
+      )
+    </p>
+  </dd>
+</dl>
+
+<a name="LINK_FAUCET_ADDRESS"></a>
+
+## LINK_FAUCET_ADDRESS
+
+Hardhat 3 helpers for Data Streams fork tests. Every function takes the
+`NetworkConnection` returned by `network.connect()` and requires the
+`@nomicfoundation/hardhat-ethers` plugin (it uses `connection.ethers`).
+
+**Kind**: global constant
+
+<a name="requestLinkFromFaucet"></a>
+
+## requestLinkFromFaucet(connection, linkAddress, to, amount) ⇒ <code>Promise.&lt;string&gt;</code>
+
+Requests LINK tokens from the faucet and returns the transaction hash
+
+**Kind**: global function  
+**Returns**: <code>Promise.&lt;string&gt;</code> - Promise resolving to the
+transaction hash of the fund transfer
+
+| Param       | Type                | Description                                             |
+| ----------- | ------------------- | ------------------------------------------------------- |
+| connection  | <code>object</code> | Network connection from `network.connect()`             |
+| linkAddress | <code>string</code> | The address of the LINK contract on the current network |
+| to          | <code>string</code> | The address to send LINK to                             |
+| amount      | <code>bigint</code> | The amount of LINK to request                           |
+
+<a name="requestNativeFromFaucet"></a>
+
+## requestNativeFromFaucet(connection, to, amount)
+
+Requests native coins from the faucet (sets the balance of `to`)
+
+**Kind**: global function
+
+| Param      | Type                | Description                                 |
+| ---------- | ------------------- | ------------------------------------------- |
+| connection | <code>object</code> | Network connection from `network.connect()` |
+| to         | <code>string</code> | The address to send coins to                |
+| amount     | <code>bigint</code> | The amount of coins to request              |

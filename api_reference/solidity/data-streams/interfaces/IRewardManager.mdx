@@ -2,29 +2,35 @@
 
 ## IRewardManager
 
+**Inherits:** IERC165
+
+## Functions
+
 ### onFeePaid
 
 ```solidity
-function onFeePaid(struct IRewardManager.FeePayment[] payments, address payee) external
+function onFeePaid(FeePayment[] calldata payments, address payee) external;
 ```
 
 ### claimRewards
 
 ```solidity
-function claimRewards(bytes32[] poolIds) external
+function claimRewards(bytes32[] calldata poolIds) external;
 ```
 
 ### setFeeManager
 
 ```solidity
-function setFeeManager(address newFeeManager) external
+function setFeeManager(address newFeeManager) external;
 ```
+
+## Structs
 
 ### FeePayment
 
 ```solidity
 struct FeePayment {
-  bytes32 poolId;
-  uint192 amount;
+    bytes32 poolId;
+    uint192 amount;
 }
 ```

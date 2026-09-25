@@ -2,90 +2,154 @@
 
 ## DataStreamsLocalSimulator
 
+## State Variables
+
 ### s_mockVerifier
 
 ```solidity
-contract MockVerifier s_mockVerifier
+MockVerifier internal s_mockVerifier
 ```
 
 ### s_mockVerifierProxy
 
 ```solidity
-contract MockVerifierProxy s_mockVerifierProxy
+MockVerifierProxy internal s_mockVerifierProxy
 ```
 
 ### s_mockFeeManager
 
 ```solidity
-contract MockFeeManager s_mockFeeManager
+MockFeeManager internal s_mockFeeManager
 ```
 
 ### s_mockRewardManager
 
 ```solidity
-contract MockRewardManager s_mockRewardManager
+MockRewardManager internal s_mockRewardManager
 ```
 
 ### i_wrappedNative
 
-```solidity
-contract WETH9 i_wrappedNative
-```
-
 The wrapped native token instance
+
+```solidity
+WETH9 internal immutable i_wrappedNative
+```
 
 ### i_linkToken
 
+The LINK token instance
+
 ```solidity
-contract LinkToken i_linkToken
+LinkToken internal immutable i_linkToken
 ```
 
-The LINK token instance
+### feeManagerEnabled
+
+Whether fee manager is enabled (can be toggled after deployment)
+
+```solidity
+bool public feeManagerEnabled
+```
+
+## Functions
 
 ### constructor
 
 ```solidity
-constructor() public
+constructor() ;
+```
+
+### enableOffChainBilling
+
+Enables off-chain billing mechanism by removing fee manager
+
+This simulates chains that don't have FeeManager contracts deployed
+
+```solidity
+function enableOffChainBilling() external;
+```
+
+### enableOnChainBilling
+
+Enables on-chain billing mechanism by deploying/setting fee manager
+
+This simulates chains that have FeeManager contracts deployed
+
+```solidity
+function enableOnChainBilling() external;
+```
+
+### getBillingMechanism
+
+Returns the current billing mechanism type
+
+```solidity
+function getBillingMechanism() external view returns (string memory billingType);
+```
+
+**Returns**
+
+| Name          | Type     | Description                                                   |
+| ------------- | -------- | ------------------------------------------------------------- |
+| `billingType` | `string` | "on-chain" if fee manager is enabled, "off-chain" if disabled |
+
+### \_deployFeeManager
+
+Internal function to deploy fee manager and reward manager
+
+```solidity
+function _deployFeeManager() private;
 ```
 
 ### requestLinkFromFaucet
 
-```solidity
-function requestLinkFromFaucet(address to, uint256 amount) external returns (bool success)
-```
-
 Requests LINK tokens from the faucet. The provided amount of tokens are
 transferred to provided destination address.
 
-#### Parameters
+```solidity
+function requestLinkFromFaucet(address to, uint256 amount) external returns (bool success);
+```
 
-| Name   | Type    | Description                                        |
-| ------ | ------- | -------------------------------------------------- |
-| to     | address | - The address to which LINK tokens are to be sent. |
-| amount | uint256 | - The amount of LINK tokens to send.               |
+**Parameters**
 
-#### Return Values
+| Name     | Type      | Description                                        |
+| -------- | --------- | -------------------------------------------------- |
+| `to`     | `address` | - The address to which LINK tokens are to be sent. |
+| `amount` | `uint256` | - The amount of LINK tokens to send.               |
 
-| Name    | Type | Description                                                                   |
-| ------- | ---- | ----------------------------------------------------------------------------- |
-| success | bool | - Returns `true` if the transfer of tokens was successful, otherwise `false`. |
+**Returns**
+
+| Name      | Type   | Description                                                                   |
+| --------- | ------ | ----------------------------------------------------------------------------- |
+| `success` | `bool` | - Returns `true` if the transfer of tokens was successful, otherwise `false`. |
 
 ### configuration
 
+Returns configuration details for pre-deployed contracts and services needed for
+local Data Streams simulations.
+
 ```solidity
-function configuration() public view returns (contract WETH9 wrappedNative_, contract LinkToken linkToken_, contract MockVerifier mockVerifier_, contract MockVerifierProxy mockVerifierProxy_, contract MockFeeManager mockFeeManager_, contract MockRewardManager mockRewardManager_)
+function configuration()
+    public
+    view
+    returns (
+        WETH9 wrappedNative_,
+        LinkToken linkToken_,
+        MockVerifier mockVerifier_,
+        MockVerifierProxy mockVerifierProxy_,
+        MockFeeManager mockFeeManager_,
+        MockRewardManager mockRewardManager_
+    );
 ```
 
-@notice Returns configuration details for pre-deployed contracts and services
-needed for local Data Streams simulations.
+**Returns**
 
-#### Return Values
-
-| Name                | Type                       | Description                         |
-| ------------------- | -------------------------- | ----------------------------------- |
-| wrappedNative\_     | contract WETH9             | - The wrapped native token.         |
-| linkToken\_         | contract LinkToken         | - The LINK token.                   |
-| mockVerifier\_      | contract MockVerifier      | - The mock verifier contract.       |
-| mockVerifierProxy\_ | contract MockVerifierProxy | - The mock verifier proxy contract. |
-| mockFeeManager\_    | contract MockFeeManager    | - The mock fee manager contract.    |
-| mockRewardManager\_ | contract MockRewardManager | - The mock reward manager contract. |
+| Name                 | Type                | Description                                                                       |
+| -------------------- | ------------------- | --------------------------------------------------------------------------------- |
+| `wrappedNative_`     | `WETH9`             | - The wrapped native token.                                                       |
+| `linkToken_`         | `LinkToken`         | - The LINK token.                                                                 |
+| `mockVerifier_`      | `MockVerifier`      | - The mock verifier contract.                                                     |
+| `mockVerifierProxy_` | `MockVerifierProxy` | - The mock verifier proxy contract.                                               |
+| `mockFeeManager_`    | `MockFeeManager`    | - The mock fee manager contract (returns what's currently set on verifier proxy). |
+| `mockRewardManager_` | `MockRewardManager` | - The mock reward manager contract (address(0) if fee manager is disabled).       |

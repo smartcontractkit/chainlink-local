@@ -1,0 +1,36 @@
+# Solidity API
+
+## CCIPForkAdapterPreV1dot6
+
+## Functions
+
+### eventSelector
+
+```solidity
+function eventSelector() internal pure returns (bytes32);
+```
+
+### decodeMessage
+
+```solidity
+function decodeMessage(bytes memory eventData)
+    internal
+    pure
+    returns (CCIPForkAdapterTypes.PreV1dot6Message memory message);
+```
+
+### execute
+
+```solidity
+function execute(address offRamp, CCIPForkAdapterTypes.PreV1dot6Message memory message)
+    internal
+    returns (bool success, bytes memory returnData);
+```
+
+## Events
+
+### CCIPSendRequested
+
+```solidity
+event CCIPSendRequested(CCIPForkAdapterTypes.PreV1dot6Message message);
+```

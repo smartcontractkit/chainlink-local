@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {ProgrammableDefensiveTokenTransfers} from "../../../src/test/ccip/ProgrammableDefensiveTokenTransfers.sol";
 import {
     CCIPLocalSimulator,
@@ -23,8 +23,7 @@ contract ProgrammableDefensiveTokenTransfersTest is Test {
         (
             uint64 chainSelector_,
             IRouterClient sourceRouter,
-            IRouterClient destinationRouter,
-            ,
+            IRouterClient destinationRouter,,
             LinkToken linkToken,
             BurnMintERC677Helper ccipBnM_,
         ) = ccipLocalSimulator.configuration();

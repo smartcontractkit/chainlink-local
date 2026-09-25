@@ -9,7 +9,7 @@ Chainlink Local is a developer-focused testing package that simulates Chainlink 
 - Local mode (`CCIPLocalSimulator`, `DataStreamsLocalSimulator`) lets developers test app logic quickly without waiting for live offchain systems.
 - Fork mode (`CCIPLocalSimulatorFork`, `DataStreamsLocalSimulatorFork`) runs against forked networks so integrations behave closer to real testnet conditions.
 - The intent is parity of user app behavior between local/fork testing and testnet deployment (minus environment-specific addresses/config).
-- It is available for usage in Foundry, Hardhat 3, Hardhat 2 and Remix IDE environments.
+- It is available for usage in Foundry, Hardhat 3 and Remix IDE environments (V3 / 0.3.x). Hardhat 2 JavaScript users stay on 0.2.x.
 - Official documentation is available at: https://docs.chain.link/chainlink-local
 
 ## Goal
@@ -70,7 +70,7 @@ For the full release workflow (beta, stable, branch policy, CHANGELOG requiremen
 ### Current core npm dependency versions
 | Package | Version |
 | --- | --- |
-| `@chainlink/contracts-ccip` | `1.6.2` |
+| `@chainlink/contracts-ccip` | `2.0.0` |
 | `@chainlink/contracts` | `1.5.0` |
 
 ## Dependency Update Playbook

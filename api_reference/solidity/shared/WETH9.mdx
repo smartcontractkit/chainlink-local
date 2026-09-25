@@ -2,104 +2,110 @@
 
 ## WETH9
 
+## State Variables
+
 ### name
 
 ```solidity
-string name
+string public name = "Wrapped Ether"
 ```
 
 ### symbol
 
 ```solidity
-string symbol
+string public symbol = "WETH"
 ```
 
 ### decimals
 
 ```solidity
-uint8 decimals
-```
-
-### Approval
-
-```solidity
-event Approval(address src, address guy, uint256 wad)
-```
-
-### Transfer
-
-```solidity
-event Transfer(address src, address dst, uint256 wad)
-```
-
-### Deposit
-
-```solidity
-event Deposit(address dst, uint256 wad)
-```
-
-### Withdrawal
-
-```solidity
-event Withdrawal(address src, uint256 wad)
+uint8 public decimals = 18
 ```
 
 ### balanceOf
 
 ```solidity
-mapping(address => uint256) balanceOf
+mapping(address => uint256) public balanceOf
 ```
 
 ### allowance
 
 ```solidity
-mapping(address => mapping(address => uint256)) allowance
+mapping(address => mapping(address => uint256)) public allowance
 ```
+
+## Functions
 
 ### receive
 
 ```solidity
-receive() external payable
+receive() external payable;
 ```
 
 ### \_deposit
 
 ```solidity
-function _deposit() internal
+function _deposit() internal;
 ```
 
 ### deposit
 
 ```solidity
-function deposit() external payable
+function deposit() external payable;
 ```
 
 ### withdraw
 
 ```solidity
-function withdraw(uint256 wad) external
+function withdraw(uint256 wad) external;
 ```
 
 ### totalSupply
 
 ```solidity
-function totalSupply() public view returns (uint256)
+function totalSupply() public view returns (uint256);
 ```
 
 ### approve
 
 ```solidity
-function approve(address guy, uint256 wad) public returns (bool)
+function approve(address guy, uint256 wad) public returns (bool);
 ```
 
 ### transfer
 
 ```solidity
-function transfer(address dst, uint256 wad) public returns (bool)
+function transfer(address dst, uint256 wad) public returns (bool);
 ```
 
 ### transferFrom
 
 ```solidity
-function transferFrom(address src, address dst, uint256 wad) public returns (bool)
+function transferFrom(address src, address dst, uint256 wad) public returns (bool);
+```
+
+## Events
+
+### Approval
+
+```solidity
+event Approval(address indexed src, address indexed guy, uint256 wad);
+```
+
+### Transfer
+
+```solidity
+event Transfer(address indexed src, address indexed dst, uint256 wad);
+```
+
+### Deposit
+
+```solidity
+event Deposit(address indexed dst, uint256 wad);
+```
+
+### Withdrawal
+
+```solidity
+event Withdrawal(address indexed src, uint256 wad);
 ```

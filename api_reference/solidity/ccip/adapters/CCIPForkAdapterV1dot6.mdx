@@ -1,0 +1,83 @@
+# Solidity API
+
+## CCIPForkAdapterV1dot6
+
+## State Variables
+
+### DEFAULT_GAS_LIMIT
+
+```solidity
+uint32 internal constant DEFAULT_GAS_LIMIT = 200_000
+```
+
+## Functions
+
+### eventSelector
+
+```solidity
+function eventSelector() internal pure returns (bytes32);
+```
+
+### decodeMessage
+
+```solidity
+function decodeMessage(bytes memory eventData)
+    internal
+    pure
+    returns (CCIPForkAdapterTypes.V1dot6EVM2AnyRampMessage memory message);
+```
+
+### execute
+
+```solidity
+function execute(CCIPForkAdapterTypes.V1dot6EVM2AnyRampMessage memory message, address offRamp)
+    internal
+    returns (bool success, bytes memory returnData);
+```
+
+### \_toAny2EVMMessage
+
+```solidity
+function _toAny2EVMMessage(CCIPForkAdapterTypes.V1dot6EVM2AnyRampMessage memory message, uint256 gasLimit)
+    internal
+    pure
+    returns (CCIPForkAdapterTypes.V1dot6Any2EVMRampMessage memory any2EVMMessage);
+```
+
+### \_decodeGasLimit
+
+```solidity
+function _decodeGasLimit(bytes memory extraArgs) internal pure returns (uint256 gasLimit);
+```
+
+### \_decodeEVMAddress
+
+```solidity
+function _decodeEVMAddress(bytes memory encodedAddress) internal pure returns (address decodedAddress);
+```
+
+## Events
+
+### CCIPMessageSent
+
+```solidity
+event CCIPMessageSent(
+    uint64 indexed destChainSelector,
+    uint64 indexed sequenceNumber,
+    CCIPForkAdapterTypes.V1dot6EVM2AnyRampMessage message
+);
+```
+
+## Errors
+
+### InvalidExtraArgsTag
+
+```solidity
+error InvalidExtraArgsTag(bytes4 extraArgsTag);
+```
+
+### InvalidAddressEncoding
+
+```solidity
+error InvalidAddressEncoding(bytes encodedAddress);
+```

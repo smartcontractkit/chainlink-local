@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {MockV3Aggregator} from "@chainlink/local/src/data-feeds/MockV3Aggregator.sol";
 import {MockOffchainAggregator} from "@chainlink/local/src/data-feeds/MockOffchainAggregator.sol";
 import {AggregatorV2V3Interface} from "@chainlink/local/src/data-feeds/interfaces/AggregatorV2V3Interface.sol";
@@ -25,17 +25,17 @@ contract BasicDataConsumerV3Test is Test {
         mockOffchainAggregator = MockOffchainAggregator(mockAggregator.aggregator());
     }
 
-    function test_shouldReturnDecimals() public {
+    function test_shouldReturnDecimals() public view {
         uint8 result = mockAggregator.decimals();
         assertEq(result, decimals);
     }
 
-    function test_shouldReturnAnswerByRoundId() public {
+    function test_shouldReturnAnswerByRoundId() public view {
         int256 result = mockAggregator.getAnswer(initialRoundId);
         assertEq(result, initialAnswer);
     }
 
-    function test_shouldReturnRoundDataByRoundId() public {
+    function test_shouldReturnRoundDataByRoundId() public view {
         (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound) =
             mockAggregator.getRoundData(initialRoundId);
 
@@ -46,7 +46,7 @@ contract BasicDataConsumerV3Test is Test {
         assertEq(answeredInRound, initialRoundId);
     }
 
-    function test_shouldReturnLatestRoundData() public {
+    function test_shouldReturnLatestRoundData() public view {
         (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound) =
             mockAggregator.latestRoundData();
 
@@ -57,22 +57,22 @@ contract BasicDataConsumerV3Test is Test {
         assertEq(answeredInRound, initialRoundId);
     }
 
-    function test_shouldReturnTimestampByRoundId() public {
+    function test_shouldReturnTimestampByRoundId() public view {
         uint256 result = mockAggregator.getTimestamp(initialRoundId);
         assertEq(result, deploymentTimestamp);
     }
 
-    function test_shouldReturnLatestAnswer() public {
+    function test_shouldReturnLatestAnswer() public view {
         int256 result = mockAggregator.latestAnswer();
         assertEq(result, initialAnswer);
     }
 
-    function test_shouldReturnLatestTimestamp() public {
+    function test_shouldReturnLatestTimestamp() public view {
         uint256 result = mockAggregator.latestTimestamp();
         assertEq(result, deploymentTimestamp);
     }
 
-    function test_shouldReturnLatestRound() public {
+    function test_shouldReturnLatestRound() public view {
         uint256 result = mockAggregator.latestRound();
         assertEq(result, initialRoundId);
     }
@@ -146,7 +146,7 @@ contract BasicDataConsumerV3Test is Test {
         assertEq(result, newAnswer);
     }
 
-    function test_shouldReturnMinAndMaxAnswers() public {
+    function test_shouldReturnMinAndMaxAnswers() public view {
         int192 minAnswer = 1;
         int192 maxAnswer = 95780971304118053647396689196894323976171195136475135; // type(uint176).max
 

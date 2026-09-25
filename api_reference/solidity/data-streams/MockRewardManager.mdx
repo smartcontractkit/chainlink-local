@@ -2,69 +2,78 @@
 
 ## MockRewardManager
 
-### Unauthorized
+**Inherits:**
+[IRewardManager](/src/data-streams/interfaces/IRewardManager.sol/interface.IRewardManager.md)
 
-```solidity
-error Unauthorized()
-```
+## State Variables
 
 ### i_linkAddress
 
 ```solidity
-address i_linkAddress
+address public immutable i_linkAddress
 ```
 
 ### s_feeManagerAddress
 
 ```solidity
-address s_feeManagerAddress
+address public s_feeManagerAddress
 ```
 
-### FeePaid
-
-```solidity
-event FeePaid(struct IRewardManager.FeePayment[] payments, address payer)
-```
+## Functions
 
 ### onlyFeeManager
 
 ```solidity
-modifier onlyFeeManager()
+modifier onlyFeeManager() ;
 ```
 
 ### constructor
 
 ```solidity
-constructor(address linkAddress) public
+constructor(address linkAddress) ;
 ```
 
 ### onFeePaid
 
 ```solidity
-function onFeePaid(struct IRewardManager.FeePayment[] payments, address payer) external
+function onFeePaid(FeePayment[] calldata payments, address payer) external override onlyFeeManager;
 ```
 
 ### claimRewards
 
 ```solidity
-function claimRewards(bytes32[]) external pure
+function claimRewards(
+    bytes32[] memory /*poolIds*/
+)
+    external
+    pure
+    override;
 ```
 
 ### setFeeManager
 
 ```solidity
-function setFeeManager(address newFeeManager) external
+function setFeeManager(address newFeeManager) external override;
 ```
 
 ### supportsInterface
 
 ```solidity
-function supportsInterface(bytes4 interfaceId) external pure returns (bool)
+function supportsInterface(bytes4 interfaceId) external pure override returns (bool);
 ```
 
-\_Returns true if this contract implements the interface defined by
-`interfaceId`. See the corresponding
-https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[EIP
-section] to learn more about how these ids are created.
+## Events
 
-This function call must use less than 30 000 gas.\_
+### FeePaid
+
+```solidity
+event FeePaid(IRewardManager.FeePayment[] payments, address payer);
+```
+
+## Errors
+
+### Unauthorized
+
+```solidity
+error Unauthorized();
+```

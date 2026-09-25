@@ -1,0 +1,41 @@
+# Solidity API
+
+## IRouterFork
+
+**Title:** IRouterFork Interface
+
+## Functions
+
+### getOnRamp
+
+Return the configured onramp for specific a destination chain.
+
+```solidity
+function getOnRamp(uint64 destChainSelector) external view returns (address);
+```
+
+**Parameters**
+
+| Name                | Type     | Description                                     |
+| ------------------- | -------- | ----------------------------------------------- |
+| `destChainSelector` | `uint64` | The destination chain Id to get the onRamp for. |
+
+**Returns**
+
+| Name     | Type      | Description                |
+| -------- | --------- | -------------------------- |
+| `<none>` | `address` | The address of the onRamp. |
+
+### getOffRamps
+
+Gets the list of offRamps
+
+```solidity
+function getOffRamps() external view returns (CCIPForkAdapterTypes.RouterOffRamp[] memory);
+```
+
+**Returns**
+
+| Name     | Type                                   | Description                         |
+| -------- | -------------------------------------- | ----------------------------------- |
+| `<none>` | `CCIPForkAdapterTypes.RouterOffRamp[]` | offRamps - Array of OffRamp structs |
