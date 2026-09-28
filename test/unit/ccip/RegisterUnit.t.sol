@@ -27,22 +27,19 @@ contract RegisterUnitTest is Test {
         details.routerAddress = address(0xBEEF);
     }
 
-    function test_builtInDetails() public {
-        Register register = _etchedRegister();
-        Register.NetworkDetails memory sepolia = register.getNetworkDetails(SEPOLIA);
-        assertEq(sepolia.chainSelector, 16015286601757825753);
-        assertEq(sepolia.routerAddress, 0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59);
-        assertEq(sepolia.linkAddress, 0x779877A7B0D9E8603169DdbD7836e478b4624789);
-    }
-
-    /// @dev Shards are split by chain id; decode a chain in the first shard (Ethereum), a gap-heavy entry
-    ///      (Avalanche), and one that sits in a later shard (Base).
+    /// @dev Decodes chains across shards: Ethereum and Sepolia (first shard), Avalanche (gap-heavy entry),
+    ///      and Base (later shard).
     function test_builtInDetails_decodedFromShards() public {
         Register register = _etchedRegister();
 
         Register.NetworkDetails memory ethereum = register.getNetworkDetails(1);
         assertEq(ethereum.chainSelector, 5009297550715157269);
         assertEq(ethereum.wrappedNativeAddress, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+
+        Register.NetworkDetails memory sepolia = register.getNetworkDetails(SEPOLIA);
+        assertEq(sepolia.chainSelector, 16015286601757825753);
+        assertEq(sepolia.routerAddress, 0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59);
+        assertEq(sepolia.linkAddress, 0x779877A7B0D9E8603169DdbD7836e478b4624789);
 
         Register.NetworkDetails memory avalanche = register.getNetworkDetails(43114);
         assertEq(avalanche.chainSelector, 6433500567565415381);

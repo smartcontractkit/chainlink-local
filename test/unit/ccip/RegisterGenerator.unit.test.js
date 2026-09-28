@@ -52,6 +52,8 @@ describe("updateRegisterContract: formatRegisterData", () => {
         const src = formatRegisterData(networks(43));
 
         assert.equal((src.match(/contract RegisterData\d+/g) || []).length, 2);
+        assert.match(src, /contract RegisterData0 is IRegisterDataShard/);
+        assert.match(src, /external pure override/);
         assert.match(src, /library RegisterDataShards/);
         assert.equal((src.match(/if \(chainId == /g) || []).length, 43);
         assert.equal((src.match(/return \(unknown, false\);/g) || []).length, 2);
