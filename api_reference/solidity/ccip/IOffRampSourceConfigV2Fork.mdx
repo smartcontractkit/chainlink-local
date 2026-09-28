@@ -1,0 +1,56 @@
+# Solidity API
+
+## IOffRampSourceConfigV2Fork
+
+**Title:** IOffRampSourceConfigV2Fork
+
+Minimal view/update surface for the CCIP 2.0 OffRamp per-source-chain config,
+including the CCV sets used to verify messages. Mirrors
+`OffRamp.SourceChainConfig`.
+
+## Functions
+
+### getSourceChainConfig
+
+```solidity
+function getSourceChainConfig(uint64 sourceChainSelector) external view returns (SourceChainConfig memory);
+```
+
+### applySourceChainConfigUpdates
+
+```solidity
+function applySourceChainConfigUpdates(SourceChainConfigArgs[] calldata updates) external;
+```
+
+### owner
+
+```solidity
+function owner() external view returns (address);
+```
+
+## Structs
+
+### SourceChainConfig
+
+```solidity
+struct SourceChainConfig {
+    address router;
+    bool isEnabled;
+    bytes[] onRamps;
+    address[] defaultCCVs;
+    address[] laneMandatedCCVs;
+}
+```
+
+### SourceChainConfigArgs
+
+```solidity
+struct SourceChainConfigArgs {
+    address router;
+    uint64 sourceChainSelector;
+    bool isEnabled;
+    bytes[] onRamps;
+    address[] defaultCCVs;
+    address[] laneMandatedCCVs;
+}
+```

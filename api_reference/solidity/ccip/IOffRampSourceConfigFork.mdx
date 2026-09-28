@@ -1,0 +1,31 @@
+# Solidity API
+
+## IOffRampSourceConfigFork
+
+**Title:** IOffRampSourceConfigFork
+
+Minimal view surface for v1.6+ OffRamp per-source-chain config (OffRamp 1.6.x).
+
+`router` is ABI-compatible with `IRouter` in CCIP OffRamp `SourceChainConfig`.
+
+## Functions
+
+### getSourceChainConfig
+
+```solidity
+function getSourceChainConfig(uint64 sourceChainSelector) external view returns (SourceChainConfig memory);
+```
+
+## Structs
+
+### SourceChainConfig
+
+```solidity
+struct SourceChainConfig {
+    address router;
+    bool isEnabled;
+    uint64 minSeqNr;
+    bool isRMNVerificationDisabled;
+    bytes onRamp;
+}
+```

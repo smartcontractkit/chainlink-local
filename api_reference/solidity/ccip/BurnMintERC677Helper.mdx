@@ -2,43 +2,49 @@
 
 ## BurnMintERC677Helper
 
+**Inherits:** BurnMintERC677
+
+**Title:** BurnMintERC677Helper
+
 This contract extends the functionality of the BurnMintERC677 token contract to
 include a `drip` function that mints one full token to a specified address.
 
-_Inherits from the BurnMintERC677 contract and sets the token name, symbol,
-decimals, and initial supply in the constructor._
+Inherits from the BurnMintERC677 contract and sets the token name, symbol,
+decimals, and initial supply in the constructor.
+
+## Functions
 
 ### constructor
-
-```solidity
-constructor(string name, string symbol) public
-```
 
 Constructor to initialize the BurnMintERC677Helper contract with a name and
 symbol.
 
-_Calls the parent constructor of BurnMintERC677 with fixed decimals (18) and
-initial supply (0)._
+Calls the parent constructor of BurnMintERC677 with fixed decimals (18) and
+initial supply (0).
 
-#### Parameters
+```solidity
+constructor(string memory name, string memory symbol) BurnMintERC677(name, symbol, 18, 0);
+```
 
-| Name   | Type   | Description                |
-| ------ | ------ | -------------------------- |
-| name   | string | - The name of the token.   |
-| symbol | string | - The symbol of the token. |
+**Parameters**
+
+| Name     | Type     | Description                |
+| -------- | -------- | -------------------------- |
+| `name`   | `string` | - The name of the token.   |
+| `symbol` | `string` | - The symbol of the token. |
 
 ### drip
 
-```solidity
-function drip(address to) external
-```
-
 Mints one full token (1e18) to the specified address.
 
-_Calls the internal `_mint` function from the BurnMintERC677 contract._
+Calls the internal `_mint` function from the BurnMintERC677 contract.
 
-#### Parameters
+```solidity
+function drip(address to) external;
+```
 
-| Name | Type    | Description                                |
-| ---- | ------- | ------------------------------------------ |
-| to   | address | - The address to receive the minted token. |
+**Parameters**
+
+| Name | Type      | Description                                |
+| ---- | --------- | ------------------------------------------ |
+| `to` | `address` | - The address to receive the minted token. |

@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import {IERC165} from "../../vendor/openzeppelin-solidity/v4.8.3/contracts/interfaces/IERC165.sol";
+import {IERC165} from "@openzeppelin/contracts@4.8.3/interfaces/IERC165.sol";
 import {OwnerIsCreator} from "@chainlink/contracts/src/v0.8/shared/access/OwnerIsCreator.sol";
-import {IERC20} from "../../vendor/openzeppelin-solidity/v4.8.3/contracts/interfaces/IERC20.sol";
+import {IERC20} from "@openzeppelin/contracts@4.8.3/interfaces/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts@4.8.3/token/ERC20/utils/SafeERC20.sol";
 
 interface IRewardManager is IERC165 {
     /**
@@ -24,8 +25,7 @@ interface IRewardManager is IERC165 {
      * @param poolId poolId to set RewardRecipients and weights for
      * @param rewardRecipientAndWeights array of each RewardRecipient and associated weight
      */
-    function setRewardRecipients(bytes32 poolId, Common.AddressAndWeight[] calldata rewardRecipientAndWeights)
-        external;
+    function setRewardRecipients(bytes32 poolId, Common.AddressAndWeight[] calldata rewardRecipientAndWeights) external;
 
     /**
      * @notice Updates a subset the reward recipients for a specific poolId. The collective weight of the recipients should add up to the recipients existing weights. Any recipients with a weight of 0 will be removed.
@@ -198,6 +198,8 @@ interface IERC7412 {
  * DO NOT USE THIS CODE IN PRODUCTION.
  */
 contract DataStreamsERC7412Compatible is IERC7412, OwnerIsCreator {
+    using SafeERC20 for IERC20;
+
     struct BasicReport {
         bytes32 feedId; // The feed ID the report has data for
         uint32 validFromTimestamp; // Earliest timestamp for which price is applicable
@@ -287,9 +289,7 @@ contract DataStreamsERC7412Compatible is IERC7412, OwnerIsCreator {
         BasicReport memory verifiedReport = abi.decode(verifiedReportData, (BasicReport));
 
         s_latestPrice[verifiedReport.feedId] = LatestPriceData({
-            price: verifiedReport.price,
-            expiresAt: verifiedReport.expiresAt,
-            cacheTimestamp: toUint32(block.timestamp)
+            price: verifiedReport.price, expiresAt: verifiedReport.expiresAt, cacheTimestamp: toUint32(block.timestamp)
         });
 
         // Log price from report
@@ -323,6 +323,6 @@ contract DataStreamsERC7412Compatible is IERC7412, OwnerIsCreator {
 
     function withdrawToken(address beneficiary, address token) public onlyOwner {
         uint256 amount = IERC20(token).balanceOf(address(this));
-        IERC20(token).transfer(beneficiary, amount);
+        IERC20(token).safeTransfer(beneficiary, amount);
     }
 }

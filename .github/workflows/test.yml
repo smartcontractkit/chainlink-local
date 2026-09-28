@@ -1,0 +1,144 @@
+name: Test
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - develop
+      - 'devrel-205/**'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  FOUNDRY_VERSION: v1.8.3
+  NODE_VERSION: '22'
+
+jobs:
+  foundry:
+    name: Foundry (build, fmt, non-fork tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: ${{ env.FOUNDRY_VERSION }}
+
+      - name: forge build
+        run: forge build
+
+      - name: forge fmt --check
+        run: forge fmt --check
+
+      - name: forge test (non-fork)
+        run: forge test --no-match-path 'test/e2e/**'
+
+  hardhat:
+    name: Hardhat (Solidity + JS unit tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: ${{ env.FOUNDRY_VERSION }}
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: npm ci
+        run: npm ci
+
+      - name: Hardhat Solidity tests (unit + smoke only)
+        run: npx hardhat test solidity $(ls test/unit/*/*.t.sol test/smoke/*/*.t.sol)
+
+      - name: JS unit tests
+        run: npm run js-unit-test
+
+      - name: Data Streams JS smoke tests
+        run: node --test test/smoke/data-streams/*.test.js
+
+  consumer-smoke:
+    name: Consumer smoke (npm tarball)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: ${{ env.FOUNDRY_VERSION }}
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: npm ci
+        run: npm ci
+
+      - name: Run consumer smoke script
+        run: bash .github/scripts/consumer-smoke.sh
+
+  fork:
+    name: Fork tests (manual, needs RPC secrets)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      ETHEREUM_SEPOLIA_RPC_URL: ${{ secrets.ETHEREUM_SEPOLIA_RPC_URL }}
+      ARBITRUM_SEPOLIA_RPC_URL: ${{ secrets.ARBITRUM_SEPOLIA_RPC_URL }}
+      AVALANCHE_FUJI_RPC_URL: ${{ secrets.AVALANCHE_FUJI_RPC_URL }}
+      BASE_SEPOLIA_RPC_URL: ${{ secrets.BASE_SEPOLIA_RPC_URL }}
+      ETHEREUM_MAINNET_RPC_URL: ${{ secrets.ETHEREUM_MAINNET_RPC_URL }}
+      ARBITRUM_MAINNET_RPC_URL: ${{ secrets.ARBITRUM_MAINNET_RPC_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: ${{ env.FOUNDRY_VERSION }}
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: npm ci
+        run: npm ci
+
+      - name: forge test (fork suites, serial)
+        run: forge test -j 1 --match-path 'test/e2e/**'
+
+      - name: Hardhat JS fork tests
+        run: npm run hardhat-test-js

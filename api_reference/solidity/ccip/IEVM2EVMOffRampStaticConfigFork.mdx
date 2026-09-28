@@ -1,0 +1,31 @@
+# Solidity API
+
+## IEVM2EVMOffRampStaticConfigFork
+
+**Title:** IEVM2EVMOffRampStaticConfigFork
+
+Minimal view surface for pre-v1.6 OffRamp static config (EVM2EVMOffRamp 1.5.x).
+
+## Functions
+
+### getStaticConfig
+
+```solidity
+function getStaticConfig() external view returns (StaticConfig memory);
+```
+
+## Structs
+
+### StaticConfig
+
+```solidity
+struct StaticConfig {
+    address commitStore;
+    uint64 chainSelector;
+    uint64 sourceChainSelector;
+    address onRamp;
+    address prevOffRamp;
+    address rmnProxy;
+    address tokenAdminRegistry;
+}
+```

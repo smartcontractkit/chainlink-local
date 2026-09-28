@@ -2,32 +2,34 @@
 
 ## IVerifier
 
+## Functions
+
 ### verify
 
 ```solidity
-function verify(bytes signedReport, address sender) external returns (bytes verifierResponse)
+function verify(bytes calldata signedReport, address sender) external returns (bytes memory verifierResponse);
 ```
 
 ### activateConfig
 
 ```solidity
-function activateConfig(bytes32 feedId, bytes32 configDigest) external
+function activateConfig(bytes32 feedId, bytes32 configDigest) external;
 ```
 
 ### deactivateConfig
 
 ```solidity
-function deactivateConfig(bytes32 feedId, bytes32 configDigest) external
+function deactivateConfig(bytes32 feedId, bytes32 configDigest) external;
 ```
 
 ### activateFeed
 
 ```solidity
-function activateFeed(bytes32 feedId) external
+function activateFeed(bytes32 feedId) external;
 ```
 
 ### deactivateFeed
 
 ```solidity
-function deactivateFeed(bytes32 feedId) external
+function deactivateFeed(bytes32 feedId) external;
 ```
