@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- `Register` built-in network details are split into generated data shards (`RegisterData.sol`) so every generated
+  contract stays under the EIP-170 runtime limit. Lookup behaviour is unchanged; the simulator places the shards
+  with `vm.etch` alongside `Register` (a bare `new Register()` now serves `setNetworkDetails` overrides only).
+
 ## [0.3.0-beta] - 28 September 2026
 
 Chainlink Local V3. This is a **breaking** release: `CCIPLocalSimulatorFork` and the Hardhat 3
