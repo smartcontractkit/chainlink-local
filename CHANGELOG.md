@@ -6,9 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.0-beta] - 28 September 2026
 
-Target release: `0.3.0-beta` (V3). This is a **breaking** release: `CCIPLocalSimulatorFork` and the Hardhat 3
+Chainlink Local V3. This is a **breaking** release: `CCIPLocalSimulatorFork` and the Hardhat 3
 JavaScript fork helper now support CCIP 2.0 (CCV-based) lanes, which is the protocol version live testnet and mainnet
 lanes run today, alongside the pre-1.6 and 1.6 eras.
 
