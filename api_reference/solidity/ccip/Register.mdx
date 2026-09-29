@@ -6,11 +6,12 @@
 
 This contract allows storing and retrieving network details for various chains.
 
-Built-in network details are returned by a generated pure function (see
-`helper_doc/updateRegisterContract.cjs`) instead of being written to storage in
-the constructor: storing ~150 chains cost ~24M gas, which made
-`CCIPLocalSimulatorFork` too expensive to deploy on 30M-gas-limit forks.
-`setNetworkDetails` overrides are stored.
+Built-in network details live in the generated data shards of `RegisterData.sol`
+(see `helper_doc/updateRegisterContract.cjs`), which the simulator places with
+`vm.etch`, instead of being written to storage in the constructor: storing ~150
+chains cost ~24M gas, which made `CCIPLocalSimulatorFork` too expensive to
+deploy on 30M-gas-limit forks. Sharding keeps every generated contract runtime
+under the EIP-170 limit. `setNetworkDetails` overrides are stored.
 
 ## State Variables
 
@@ -28,6 +29,14 @@ Whether `setNetworkDetails` was called for a chain ID.
 
 ```solidity
 mapping(uint256 chainId => bool isOverridden) internal s_isOverridden
+```
+
+### \_SHARD_COUNT
+
+Number of generated data shards in RegisterData.sol.
+
+```solidity
+uint256 internal constant _SHARD_COUNT = 4
 ```
 
 ## Functions
@@ -67,13 +76,26 @@ function setNetworkDetails(uint256 chainId, NetworkDetails memory networkDetails
 | `chainId`        | `uint256`        | - The ID of the chain to set the details for.            |
 | `networkDetails` | `NetworkDetails` | - The network details to set for the specified chain ID. |
 
+### shardAddress
+
+Deterministic address of built-in data shard `index`; the simulator places each
+shard there.
+
+```solidity
+function shardAddress(uint256 index) public view returns (address);
+```
+
 ### \_defaultNetworkDetails
 
 Built-in network details for `chainId`, or an all-zero struct for an unknown
 chain.
 
+Decodes the generated data shards; shard addresses without code are skipped, so
+a bare `new Register()` (no shards placed) only serves `setNetworkDetails`
+overrides.
+
 ```solidity
-function _defaultNetworkDetails(uint256 chainId) internal pure returns (NetworkDetails memory);
+function _defaultNetworkDetails(uint256 chainId) internal view returns (NetworkDetails memory);
 ```
 
 ## Structs

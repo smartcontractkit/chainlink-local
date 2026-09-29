@@ -1,0 +1,20 @@
+# Solidity API
+
+## RegisterData2
+
+**Inherits:**
+[IRegisterDataShard](/src/ccip/Register.sol/interface.IRegisterDataShard.md)
+
+Built-in network details for 40 chains, decoded by
+Register.\_defaultNetworkDetails.
+
+## Functions
+
+### get
+
+Built-in network details for `chainId`, or `(all-zero struct, false)` when not
+in this shard.
+
+```solidity
+function get(uint256 chainId) external pure override returns (Register.NetworkDetails memory details, bool found);
+```
