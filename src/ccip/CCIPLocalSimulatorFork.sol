@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import {Test, Vm, console2} from "forge-std/Test.sol";
 import {Register} from "./Register.sol";
+import {RegisterDataShards} from "./RegisterData.sol";
 import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
 import {IERC20} from "@openzeppelin/contracts@4.8.3/token/ERC20/IERC20.sol";
 import {CCIPForkAdapterTypes} from "./adapters/CCIPForkAdapterTypes.sol";
@@ -231,6 +232,7 @@ contract CCIPLocalSimulatorFork is Test {
             address(uint160(uint256(keccak256(abi.encode("chainlink-local.CCIPLocalSimulatorFork.Register", this)))));
         vm.etch(registerAddress, type(Register).runtimeCode);
         i_register = Register(registerAddress);
+        RegisterDataShards.etchAll(vm, registerAddress);
         i_messageV1Decoder = new MessageV1CodecDecoder();
 
         vm.makePersistent(address(i_register));
