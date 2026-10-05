@@ -6,6 +6,55 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 5 October 2026
+
+Chainlink Local V3, the stable release of `0.3.0-beta` and `0.3.0-beta.0` (no changes since `0.3.0-beta.0`). This is a
+**breaking** release: `CCIPLocalSimulatorFork` and the Hardhat 3 JavaScript fork helper now support CCIP 2.0
+(CCV-based) lanes alongside the pre-1.6 and 1.6 eras. Hardhat 2 users stay on `0.2.x`. See
+[0.3.0-beta](#030-beta---28-september-2026) for the full list of changes, known limitations and the
+**migration guide (0.2.x -> 0.3.0)**.
+
+#### Support matrix
+
+| Environment | 0.3.x (V3) | 0.2.x |
+| --- | --- | --- |
+| Foundry (Solidity tests, local + fork) | Supported | Supported |
+| Hardhat 3 (Solidity tests, local + fork) | Supported | - |
+| Hardhat 3 (JavaScript/TypeScript, `scripts/*.js` helpers) | Supported (ESM, `@nomicfoundation/hardhat-ethers`) | - |
+| Hardhat 2 | Not supported: the contracts do not compile (`HH411`) | Supported (pre-1.6 fork routing only) |
+| Remix IDE (local mode) | Supported | Supported |
+
+### Dependencies
+
+| Package                   | Version |
+| ------------------------- | ------- |
+| @chainlink/contracts-ccip | 2.0.0   |
+| @chainlink/contracts      | 1.5.0   |
+
+### Breaking changes
+
+- `@chainlink/contracts-ccip` 1.6.2 -> 2.0.0: finality values moved from `uint16` block confirmations to a `bytes4`
+  `FinalityCodec` config (`GenericExtraArgsV3`, `MessageV1`, receiver and token pool APIs).
+- Default `V2VerificationMode` is now `OFFRAMP_DERIVED` (was `HYBRID`).
+- Fork routing is strict by default: unroutable or failing messages revert (`setStrictRouting(false)` to opt out).
+- Fast Transfer delivery, and local mode, follow the CCIP 2.0 OnRamp/OffRamp rules.
+- Fork mode needs `evm_version = "cancun"` or later and Foundry >= 1.5.1.
+- `src/vendor/**` and the shipped `abi/*.json` files were removed.
+- Hardhat JavaScript helpers target Hardhat 3 (ES modules); Hardhat 2 is no longer supported.
+
+### Added
+
+- CCIP 2.0 routing in `CCIPLocalSimulatorFork` and the Hardhat 3 JavaScript helper, `getMessageStatus`,
+  `setStrictRouting`, CCIP 2.0 router lookups (`getCCIPV2RouterAddress` / `setCCIPV2RouterAddress`),
+  `CCIPLocalRouter`, TypeScript declarations for the JavaScript helper, and a CI workflow.
+
+### Fixed
+
+- `Register` network details are split into data shards (`RegisterData.sol`) so every generated contract stays under
+  the EIP-170 runtime limit (from `0.3.0-beta.0`).
+- CCV selection, 1.6 destination-fork routing, `CCIPLocalSimulatorFork` deployment gas (~36M -> ~14.4M) and npm
+  package compilation for Hardhat 3 and npm-based Foundry consumers (from `0.3.0-beta`).
+
 ## [0.3.0-beta.0] - 29 September 2026
 
 ### Dependencies
@@ -1022,3 +1071,4 @@ to the tag.
 [0.2.9]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.2.9
 [0.3.0-beta]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.3.0-beta
 [0.3.0-beta.0]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.3.0-beta.0
+[0.3.0]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.3.0
