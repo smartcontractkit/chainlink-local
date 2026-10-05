@@ -16,13 +16,13 @@ To view more detailed documentation and more examples, visit the [Chainlink Loca
 
 ### Installation
 
-`0.3.x` (V3) is published under the `beta` npm tag until the stable release; plain `npm install @chainlink/local` and the
-default `main` branch still give `0.2.x`. Pin the version:
+`0.3.x` (V3) supports Foundry, Hardhat 3 and Remix IDE. Hardhat 2 users should stay on `0.2.x`
+(`npm install @chainlink/local@0.2.9`).
 
 #### Foundry (git)
 
 ```
-forge install smartcontractkit/chainlink-local@v0.3.0-beta
+forge install smartcontractkit/chainlink-local@v0.3.0
 ```
 
 and then set remappings to: `@chainlink/local/=lib/chainlink-local/` in either `remappings.txt` or `foundry.toml` file
@@ -30,13 +30,13 @@ and then set remappings to: `@chainlink/local/=lib/chainlink-local/` in either `
 #### Foundry (soldeer)
 
 ```
-forge soldeer install chainlink-local~v0.3.0-beta https://github.com/smartcontractkit/chainlink-local.git
+forge soldeer install chainlink-local~v0.3.0 https://github.com/smartcontractkit/chainlink-local.git
 ```
 
 #### Hardhat 3 (npm)
 
 ```
-npm install @chainlink/local@0.3.0-beta
+npm install @chainlink/local@0.3.0
 ```
 
 Hardhat 3 (Node.js 22) Solidity tests need no remappings: the package ships its own `remappings.txt`, and its
@@ -97,7 +97,7 @@ forge-std/=node_modules/forge-std/src/
 #### Remix IDE (local mode)
 
 ```solidity
-import "https://github.com/smartcontractkit/chainlink-local/blob/v0.3.0-beta/src/ccip/CCIPLocalSimulator.sol";
+import "https://github.com/smartcontractkit/chainlink-local/blob/v0.3.0/src/ccip/CCIPLocalSimulator.sol";
 ```
 
 Remix resolves the `@chainlink/contracts` and `@chainlink/contracts-ccip` imports to their latest npm versions.
@@ -122,6 +122,8 @@ import {
     BurnMintERC677Helper
 } from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
 import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
+import {ExtraArgsCodec} from "@chainlink/contracts-ccip/contracts/libraries/ExtraArgsCodec.sol";
+import {FinalityCodec} from "@chainlink/contracts-ccip/contracts/libraries/FinalityCodec.sol";
 
 contract ReadmeUsageExampleTest is Test {
     CCIPLocalSimulator public ccipLocalSimulator;
@@ -148,11 +150,18 @@ contract ReadmeUsageExampleTest is Test {
 
         Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
         tokenAmounts[0] = Client.EVMTokenAmount({token: address(ccipBnM), amount: 1 ether});
+
+        // Fast Transfers example with 5 block confirmations
+        uint32 gasLimit = 0;
+        uint16 blockConfirmations = 5;
+        bytes4 finalityConfig = FinalityCodec._encodeBlockDepth(blockConfirmations);
+        bytes memory extraArgsBytes = ExtraArgsCodec._getBasicEncodedExtraArgsV3(gasLimit, finalityConfig);
+
         Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
             receiver: abi.encode(bob),
             data: "",
             tokenAmounts: tokenAmounts,
-            extraArgs: Client._argsToBytes(Client.GenericExtraArgsV2({gasLimit: 0, allowOutOfOrderExecution: true})),
+            extraArgs: extraArgsBytes,
             feeToken: address(linkToken)
         });
 
