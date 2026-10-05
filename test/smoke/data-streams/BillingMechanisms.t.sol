@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {
     DataStreamsLocalSimulator,
     MockVerifierProxy,
-    MockFeeManager,
-    LinkToken
+    MockFeeManager
 } from "@chainlink/local/src/data-streams/DataStreamsLocalSimulator.sol";
 import {MockReportGenerator} from "@chainlink/local/src/data-streams/MockReportGenerator.sol";
 
@@ -30,7 +29,11 @@ contract BillingMechanismsTest is Test {
 
         // Verify fee manager is deployed by default
         assertFalse(address(mockFeeManager_) == address(0), "Fee manager should be deployed by default");
-        assertEq(address(mockVerifierProxy_.s_feeManager()), address(mockFeeManager_), "Fee manager should be set on verifier proxy");
+        assertEq(
+            address(mockVerifierProxy_.s_feeManager()),
+            address(mockFeeManager_),
+            "Fee manager should be set on verifier proxy"
+        );
         assertTrue(dataStreamsLocalSimulator.feeManagerEnabled(), "Fee manager should be enabled by default");
 
         // Deploy consumer contract
@@ -51,16 +54,18 @@ contract BillingMechanismsTest is Test {
     function test_offChainBillingMechanism() public {
         // Deploy simulator and toggle to off-chain billing
         DataStreamsLocalSimulator dataStreamsLocalSimulator = new DataStreamsLocalSimulator();
-        
+
         // Switch to off-chain billing mechanism
         dataStreamsLocalSimulator.enableOffChainBilling();
-        
+
         (,,, MockVerifierProxy mockVerifierProxy_, MockFeeManager mockFeeManager_,) =
             dataStreamsLocalSimulator.configuration();
 
         // Verify fee manager is NOT set on verifier proxy
         assertTrue(address(mockFeeManager_) == address(0), "Fee manager should not be set on verifier proxy");
-        assertEq(address(mockVerifierProxy_.s_feeManager()), address(0), "Fee manager should not be set on verifier proxy");
+        assertEq(
+            address(mockVerifierProxy_.s_feeManager()), address(0), "Fee manager should not be set on verifier proxy"
+        );
         assertFalse(dataStreamsLocalSimulator.feeManagerEnabled(), "Fee manager should be disabled");
 
         // Deploy a simplified consumer that handles off-chain billing
@@ -79,26 +84,29 @@ contract BillingMechanismsTest is Test {
         // Test that default constructor enables fee manager (maintaining existing behavior)
         DataStreamsLocalSimulator dataStreamsLocalSimulator = new DataStreamsLocalSimulator();
         (,,,, MockFeeManager mockFeeManager_,) = dataStreamsLocalSimulator.configuration();
-        
-        assertFalse(address(mockFeeManager_) == address(0), "Default constructor should enable fee manager for backward compatibility");
+
+        assertFalse(
+            address(mockFeeManager_) == address(0),
+            "Default constructor should enable fee manager for backward compatibility"
+        );
         assertTrue(dataStreamsLocalSimulator.feeManagerEnabled(), "Fee manager should be enabled by default");
     }
 
     function test_billingMechanismToggle() public {
         // Test toggling between billing mechanisms
         DataStreamsLocalSimulator dataStreamsLocalSimulator = new DataStreamsLocalSimulator();
-        
+
         // Initially should be on-chain billing
         assertTrue(dataStreamsLocalSimulator.feeManagerEnabled(), "Should start with on-chain billing");
         (,,,, MockFeeManager mockFeeManager1,) = dataStreamsLocalSimulator.configuration();
         assertFalse(address(mockFeeManager1) == address(0), "Fee manager should be set initially");
-        
+
         // Switch to off-chain billing
         dataStreamsLocalSimulator.enableOffChainBilling();
         assertFalse(dataStreamsLocalSimulator.feeManagerEnabled(), "Should be off-chain billing after toggle");
         (,,,, MockFeeManager mockFeeManager2,) = dataStreamsLocalSimulator.configuration();
         assertTrue(address(mockFeeManager2) == address(0), "Fee manager should not be set after disabling");
-        
+
         // Switch back to on-chain billing
         dataStreamsLocalSimulator.enableOnChainBilling();
         assertTrue(dataStreamsLocalSimulator.feeManagerEnabled(), "Should be on-chain billing after re-enabling");
@@ -110,22 +118,22 @@ contract BillingMechanismsTest is Test {
         // Test helpful error when using wrong billing mechanism
         DataStreamsLocalSimulator dataStreamsLocalSimulator = new DataStreamsLocalSimulator();
         (,,, MockVerifierProxy mockVerifierProxy_,,) = dataStreamsLocalSimulator.configuration();
-        
+
         // Generate report
         (bytes memory signedReportV3,) = mockReportGenerator.generateReportV3();
-        
+
         // Try to verify with empty parameterPayload (off-chain mechanism) while on-chain billing is active
         bytes memory emptyPayload = bytes("");
-        
+
         vm.expectRevert(
             abi.encodeWithSignature(
-                "FeeManagerRequired(string)", 
+                "FeeManagerRequired(string)",
                 "On-chain billing is active but your contract is using off-chain billing mechanism. "
                 "Either call simulator.enableOffChainBilling() or provide fee token address in parameterPayload. "
                 "See: https://docs.chain.link/data-streams/tutorials/evm-onchain-report-verification"
             )
         );
-        
+
         mockVerifierProxy_.verify(signedReportV3, emptyPayload);
     }
 
@@ -133,26 +141,26 @@ contract BillingMechanismsTest is Test {
         // Test helpful error when using wrong billing mechanism
         DataStreamsLocalSimulator dataStreamsLocalSimulator = new DataStreamsLocalSimulator();
         (,,, MockVerifierProxy mockVerifierProxy_,,) = dataStreamsLocalSimulator.configuration();
-        
+
         // Switch to off-chain billing
         dataStreamsLocalSimulator.enableOffChainBilling();
-        
+
         // Generate report
         (bytes memory signedReportV3,) = mockReportGenerator.generateReportV3();
-        
+
         // Try to verify with parameterPayload (on-chain mechanism) while off-chain billing is active
         address fakeTokenAddress = address(0x123);
         bytes memory parameterPayload = abi.encode(fakeTokenAddress);
-        
+
         vm.expectRevert(
             abi.encodeWithSignature(
-                "FeeManagerNotExpected(string)", 
+                "FeeManagerNotExpected(string)",
                 "Off-chain billing is active but your contract is providing parameterPayload for on-chain billing. "
                 "Either call simulator.enableOnChainBilling() or pass empty bytes as parameterPayload. "
                 "Off-chain billing chains don't require fee handling in smart contracts."
             )
         );
-        
+
         mockVerifierProxy_.verify(signedReportV3, parameterPayload);
     }
 
@@ -160,28 +168,28 @@ contract BillingMechanismsTest is Test {
         // Test bulk verification error handling
         DataStreamsLocalSimulator dataStreamsLocalSimulator = new DataStreamsLocalSimulator();
         (,,, MockVerifierProxy mockVerifierProxy_,,) = dataStreamsLocalSimulator.configuration();
-        
+
         // Switch to off-chain billing
         dataStreamsLocalSimulator.enableOffChainBilling();
-        
+
         // Generate reports
         (bytes memory signedReportV3,) = mockReportGenerator.generateReportV3();
         bytes[] memory reports = new bytes[](1);
         reports[0] = signedReportV3;
-        
+
         // Try to verify bulk with parameterPayload (on-chain mechanism) while off-chain billing is active
         address fakeTokenAddress = address(0x123);
         bytes memory parameterPayload = abi.encode(fakeTokenAddress);
-        
+
         vm.expectRevert(
             abi.encodeWithSignature(
-                "FeeManagerNotExpected(string)", 
+                "FeeManagerNotExpected(string)",
                 "Off-chain billing is active but your contract is providing parameterPayload for on-chain billing. "
                 "Either call simulator.enableOnChainBilling() or pass empty bytes as parameterPayload. "
                 "Off-chain billing chains don't require fee handling in smart contracts."
             )
         );
-        
+
         mockVerifierProxy_.verifyBulk(reports, parameterPayload);
     }
 
@@ -189,18 +197,18 @@ contract BillingMechanismsTest is Test {
         // Test that correct mechanisms don't trigger errors
         DataStreamsLocalSimulator dataStreamsLocalSimulator = new DataStreamsLocalSimulator();
         (,,, MockVerifierProxy mockVerifierProxy_,,) = dataStreamsLocalSimulator.configuration();
-        
+
         // Generate report
         (bytes memory signedReportV3,) = mockReportGenerator.generateReportV3();
-        
+
         // Test 1: Off-chain billing with empty parameterPayload (correct)
         dataStreamsLocalSimulator.enableOffChainBilling();
         bytes memory emptyPayload = bytes("");
-        
+
         // Should not revert
         bytes memory result1 = mockVerifierProxy_.verify(signedReportV3, emptyPayload);
         assertTrue(result1.length > 0, "Off-chain billing with empty payload should succeed");
-        
+
         // Test 2: On-chain billing with parameterPayload (correct)
         // Note: We'll use a simple test that doesn't trigger fee manager validation errors
         // The error handling validation passes, but fee manager might still have its own validation
@@ -209,14 +217,14 @@ contract BillingMechanismsTest is Test {
     function test_getBillingMechanism_helper() public {
         // Test the helper function for checking billing mechanism
         DataStreamsLocalSimulator dataStreamsLocalSimulator = new DataStreamsLocalSimulator();
-        
+
         // Should start with on-chain billing
         assertEq(dataStreamsLocalSimulator.getBillingMechanism(), "on-chain", "Should start with on-chain billing");
-        
+
         // Switch to off-chain billing
         dataStreamsLocalSimulator.enableOffChainBilling();
         assertEq(dataStreamsLocalSimulator.getBillingMechanism(), "off-chain", "Should be off-chain after toggle");
-        
+
         // Switch back to on-chain billing
         dataStreamsLocalSimulator.enableOnChainBilling();
         assertEq(dataStreamsLocalSimulator.getBillingMechanism(), "on-chain", "Should be on-chain after re-enabling");
@@ -251,7 +259,7 @@ contract OffChainBillingConsumer {
     function verifyReport(bytes memory unverifiedReport) external {
         // Check if fee manager exists (this is the key check for billing mechanism)
         address feeManager = address(s_verifierProxy.s_feeManager());
-        
+
         bytes memory parameterPayload;
         if (feeManager != address(0)) {
             // On-chain billing: would need to handle fees (not implemented in this simple example)

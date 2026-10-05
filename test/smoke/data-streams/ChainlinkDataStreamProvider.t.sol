@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {
     DataStreamsLocalSimulator,
     MockVerifierProxy,
@@ -47,8 +47,11 @@ contract ChainlinkDataStreamProviderTest is Test {
 
         (bytes memory signedReportV3,) = mockReportGenerator.generateReportV3();
 
-        (address gotToken, int192 gotBid, int192 gotAsk, /*uint32 gotObservationsTimestamp*/ ) =
-            consumer.getOraclePrice(token, signedReportV3);
+        (
+            address gotToken,
+            int192 gotBid,
+            int192 gotAsk, /*uint32 gotObservationsTimestamp*/
+        ) = consumer.getOraclePrice(token, signedReportV3);
 
         assertEq(gotToken, token);
         assertEq(gotBid, wantBid);

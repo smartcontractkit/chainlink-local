@@ -535,7 +535,7 @@ class ReportV13 {
     }
 }
 
-module.exports = {
+export {
     ReportV1,
     ReportV2,
     ReportV3,
@@ -549,4 +549,4 @@ module.exports = {
     ReportV11,
     ReportV12,
     ReportV13,
-}
+};

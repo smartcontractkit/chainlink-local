@@ -1,0 +1,5 @@
+@chainlink/contracts-ccip/=node_modules/@chainlink/contracts-ccip/
+@chainlink/contracts/=node_modules/@chainlink/contracts/
+@openzeppelin/contracts@4.8.3/=node_modules/@openzeppelin/contracts-4.8.3/
+@openzeppelin/contracts@5.3.0/=node_modules/@openzeppelin/contracts-5.3.0/
+forge-std/=node_modules/forge-std/src/

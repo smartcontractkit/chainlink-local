@@ -1,0 +1,1206 @@
+[
+  {
+    "type": "constructor",
+    "inputs": [
+      {
+        "name": "staticConfig",
+        "type": "tuple",
+        "internalType": "struct OnRamp.StaticConfig",
+        "components": [
+          {
+            "name": "chainSelector",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "rmnRemote",
+            "type": "address",
+            "internalType": "contract IRMN"
+          },
+          {
+            "name": "maxUSDCentsPerMessage",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "tokenAdminRegistry",
+            "type": "address",
+            "internalType": "address"
+          }
+        ]
+      },
+      {
+        "name": "dynamicConfig",
+        "type": "tuple",
+        "internalType": "struct OnRamp.DynamicConfig",
+        "components": [
+          {
+            "name": "feeQuoter",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "reentrancyGuardEntered",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "feeAggregator",
+            "type": "address",
+            "internalType": "address"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "acceptOwnership",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "applyDestChainConfigUpdates",
+    "inputs": [
+      {
+        "name": "destChainConfigArgs",
+        "type": "tuple[]",
+        "internalType": "struct OnRamp.DestChainConfigArgs[]",
+        "components": [
+          {
+            "name": "destChainSelector",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "router",
+            "type": "address",
+            "internalType": "contract IRouter"
+          },
+          {
+            "name": "addressBytesLength",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "tokenReceiverAllowed",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "messageNetworkFeeUSDCents",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "tokenNetworkFeeUSDCents",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "baseExecutionGasCost",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "defaultCCVs",
+            "type": "address[]",
+            "internalType": "address[]"
+          },
+          {
+            "name": "laneMandatedCCVs",
+            "type": "address[]",
+            "internalType": "address[]"
+          },
+          {
+            "name": "defaultExecutor",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "offRamp",
+            "type": "bytes",
+            "internalType": "bytes"
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "forwardFromRouter",
+    "inputs": [
+      {
+        "name": "destChainSelector",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "message",
+        "type": "tuple",
+        "internalType": "struct Client.EVM2AnyMessage",
+        "components": [
+          {
+            "name": "receiver",
+            "type": "bytes",
+            "internalType": "bytes"
+          },
+          {
+            "name": "data",
+            "type": "bytes",
+            "internalType": "bytes"
+          },
+          {
+            "name": "tokenAmounts",
+            "type": "tuple[]",
+            "internalType": "struct Client.EVMTokenAmount[]",
+            "components": [
+              {
+                "name": "token",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "amount",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ]
+          },
+          {
+            "name": "feeToken",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "extraArgs",
+            "type": "bytes",
+            "internalType": "bytes"
+          }
+        ]
+      },
+      {
+        "name": "feeTokenAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "originalSender",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "messageId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getAllDestChainConfigs",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint64[]",
+        "internalType": "uint64[]"
+      },
+      {
+        "name": "",
+        "type": "tuple[]",
+        "internalType": "struct OnRamp.DestChainConfig[]",
+        "components": [
+          {
+            "name": "router",
+            "type": "address",
+            "internalType": "contract IRouter"
+          },
+          {
+            "name": "messageNumber",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "addressBytesLength",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "tokenReceiverAllowed",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "messageNetworkFeeUSDCents",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "tokenNetworkFeeUSDCents",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "baseExecutionGasCost",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "defaultExecutor",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "laneMandatedCCVs",
+            "type": "address[]",
+            "internalType": "address[]"
+          },
+          {
+            "name": "defaultCCVs",
+            "type": "address[]",
+            "internalType": "address[]"
+          },
+          {
+            "name": "offRamp",
+            "type": "bytes",
+            "internalType": "bytes"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getDestChainConfig",
+    "inputs": [
+      {
+        "name": "destChainSelector",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "destChainConfig",
+        "type": "tuple",
+        "internalType": "struct OnRamp.DestChainConfig",
+        "components": [
+          {
+            "name": "router",
+            "type": "address",
+            "internalType": "contract IRouter"
+          },
+          {
+            "name": "messageNumber",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "addressBytesLength",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "tokenReceiverAllowed",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "messageNetworkFeeUSDCents",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "tokenNetworkFeeUSDCents",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "baseExecutionGasCost",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "defaultExecutor",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "laneMandatedCCVs",
+            "type": "address[]",
+            "internalType": "address[]"
+          },
+          {
+            "name": "defaultCCVs",
+            "type": "address[]",
+            "internalType": "address[]"
+          },
+          {
+            "name": "offRamp",
+            "type": "bytes",
+            "internalType": "bytes"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getDynamicConfig",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "dynamicConfig",
+        "type": "tuple",
+        "internalType": "struct OnRamp.DynamicConfig",
+        "components": [
+          {
+            "name": "feeQuoter",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "reentrancyGuardEntered",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "feeAggregator",
+            "type": "address",
+            "internalType": "address"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getExpectedNextMessageNumber",
+    "inputs": [
+      {
+        "name": "destChainSelector",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getFee",
+    "inputs": [
+      {
+        "name": "destChainSelector",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "message",
+        "type": "tuple",
+        "internalType": "struct Client.EVM2AnyMessage",
+        "components": [
+          {
+            "name": "receiver",
+            "type": "bytes",
+            "internalType": "bytes"
+          },
+          {
+            "name": "data",
+            "type": "bytes",
+            "internalType": "bytes"
+          },
+          {
+            "name": "tokenAmounts",
+            "type": "tuple[]",
+            "internalType": "struct Client.EVMTokenAmount[]",
+            "components": [
+              {
+                "name": "token",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "amount",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ]
+          },
+          {
+            "name": "feeToken",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "extraArgs",
+            "type": "bytes",
+            "internalType": "bytes"
+          }
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "feeTokenAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getPoolBySourceToken",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "sourceToken",
+        "type": "address",
+        "internalType": "contract IERC20"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IPoolV1"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getStaticConfig",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct OnRamp.StaticConfig",
+        "components": [
+          {
+            "name": "chainSelector",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "rmnRemote",
+            "type": "address",
+            "internalType": "contract IRMN"
+          },
+          {
+            "name": "maxUSDCentsPerMessage",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "tokenAdminRegistry",
+            "type": "address",
+            "internalType": "address"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getSupportedTokens",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address[]",
+        "internalType": "address[]"
+      }
+    ],
+    "stateMutability": "pure"
+  },
+  {
+    "type": "function",
+    "name": "owner",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "setDynamicConfig",
+    "inputs": [
+      {
+        "name": "dynamicConfig",
+        "type": "tuple",
+        "internalType": "struct OnRamp.DynamicConfig",
+        "components": [
+          {
+            "name": "feeQuoter",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "reentrancyGuardEntered",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "feeAggregator",
+            "type": "address",
+            "internalType": "address"
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "transferOwnership",
+    "inputs": [
+      {
+        "name": "to",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "typeAndVersion",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "withdrawFeeTokens",
+    "inputs": [
+      {
+        "name": "feeTokens",
+        "type": "address[]",
+        "internalType": "address[]"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "CCIPMessageSent",
+    "inputs": [
+      {
+        "name": "destChainSelector",
+        "type": "uint64",
+        "indexed": true,
+        "internalType": "uint64"
+      },
+      {
+        "name": "sender",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "messageId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "feeToken",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "tokenAmountBeforeTokenPoolFees",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "encodedMessage",
+        "type": "bytes",
+        "indexed": false,
+        "internalType": "bytes"
+      },
+      {
+        "name": "receipts",
+        "type": "tuple[]",
+        "indexed": false,
+        "internalType": "struct OnRamp.Receipt[]",
+        "components": [
+          {
+            "name": "issuer",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "destGasLimit",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "destBytesOverhead",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "feeTokenAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "extraArgs",
+            "type": "bytes",
+            "internalType": "bytes"
+          }
+        ]
+      },
+      {
+        "name": "verifierBlobs",
+        "type": "bytes[]",
+        "indexed": false,
+        "internalType": "bytes[]"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ConfigSet",
+    "inputs": [
+      {
+        "name": "staticConfig",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct OnRamp.StaticConfig",
+        "components": [
+          {
+            "name": "chainSelector",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "rmnRemote",
+            "type": "address",
+            "internalType": "contract IRMN"
+          },
+          {
+            "name": "maxUSDCentsPerMessage",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "tokenAdminRegistry",
+            "type": "address",
+            "internalType": "address"
+          }
+        ]
+      },
+      {
+        "name": "dynamicConfig",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct OnRamp.DynamicConfig",
+        "components": [
+          {
+            "name": "feeQuoter",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "reentrancyGuardEntered",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "feeAggregator",
+            "type": "address",
+            "internalType": "address"
+          }
+        ]
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "DestChainConfigSet",
+    "inputs": [
+      {
+        "name": "destChainSelector",
+        "type": "uint64",
+        "indexed": true,
+        "internalType": "uint64"
+      },
+      {
+        "name": "messageNumber",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "config",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct OnRamp.DestChainConfigArgs",
+        "components": [
+          {
+            "name": "destChainSelector",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "router",
+            "type": "address",
+            "internalType": "contract IRouter"
+          },
+          {
+            "name": "addressBytesLength",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "tokenReceiverAllowed",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "messageNetworkFeeUSDCents",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "tokenNetworkFeeUSDCents",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "baseExecutionGasCost",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "defaultCCVs",
+            "type": "address[]",
+            "internalType": "address[]"
+          },
+          {
+            "name": "laneMandatedCCVs",
+            "type": "address[]",
+            "internalType": "address[]"
+          },
+          {
+            "name": "defaultExecutor",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "offRamp",
+            "type": "bytes",
+            "internalType": "bytes"
+          }
+        ]
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "FeeTokenWithdrawn",
+    "inputs": [
+      {
+        "name": "receiver",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "feeToken",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OwnershipTransferRequested",
+    "inputs": [
+      {
+        "name": "from",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "to",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OwnershipTransferred",
+    "inputs": [
+      {
+        "name": "from",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "to",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "CanOnlySendOneTokenPerMessage",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "CannotSendZeroTokens",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "CannotTransferToSelf",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "CursedByRMN",
+    "inputs": [
+      {
+        "name": "destChainSelector",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "DestinationChainNotSupported",
+    "inputs": [
+      {
+        "name": "destChainSelector",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "DestinationChainNotSupportedByCCV",
+    "inputs": [
+      {
+        "name": "ccvAddress",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "destChainSelector",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "DuplicateCCVNotAllowed",
+    "inputs": [
+      {
+        "name": "ccvAddress",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "FTFNotSupportedOnPoolV1",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "FeeExceedsMaxAllowed",
+    "inputs": [
+      {
+        "name": "feeUSDCents",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "maxUSDCentsPerMessage",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "GetSupportedTokensFunctionalityRemovedCheckAdminRegistry",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InsufficientFeeTokenAmount",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidAddressLength",
+    "inputs": [
+      {
+        "name": "length",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidConfig",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidDataLength",
+    "inputs": [
+      {
+        "name": "location",
+        "type": "uint8",
+        "internalType": "enum ExtraArgsCodec.EncodingErrorLocation"
+      },
+      {
+        "name": "offset",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidDataLength",
+    "inputs": [
+      {
+        "name": "location",
+        "type": "uint8",
+        "internalType": "enum MessageV1Codec.EncodingErrorLocation"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidDestChainAddress",
+    "inputs": [
+      {
+        "name": "destChainAddress",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidDestChainConfig",
+    "inputs": [
+      {
+        "name": "destChainSelector",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidExtraArgsTag",
+    "inputs": [
+      {
+        "name": "expected",
+        "type": "bytes4",
+        "internalType": "bytes4"
+      },
+      {
+        "name": "actual",
+        "type": "bytes4",
+        "internalType": "bytes4"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "MustBeCalledByRouter",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MustBeProposedOwner",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MustSpecifyDefaultOrRequiredCCVs",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "OnlyCallableByOwner",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "OwnerCannotBeZero",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ReentrancyGuardReentrantCall",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "RequestedFinalityCanOnlyHaveOneMode",
+    "inputs": [
+      {
+        "name": "encodedFinality",
+        "type": "bytes4",
+        "internalType": "bytes4"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "RouterMustSetOriginalSender",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "SafeERC20FailedOperation",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SourceTokenDataTooLarge",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "actualLength",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "maxLength",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "TokenArgsNotSupportedOnPoolV1",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "TokenReceiverNotAllowed",
+    "inputs": [
+      {
+        "name": "destChainSelector",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "UnsupportedToken",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ZeroAddressNotAllowed",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ZeroAddressNotAllowed",
+    "inputs": []
+  }
+]

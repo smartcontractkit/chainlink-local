@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {OwnerIsCreator} from "@chainlink/contracts/src/v0.8/shared/access/OwnerIsCreator.sol";
-import {IERC20} from "../vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "../vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "@openzeppelin/contracts@4.8.3/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts@4.8.3/token/ERC20/utils/SafeERC20.sol";
 
 // import {IRewardManager} from "@chainlink/contracts/src/v0.8/llo-feeds/interfaces/IRewardManager.sol";
 import {IRewardManager} from "./interfaces/IRewardManager.sol";
@@ -42,7 +41,13 @@ contract MockRewardManager is IRewardManager {
         emit FeePaid(payments, payer);
     }
 
-    function claimRewards(bytes32[] memory /*poolIds*/ ) external pure override {
+    function claimRewards(
+        bytes32[] memory /*poolIds*/
+    )
+        external
+        pure
+        override
+    {
         revert("Not implemented");
     }
 

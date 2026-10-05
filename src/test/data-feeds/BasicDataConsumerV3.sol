@@ -26,12 +26,10 @@ contract BasicDataConsumerV3 {
     }
 
     function getChainlinkDataFeedLatestAnswer() public view returns (int256) {
-        (
-            ,
+        (,
             /* uint80 roundID */
-            int256 answer, /*uint startedAt*/ /*uint timeStamp*/ /*uint80 answeredInRound*/
-            ,
-            ,
+            int256 answer,/*uint startedAt*/ /*uint timeStamp*/ /*uint80 answeredInRound*/
+            ,,
         ) = dataFeed.latestRoundData();
         return answer;
     }

@@ -4,7 +4,8 @@ pragma solidity 0.8.24;
 import {IRouterClient} from "@chainlink/contracts-ccip/contracts/interfaces/IRouterClient.sol";
 import {OwnerIsCreator} from "@chainlink/contracts/src/v0.8/shared/access/OwnerIsCreator.sol";
 import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
-import {IERC20} from "../../vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/IERC20.sol";
+import {IERC20} from "@openzeppelin/contracts@4.8.3/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts@4.8.3/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * THIS IS AN EXAMPLE CONTRACT THAT USES HARDCODED VALUES FOR CLARITY.
@@ -14,6 +15,8 @@ import {IERC20} from "../../vendor/openzeppelin-solidity/v4.8.3/contracts/token/
 
 /// @title - A simple contract for transferring tokens across chains.
 contract TokenTransferor is OwnerIsCreator {
+    using SafeERC20 for IERC20;
+
     // Custom errors to provide more descriptive revert messages.
     error NotEnoughBalance(uint256 currentBalance, uint256 calculatedFees); // Used to make sure contract has enough balance to cover the fees.
     error NothingToWithdraw(); // Used when trying to withdraw Ether but there's nothing to withdraw.
@@ -234,6 +237,6 @@ contract TokenTransferor is OwnerIsCreator {
         // Revert if there is nothing to withdraw
         if (amount == 0) revert NothingToWithdraw();
 
-        IERC20(_token).transfer(_beneficiary, amount);
+        IERC20(_token).safeTransfer(_beneficiary, amount);
     }
 }

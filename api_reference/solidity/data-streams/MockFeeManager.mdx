@@ -1,159 +1,170 @@
 # Solidity API
 
-## Common
-
-### Asset
-
-```solidity
-struct Asset {
-  address assetAddress;
-  uint256 amount;
-}
-```
-
 ## MockFeeManager
 
-### Unauthorized
+**Inherits:**
+[IVerifierFeeManager](/src/data-streams/interfaces/IVerifierFeeManager.sol/interface.IVerifierFeeManager.md),
+OwnerIsCreator
+
+## State Variables
+
+### PERCENTAGE_SCALAR
+
+the total discount that can be applied to a fee, 1e18 = 100% discount
 
 ```solidity
-error Unauthorized()
-```
-
-### InvalidAddress
-
-```solidity
-error InvalidAddress()
-```
-
-### InvalidQuote
-
-```solidity
-error InvalidQuote()
-```
-
-### ExpiredReport
-
-```solidity
-error ExpiredReport()
-```
-
-### InvalidDiscount
-
-```solidity
-error InvalidDiscount()
-```
-
-### InvalidSurcharge
-
-```solidity
-error InvalidSurcharge()
-```
-
-### InvalidDeposit
-
-```solidity
-error InvalidDeposit()
+uint64 private constant PERCENTAGE_SCALAR = 1e18
 ```
 
 ### i_linkAddress
 
 ```solidity
-address i_linkAddress
+address public immutable i_linkAddress
 ```
 
 ### i_nativeAddress
 
 ```solidity
-address i_nativeAddress
+address public immutable i_nativeAddress
 ```
 
 ### i_proxyAddress
 
 ```solidity
-address i_proxyAddress
+address public immutable i_proxyAddress
 ```
 
 ### i_rewardManager
 
 ```solidity
-contract IRewardManager i_rewardManager
+IRewardManager public immutable i_rewardManager
 ```
 
 ### s_nativeSurcharge
 
 ```solidity
-uint256 s_nativeSurcharge
+uint256 public s_nativeSurcharge
 ```
 
 ### s_mockDiscounts
 
 ```solidity
-mapping(address => uint256) s_mockDiscounts
+mapping(address => uint256) public s_mockDiscounts
 ```
+
+## Functions
 
 ### onlyProxy
 
 ```solidity
-modifier onlyProxy()
+modifier onlyProxy() ;
 ```
 
 ### constructor
 
 ```solidity
-constructor(address linkAddress, address nativeAddress, address proxyAddress, address rewardManager) public
+constructor(address linkAddress, address nativeAddress, address proxyAddress, address rewardManager) ;
 ```
 
 ### processFee
 
 ```solidity
-function processFee(bytes payload, bytes parameterPayload, address subscriber) external payable
+function processFee(bytes calldata payload, bytes calldata parameterPayload, address subscriber)
+    external
+    payable
+    override
+    onlyProxy;
 ```
 
 ### processFeeBulk
 
 ```solidity
-function processFeeBulk(bytes[] payloads, bytes parameterPayload, address subscriber) external payable
+function processFeeBulk(bytes[] calldata payloads, bytes calldata parameterPayload, address subscriber)
+    external
+    payable
+    override
+    onlyProxy;
 ```
 
 ### getFeeAndReward
 
 ```solidity
-function getFeeAndReward(address subscriber, bytes report, address quoteAddress) public view returns (struct Common.Asset, struct Common.Asset, uint256)
+function getFeeAndReward(address subscriber, bytes memory report, address quoteAddress)
+    public
+    view
+    returns (Common.Asset memory, Common.Asset memory, uint256);
 ```
 
 ### \_processFee
 
 ```solidity
-function _processFee(bytes payload, bytes parameterPayload, address subscriber) internal
+function _processFee(bytes calldata payload, bytes calldata parameterPayload, address subscriber) internal;
 ```
 
 ### setNativeSurcharge
 
 ```solidity
-function setNativeSurcharge(uint64 surcharge) external
+function setNativeSurcharge(uint64 surcharge) external;
 ```
 
 ### setMockDiscount
 
 ```solidity
-function setMockDiscount(address subscriber, uint256 discount) external
+function setMockDiscount(address subscriber, uint256 discount) external;
 ```
 
 ### getMockDiscount
 
 ```solidity
-function getMockDiscount(address subscriber) external view returns (uint256)
+function getMockDiscount(address subscriber) external view returns (uint256);
 ```
 
 ### supportsInterface
 
 ```solidity
-function supportsInterface(bytes4 interfaceId) external pure returns (bool)
+function supportsInterface(bytes4 interfaceId) external pure override returns (bool);
 ```
 
-\_Returns true if this contract implements the interface defined by
-`interfaceId`. See the corresponding
-https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[EIP
-section] to learn more about how these ids are created.
+## Errors
 
-This function call must use less than 30 000 gas.\_
+### Unauthorized
+
+```solidity
+error Unauthorized();
+```
+
+### InvalidAddress
+
+```solidity
+error InvalidAddress();
+```
+
+### InvalidQuote
+
+```solidity
+error InvalidQuote();
+```
+
+### ExpiredReport
+
+```solidity
+error ExpiredReport();
+```
+
+### InvalidDiscount
+
+```solidity
+error InvalidDiscount();
+```
+
+### InvalidSurcharge
+
+```solidity
+error InvalidSurcharge();
+```
+
+### InvalidDeposit
+
+```solidity
+error InvalidDeposit();
+```

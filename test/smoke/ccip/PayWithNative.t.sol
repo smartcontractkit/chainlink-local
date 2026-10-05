@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {BasicTokenSender} from "../../../src/test/ccip/BasicTokenSender.sol";
 import {
-    CCIPLocalSimulator, IRouterClient, BurnMintERC677Helper
+    CCIPLocalSimulator,
+    IRouterClient,
+    BurnMintERC677Helper
 } from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
 import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
 

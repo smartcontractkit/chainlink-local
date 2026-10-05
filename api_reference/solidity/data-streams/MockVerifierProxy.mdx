@@ -2,80 +2,128 @@
 
 ## MockVerifierProxy
 
-### ZeroAddress
+**Inherits:** OwnerIsCreator
 
-```solidity
-error ZeroAddress()
-```
-
-### VerifierInvalid
-
-```solidity
-error VerifierInvalid()
-```
-
-### VerifierNotFound
-
-```solidity
-error VerifierNotFound()
-```
+## State Variables
 
 ### s_verifier
 
 ```solidity
-address s_verifier
+address internal s_verifier
 ```
 
 ### s_feeManager
 
 ```solidity
-contract IVerifierFeeManager s_feeManager
+IVerifierFeeManager public s_feeManager
 ```
 
-### VerifierInitialized
-
-```solidity
-event VerifierInitialized(address verifierAddress)
-```
+## Functions
 
 ### onlyValidVerifier
 
 ```solidity
-modifier onlyValidVerifier(address verifierAddress)
+modifier onlyValidVerifier(address verifierAddress) ;
 ```
 
 ### verify
 
 ```solidity
-function verify(bytes payload, bytes parameterPayload) external payable returns (bytes)
+function verify(bytes calldata payload, bytes calldata parameterPayload) external payable returns (bytes memory);
 ```
 
 ### verifyBulk
 
 ```solidity
-function verifyBulk(bytes[] payloads, bytes parameterPayload) external payable returns (bytes[] verifiedReports)
+function verifyBulk(bytes[] calldata payloads, bytes calldata parameterPayload)
+    external
+    payable
+    returns (bytes[] memory verifiedReports);
 ```
 
 ### \_verify
 
 ```solidity
-function _verify(bytes payload) internal returns (bytes)
+function _verify(bytes calldata payload) internal returns (bytes memory);
 ```
 
 ### initializeVerifier
 
 ```solidity
-function initializeVerifier(address verifierAddress) external
+function initializeVerifier(address verifierAddress) external onlyOwner onlyValidVerifier(verifierAddress);
 ```
 
 ### getVerifier
 
 ```solidity
-function getVerifier(bytes32) external view returns (address)
+function getVerifier(
+    bytes32 /*configDigest*/
+)
+    external
+    view
+    returns (address);
 ```
 
 ### setFeeManager
 
 ```solidity
-function setFeeManager(contract IVerifierFeeManager feeManager) external
+function setFeeManager(IVerifierFeeManager feeManager) external;
+```
+
+### \_validateBillingMechanism
+
+Validates billing mechanism configuration and provides helpful error messages
+
+This validation helps developers catch billing mechanism mismatches early in
+development
+
+```solidity
+function _validateBillingMechanism(address feeManagerAddress, bytes calldata parameterPayload) internal pure;
+```
+
+**Parameters**
+
+| Name                | Type      | Description                                                   |
+| ------------------- | --------- | ------------------------------------------------------------- |
+| `feeManagerAddress` | `address` | Current fee manager address (address(0) if off-chain billing) |
+| `parameterPayload`  | `bytes`   | The parameter payload from the consumer contract              |
+
+## Events
+
+### VerifierInitialized
+
+```solidity
+event VerifierInitialized(address indexed verifierAddress);
+```
+
+## Errors
+
+### ZeroAddress
+
+```solidity
+error ZeroAddress();
+```
+
+### VerifierInvalid
+
+```solidity
+error VerifierInvalid();
+```
+
+### VerifierNotFound
+
+```solidity
+error VerifierNotFound();
+```
+
+### FeeManagerRequired
+
+```solidity
+error FeeManagerRequired(string message);
+```
+
+### FeeManagerNotExpected
+
+```solidity
+error FeeManagerNotExpected(string message);
 ```

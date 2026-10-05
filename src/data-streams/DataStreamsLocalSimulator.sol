@@ -26,7 +26,7 @@ contract DataStreamsLocalSimulator {
     constructor() {
         // Default to on-chain billing for backward compatibility
         feeManagerEnabled = true;
-        
+
         i_wrappedNative = new WETH9();
         i_linkToken = new LinkToken();
 
@@ -121,9 +121,14 @@ contract DataStreamsLocalSimulator {
     {
         // Return the current fee manager from verifier proxy (reflects current billing state)
         MockFeeManager currentFeeManager = MockFeeManager(address(s_mockVerifierProxy.s_feeManager()));
-        
-        return
-            (i_wrappedNative, i_linkToken, s_mockVerifier, s_mockVerifierProxy, currentFeeManager, 
-             feeManagerEnabled ? s_mockRewardManager : MockRewardManager(address(0)));
+
+        return (
+            i_wrappedNative,
+            i_linkToken,
+            s_mockVerifier,
+            s_mockVerifierProxy,
+            currentFeeManager,
+            feeManagerEnabled ? s_mockRewardManager : MockRewardManager(address(0))
+        );
     }
 }

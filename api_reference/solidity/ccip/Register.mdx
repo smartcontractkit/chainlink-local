@@ -2,73 +2,116 @@
 
 ## Register
 
+**Title:** Register Contract
+
 This contract allows storing and retrieving network details for various chains.
 
-_Stores network details in a mapping based on chain IDs._
+Built-in network details live in the generated data shards of `RegisterData.sol`
+(see `helper_doc/updateRegisterContract.cjs`), which the simulator places with
+`vm.etch`, instead of being written to storage in the constructor: storing ~150
+chains cost ~24M gas, which made `CCIPLocalSimulatorFork` too expensive to
+deploy on 30M-gas-limit forks. Sharding keeps every generated contract runtime
+under the EIP-170 limit. `setNetworkDetails` overrides are stored.
+
+## State Variables
+
+### s_networkDetails
+
+Network details set with `setNetworkDetails`, overriding the built-in ones.
+
+```solidity
+mapping(uint256 chainId => NetworkDetails) internal s_networkDetails
+```
+
+### s_isOverridden
+
+Whether `setNetworkDetails` was called for a chain ID.
+
+```solidity
+mapping(uint256 chainId => bool isOverridden) internal s_isOverridden
+```
+
+### \_SHARD_COUNT
+
+Number of generated data shards in RegisterData.sol.
+
+```solidity
+uint256 internal constant _SHARD_COUNT = 4
+```
+
+## Functions
+
+### getNetworkDetails
+
+Retrieves network details for a given chain ID.
+
+```solidity
+function getNetworkDetails(uint256 chainId) external view returns (NetworkDetails memory networkDetails);
+```
+
+**Parameters**
+
+| Name      | Type      | Description                                   |
+| --------- | --------- | --------------------------------------------- |
+| `chainId` | `uint256` | - The ID of the chain to get the details for. |
+
+**Returns**
+
+| Name             | Type             | Description                                       |
+| ---------------- | ---------------- | ------------------------------------------------- |
+| `networkDetails` | `NetworkDetails` | - The network details for the specified chain ID. |
+
+### setNetworkDetails
+
+Sets the network details for a given chain ID.
+
+```solidity
+function setNetworkDetails(uint256 chainId, NetworkDetails memory networkDetails) external;
+```
+
+**Parameters**
+
+| Name             | Type             | Description                                              |
+| ---------------- | ---------------- | -------------------------------------------------------- |
+| `chainId`        | `uint256`        | - The ID of the chain to set the details for.            |
+| `networkDetails` | `NetworkDetails` | - The network details to set for the specified chain ID. |
+
+### shardAddress
+
+Deterministic address of built-in data shard `index`; the simulator places each
+shard there.
+
+```solidity
+function shardAddress(uint256 index) public view returns (address);
+```
+
+### \_defaultNetworkDetails
+
+Built-in network details for `chainId`, or an all-zero struct for an unknown
+chain.
+
+Decodes the generated data shards; shard addresses without code are skipped, so
+a bare `new Register()` (no shards placed) only serves `setNetworkDetails`
+overrides.
+
+```solidity
+function _defaultNetworkDetails(uint256 chainId) internal view returns (NetworkDetails memory);
+```
+
+## Structs
 
 ### NetworkDetails
 
 ```solidity
 struct NetworkDetails {
-  uint64 chainSelector;
-  address routerAddress;
-  address linkAddress;
-  address wrappedNativeAddress;
-  address ccipBnMAddress;
-  address ccipLnMAddress;
-  address rmnProxyAddress;
-  address registryModuleOwnerCustomAddress;
-  address tokenAdminRegistryAddress;
+    uint64 chainSelector;
+    address routerAddress;
+    address linkAddress;
+    address wrappedNativeAddress;
+    address ccipBnMAddress;
+    address ccipLnMAddress;
+    address rmnProxyAddress;
+    address registryModuleOwnerCustomAddress;
+    address tokenAdminRegistryAddress;
 }
 ```
-
-### s_networkDetails
-
-```solidity
-mapping(uint256 => struct Register.NetworkDetails) s_networkDetails
-```
-
-Mapping to store network details based on chain ID.
-
-### constructor
-
-```solidity
-constructor() public
-```
-
-Constructor to initialize the network details for various chains.
-
-### getNetworkDetails
-
-```solidity
-function getNetworkDetails(uint256 chainId) external view returns (struct Register.NetworkDetails networkDetails)
-```
-
-Retrieves network details for a given chain ID.
-
-#### Parameters
-
-| Name    | Type    | Description                                   |
-| ------- | ------- | --------------------------------------------- |
-| chainId | uint256 | - The ID of the chain to get the details for. |
-
-#### Return Values
-
-| Name           | Type                           | Description                                       |
-| -------------- | ------------------------------ | ------------------------------------------------- |
-| networkDetails | struct Register.NetworkDetails | - The network details for the specified chain ID. |
-
-### setNetworkDetails
-
-```solidity
-function setNetworkDetails(uint256 chainId, struct Register.NetworkDetails networkDetails) external
-```
-
-Sets the network details for a given chain ID.
-
-#### Parameters
-
-| Name           | Type                           | Description                                              |
-| -------------- | ------------------------------ | -------------------------------------------------------- |
-| chainId        | uint256                        | - The ID of the chain to set the details for.            |
-| networkDetails | struct Register.NetworkDetails | - The network details to set for the specified chain ID. |
