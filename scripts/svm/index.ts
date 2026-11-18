@@ -9,6 +9,8 @@ export const SVM_PEER_PACKAGES = {
   "@solana/surfpool": "1.7.0",
   "@solana/web3.js": "^1.98",
   "@anchor-lang/core": "^1.2",
+  // keccak256 and secp256k1 signing of the committee results.
+  ethers: "^6.17.0",
 } as const;
 
 function assertPeersInstalled(): void {
@@ -31,3 +33,9 @@ function assertPeersInstalled(): void {
 }
 
 assertPeersInstalled();
+
+// Loaded only now: a static `export ... from` would load @solana/web3.js before the check above.
+const implementation = await import("./local.ts");
+
+export const startSvmLocal = implementation.startSvmLocal;
+export type { DeliverOptions, DeliverResult, SvmLocal } from "./local.ts";
