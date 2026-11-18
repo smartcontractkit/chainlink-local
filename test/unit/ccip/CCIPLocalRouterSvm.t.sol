@@ -7,8 +7,10 @@ import {CCIPLocalRouter} from "@chainlink/local/src/ccip/CCIPLocalRouter.sol";
 import {SvmMessageSender} from "@chainlink/local/src/test/ccip/SvmMessageSender.sol";
 import {LinkToken} from "@chainlink/local/src/shared/LinkToken.sol";
 import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
-import {IERC20} from "@openzeppelin/contracts@5.3.0/token/ERC20/IERC20.sol";
+import {ExtraArgsCodec} from "@chainlink/contracts-ccip/contracts/libraries/ExtraArgsCodec.sol";
 
+/// @notice Solana sends through `CCIPLocalRouter` must behave like a send on a CCIP 2.0 lane (Router 1.2 + OnRamp 2.0 +
+///         FeeQuoter 2.0): same checks, same errors, same order.
 contract CCIPLocalRouterSvmTest is Test {
     uint64 constant SOLANA = 16423721717087811551;
     uint64 constant LOCAL_EVM = 16015286601757825753;
@@ -29,6 +31,8 @@ contract CCIPLocalRouterSvmTest is Test {
         router.setFee(FEE);
         vm.deal(address(sender), 10 ether);
         simulator.requestLinkFromFaucet(address(sender), 10 ether);
+        simulator.requestLinkFromFaucet(address(this), 10 ether);
+        link.approve(address(router), type(uint256).max);
     }
 
     // ---------------------------------------------------------------- helpers
@@ -47,11 +51,37 @@ contract CCIPLocalRouterSvmTest is Test {
         });
     }
 
+    function _validArgs() internal pure returns (bytes memory) {
+        return Client._svmArgsToBytes(_args(1, 0, new bytes32[](0)));
+    }
+
+    function _wrongTagArgs() internal pure returns (bytes memory) {
+        return Client._argsToBytes(Client.GenericExtraArgsV2({gasLimit: 1, allowOutOfOrderExecution: true}));
+    }
+
     function _accounts(uint256 n) internal pure returns (bytes32[] memory accounts) {
         accounts = new bytes32[](n);
         for (uint256 i; i < n; ++i) {
             accounts[i] = bytes32(i + 1);
         }
+    }
+
+    function _tokens(uint256 n) internal view returns (Client.EVMTokenAmount[] memory tokens) {
+        tokens = new Client.EVMTokenAmount[](n);
+        for (uint256 i; i < n; ++i) {
+            tokens[i] = Client.EVMTokenAmount({token: address(link), amount: 1});
+        }
+    }
+
+    function _message(
+        bytes memory receiver,
+        Client.EVMTokenAmount[] memory tokens,
+        bytes memory extraArgs,
+        address feeToken
+    ) internal pure returns (Client.EVM2AnyMessage memory) {
+        return Client.EVM2AnyMessage({
+            receiver: receiver, data: hex"c0ffee", tokenAmounts: tokens, extraArgs: extraArgs, feeToken: feeToken
+        });
     }
 
     function _send(bytes32 receiver, bytes memory extraArgs) internal returns (bytes32) {
@@ -107,27 +137,16 @@ contract CCIPLocalRouterSvmTest is Test {
         assertEq(address(router).balance, routerBalanceBefore + FEE, "native fee collected");
 
         // Same derivation as the EVM path.
-        Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
-            receiver: abi.encodePacked(PROGRAM),
-            data: hex"c0ffee",
-            tokenAmounts: new Client.EVMTokenAmount[](0),
-            extraArgs: extraArgs,
-            feeToken: address(0)
-        });
+        Client.EVM2AnyMessage memory message =
+            _message(abi.encodePacked(PROGRAM), new Client.EVMTokenAmount[](0), extraArgs, address(0));
         assertEq(returnedId, keccak256(abi.encode(uint256(1), address(sender), SOLANA, message)), "id derivation");
     }
 
     function test_happyPath_expectEmit() public {
-        bytes32[] memory accounts = _accounts(1);
-        Client.SVMExtraArgsV1 memory args = _args(1, 1, accounts);
+        Client.SVMExtraArgsV1 memory args = _args(1, 1, _accounts(1));
         bytes memory extraArgs = Client._svmArgsToBytes(args);
-        Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
-            receiver: abi.encodePacked(PROGRAM),
-            data: hex"c0ffee",
-            tokenAmounts: new Client.EVMTokenAmount[](0),
-            extraArgs: extraArgs,
-            feeToken: address(0)
-        });
+        Client.EVM2AnyMessage memory message =
+            _message(abi.encodePacked(PROGRAM), new Client.EVMTokenAmount[](0), extraArgs, address(0));
         bytes32 id = keccak256(abi.encode(uint256(1), address(sender), SOLANA, message));
 
         vm.expectEmit(true, true, true, true, address(router));
@@ -136,25 +155,22 @@ contract CCIPLocalRouterSvmTest is Test {
     }
 
     function test_nonceIncrementsAndIdsAreUnique() public {
-        bytes memory extraArgs = Client._svmArgsToBytes(_args(1, 0, new bytes32[](0)));
-        assertTrue(_send(PROGRAM, extraArgs) != _send(PROGRAM, extraArgs));
+        assertTrue(_send(PROGRAM, _validArgs()) != _send(PROGRAM, _validArgs()));
     }
 
     function test_linkFee() public {
-        bytes memory extraArgs = Client._svmArgsToBytes(_args(1, 0, new bytes32[](0)));
         // Fee in LINK is also getFee(): setFee applies to every fee token in this mock.
         uint256 senderBefore = link.balanceOf(address(sender));
 
-        sender.send(SOLANA, PROGRAM, hex"c0ffee", extraArgs, address(link));
+        sender.send(SOLANA, PROGRAM, hex"c0ffee", _validArgs(), address(link));
 
         assertEq(link.balanceOf(address(router)), FEE, "router got LINK fee");
         assertEq(link.balanceOf(address(sender)), senderBefore - FEE, "sender paid LINK fee");
     }
 
     function test_linkFeeEventFields() public {
-        bytes memory extraArgs = Client._svmArgsToBytes(_args(1, 0, new bytes32[](0)));
         vm.recordLogs();
-        sender.send(SOLANA, PROGRAM, hex"c0ffee", extraArgs, address(link));
+        sender.send(SOLANA, PROGRAM, hex"c0ffee", _validArgs(), address(link));
         Vm.Log[] memory logs = vm.getRecordedLogs();
         for (uint256 i; i < logs.length; ++i) {
             if (logs[i].emitter == address(router) && logs[i].topics[0] == CCIPLocalRouter.SvmMessageSent.selector) {
@@ -168,26 +184,49 @@ contract CCIPLocalRouterSvmTest is Test {
         revert("SvmMessageSent not emitted");
     }
 
-    function test_zeroReceiverWithZeroComputeUnitsIsAllowed() public {
-        _send(bytes32(0), _args(0, 0, new bytes32[](0)));
-    }
+    /// @dev Router 1.2 keeps the whole msg.value when paying in native, so the recorded fee is the overpaid amount.
+    function test_nativeOverpaymentIsKeptAndRecorded() public {
+        Client.EVM2AnyMessage memory message =
+            _message(abi.encodePacked(PROGRAM), new Client.EVMTokenAmount[](0), _validArgs(), address(0));
+        uint256 routerBefore = address(router).balance;
 
-    function test_maxBoundariesAreAllowed() public {
-        // 1,400,000 CU, 64 accounts, bitmap with all 64 bits set.
-        _send(PROGRAM, _args(1_400_000, type(uint64).max, _accounts(64)));
+        vm.recordLogs();
+        router.ccipSend{value: FEE + 1}(SOLANA, message);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+
+        (,,,, uint256 feeAmount,) =
+            abi.decode(logs[logs.length - 1].data, (bytes32, bytes, Client.SVMExtraArgsV1, address, uint256, uint256));
+        assertEq(feeAmount, FEE + 1, "recorded fee");
+        assertEq(address(router).balance, routerBefore + FEE + 1, "whole msg.value kept");
     }
 
     function test_insufficientNativeFeeReverts() public {
-        // Call the router directly with too little value.
-        Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
-            receiver: abi.encodePacked(PROGRAM),
-            data: "",
-            tokenAmounts: new Client.EVMTokenAmount[](0),
-            extraArgs: Client._svmArgsToBytes(_args(1, 0, new bytes32[](0))),
-            feeToken: address(0)
-        });
+        Client.EVM2AnyMessage memory message =
+            _message(abi.encodePacked(PROGRAM), new Client.EVMTokenAmount[](0), _validArgs(), address(0));
         vm.expectRevert(IRouterClient.InsufficientFeeTokenAmount.selector);
         router.ccipSend{value: FEE - 1}(SOLANA, message);
+    }
+
+    // ------------------------------------------- allowed on CCIP 2.0 at send time
+    // These fail on a CCIP 1.6 lane (mainnet today) but pass the 2.0 send path; problems surface on Solana instead.
+
+    function test_maxBoundariesAreAllowed() public {
+        // 3,000,000 CU (lane limit), 255 accounts (one-byte length), every bitmap bit set.
+        _send(PROGRAM, _args(3_000_000, type(uint64).max, _accounts(255)));
+    }
+
+    function test_zeroReceiverWithComputeUnitsAndAccountsIsAllowed() public {
+        _send(bytes32(0), _args(200_000, 1, _accounts(1)));
+    }
+
+    function test_writableBitmapBeyondAccountsIsAllowed() public {
+        _send(PROGRAM, _args(1, 4, _accounts(2)));
+    }
+
+    function test_allowOutOfOrderExecutionFalseIsAccepted() public {
+        Client.SVMExtraArgsV1 memory args = _args(1, 0, new bytes32[](0));
+        args.allowOutOfOrderExecution = false;
+        _send(PROGRAM, args);
     }
 
     // ---------------------------------------------------------------- reverts
@@ -204,81 +243,121 @@ contract CCIPLocalRouterSvmTest is Test {
 
     function test_revert_wrongTag() public {
         // An EVM tag is not valid for Solana.
-        bytes memory extraArgs =
-            Client._argsToBytes(Client.GenericExtraArgsV2({gasLimit: 1, allowOutOfOrderExecution: true}));
         vm.expectRevert(CCIPLocalRouter.InvalidExtraArgsTag.selector);
-        _send(PROGRAM, extraArgs);
+        _send(PROGRAM, _wrongTagArgs());
     }
 
-    function test_revert_undecodableExtraArgs() public {
-        vm.expectRevert();
-        _send(PROGRAM, abi.encodePacked(Client.SVM_EXTRA_ARGS_V1_TAG, hex"1234"));
+    /// @dev Production decodes with a plain `abi.decode`, which reverts with no data. The local router must match.
+    function test_revert_undecodableExtraArgsHasEmptyRevertData() public {
+        Client.EVM2AnyMessage memory message = _message(
+            abi.encodePacked(PROGRAM),
+            new Client.EVMTokenAmount[](0),
+            abi.encodePacked(Client.SVM_EXTRA_ARGS_V1_TAG, hex"1234"),
+            address(0)
+        );
+        (bool success, bytes memory revertData) =
+            address(router).call{value: FEE}(abi.encodeCall(router.ccipSend, (SOLANA, message)));
+        assertFalse(success, "must revert");
+        assertEq(revertData.length, 0, "empty revert data");
     }
 
     function test_revert_computeUnitsTooHigh() public {
         vm.expectRevert(CCIPLocalRouter.MessageComputeUnitLimitTooHigh.selector);
-        _send(PROGRAM, _args(1_400_001, 0, new bytes32[](0)));
+        _send(PROGRAM, _args(3_000_001, 0, new bytes32[](0)));
+    }
+
+    function test_revert_moreThan255Accounts() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ExtraArgsCodec.InvalidDataLength.selector,
+                ExtraArgsCodec.EncodingErrorLocation.ENCODE_SVM_ACCOUNTS_LENGTH,
+                0
+            )
+        );
+        _send(PROGRAM, _args(1, 0, _accounts(256)));
+    }
+
+    function test_revert_dataTooLarge() public {
+        bytes memory data = new bytes(30_001);
+        vm.expectRevert(abi.encodeWithSelector(CCIPLocalRouter.MessageTooLarge.selector, 30_000, 30_001));
+        sender.send(SOLANA, PROGRAM, data, _validArgs(), address(0));
     }
 
     function test_revert_receiverNot32Bytes() public {
-        bytes memory extraArgs = Client._svmArgsToBytes(_args(1, 0, new bytes32[](0)));
-        Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
-            receiver: hex"1234",
-            data: "",
-            tokenAmounts: new Client.EVMTokenAmount[](0),
-            extraArgs: extraArgs,
-            feeToken: address(0)
-        });
-        vm.expectRevert(abi.encodeWithSelector(CCIPLocalRouter.Invalid32ByteAddress.selector, hex"1234"));
+        Client.EVM2AnyMessage memory message =
+            _message(hex"1234", new Client.EVMTokenAmount[](0), _validArgs(), address(0));
+        vm.expectRevert(abi.encodeWithSelector(CCIPLocalRouter.InvalidDestChainAddress.selector, hex"1234"));
         router.ccipSend{value: FEE}(SOLANA, message);
     }
 
-    function test_revert_zeroReceiverWithComputeUnits() public {
-        vm.expectRevert(
-            abi.encodeWithSelector(CCIPLocalRouter.Invalid32ByteAddress.selector, abi.encodePacked(bytes32(0)))
-        );
-        _send(bytes32(0), _args(1, 0, new bytes32[](0)));
-    }
-
-    function test_revert_zeroReceiverWithAccounts() public {
-        vm.expectRevert(abi.encodeWithSelector(CCIPLocalRouter.TooManySVMExtraArgsAccounts.selector, 1, 0));
-        _send(bytes32(0), _args(0, 0, _accounts(1)));
-    }
-
-    function test_revert_tooManyAccounts() public {
-        vm.expectRevert(abi.encodeWithSelector(CCIPLocalRouter.TooManySVMExtraArgsAccounts.selector, 65, 64));
-        _send(PROGRAM, _args(1, 0, _accounts(65)));
-    }
-
-    function test_revert_writableBitmapExceedsAccounts() public {
-        // 2 accounts: bits above bit 1 must be unset.
-        vm.expectRevert(abi.encodeWithSelector(CCIPLocalRouter.InvalidSVMExtraArgsWritableBitmap.selector, 4, 2));
-        _send(PROGRAM, _args(1, 4, _accounts(2)));
-    }
-
-    function test_revert_writableBitmapWithNoAccounts() public {
-        vm.expectRevert(abi.encodeWithSelector(CCIPLocalRouter.InvalidSVMExtraArgsWritableBitmap.selector, 1, 0));
-        _send(PROGRAM, _args(1, 1, new bytes32[](0)));
-    }
-
-    function test_revert_tokenAmounts() public {
-        Client.EVMTokenAmount[] memory tokens = new Client.EVMTokenAmount[](1);
-        tokens[0] = Client.EVMTokenAmount({token: address(link), amount: 1});
-        Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
-            receiver: abi.encodePacked(PROGRAM),
-            data: "",
-            tokenAmounts: tokens,
-            extraArgs: Client._svmArgsToBytes(_args(1, 0, new bytes32[](0))),
-            feeToken: address(0)
-        });
-        vm.expectRevert(CCIPLocalRouter.SvmTokenTransfersNotSupported.selector);
+    function test_revert_oneTokenIsUnsupported() public {
+        Client.EVM2AnyMessage memory message = _message(abi.encodePacked(PROGRAM), _tokens(1), _validArgs(), address(0));
+        vm.expectRevert(abi.encodeWithSelector(CCIPLocalRouter.UnsupportedToken.selector, address(link)));
         router.ccipSend{value: FEE}(SOLANA, message);
     }
 
-    function test_allowOutOfOrderExecutionFalseIsAccepted() public {
-        Client.SVMExtraArgsV1 memory args = _args(1, 0, new bytes32[](0));
-        args.allowOutOfOrderExecution = false;
-        _send(PROGRAM, args);
+    function test_revert_twoTokens() public {
+        Client.EVM2AnyMessage memory message = _message(abi.encodePacked(PROGRAM), _tokens(2), _validArgs(), address(0));
+        vm.expectRevert(CCIPLocalRouter.CanOnlySendOneTokenPerMessage.selector);
+        router.ccipSend{value: FEE}(SOLANA, message);
+    }
+
+    // ----------------------------------------- error order (production order)
+
+    /// @dev Router checks msg.value on a fee-token payment before quoting the fee, so it wins over bad extra args.
+    function test_order_invalidMsgValueBeforeValidation() public {
+        Client.EVM2AnyMessage memory message =
+            _message(abi.encodePacked(PROGRAM), new Client.EVMTokenAmount[](0), _wrongTagArgs(), address(link));
+        vm.expectRevert(IRouterClient.InvalidMsgValue.selector);
+        router.ccipSend{value: 1}(SOLANA, message);
+    }
+
+    /// @dev OnRamp.getFee validates before the Router checks the native amount.
+    function test_order_validationBeforeInsufficientNativeFee() public {
+        Client.EVM2AnyMessage memory message =
+            _message(abi.encodePacked(PROGRAM), new Client.EVMTokenAmount[](0), _wrongTagArgs(), address(0));
+        vm.expectRevert(CCIPLocalRouter.InvalidExtraArgsTag.selector);
+        router.ccipSend{value: FEE - 1}(SOLANA, message);
+    }
+
+    /// @dev OnRamp.getFee validates before the Router transfers the fee token.
+    function test_order_validationBeforeFeeTokenTransfer() public {
+        link.approve(address(router), 0);
+        Client.EVM2AnyMessage memory message =
+            _message(abi.encodePacked(PROGRAM), new Client.EVMTokenAmount[](0), _wrongTagArgs(), address(link));
+        vm.expectRevert(CCIPLocalRouter.InvalidExtraArgsTag.selector);
+        router.ccipSend(SOLANA, message);
+    }
+
+    /// @dev getFee parses extra args before it looks up the token's pool.
+    function test_order_extraArgsBeforeUnsupportedToken() public {
+        Client.EVM2AnyMessage memory message =
+            _message(abi.encodePacked(PROGRAM), _tokens(1), _wrongTagArgs(), address(0));
+        vm.expectRevert(CCIPLocalRouter.InvalidExtraArgsTag.selector);
+        router.ccipSend{value: FEE}(SOLANA, message);
+    }
+
+    /// @dev getFee rejects more than one token before it parses extra args.
+    function test_order_tokenCountBeforeExtraArgs() public {
+        Client.EVM2AnyMessage memory message =
+            _message(abi.encodePacked(PROGRAM), _tokens(2), _wrongTagArgs(), address(0));
+        vm.expectRevert(CCIPLocalRouter.CanOnlySendOneTokenPerMessage.selector);
+        router.ccipSend{value: FEE}(SOLANA, message);
+    }
+
+    /// @dev The pool lookup is in getFee, so an unsupported token wins over an insufficient native fee.
+    function test_order_unsupportedTokenBeforeInsufficientNativeFee() public {
+        Client.EVM2AnyMessage memory message = _message(abi.encodePacked(PROGRAM), _tokens(1), _validArgs(), address(0));
+        vm.expectRevert(abi.encodeWithSelector(CCIPLocalRouter.UnsupportedToken.selector, address(link)));
+        router.ccipSend{value: FEE - 1}(SOLANA, message);
+    }
+
+    /// @dev The receiver is validated in OnRamp.forwardFromRouter, after the fee is paid.
+    function test_order_insufficientNativeFeeBeforeReceiver() public {
+        Client.EVM2AnyMessage memory message =
+            _message(hex"1234", new Client.EVMTokenAmount[](0), _validArgs(), address(0));
+        vm.expectRevert(IRouterClient.InsufficientFeeTokenAmount.selector);
+        router.ccipSend{value: FEE - 1}(SOLANA, message);
     }
 
     // --------------------------------------------------------------- simulator
