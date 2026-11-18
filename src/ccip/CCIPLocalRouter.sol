@@ -44,6 +44,42 @@ contract CCIPLocalRouter is IRouter, IRouterClient {
     /// @dev Mirrors `OffRamp.InvalidOptionalThreshold`.
     error InvalidOptionalThreshold(uint8 wanted, uint256 got);
 
+    /// @dev Mirrors `FeeQuoter.InvalidExtraArgsData`.
+    error InvalidExtraArgsData();
+    /// @dev Mirrors `FeeQuoter.MessageComputeUnitLimitTooHigh`.
+    error MessageComputeUnitLimitTooHigh();
+    /// @dev Mirrors `Internal.Invalid32ByteAddress`.
+    error Invalid32ByteAddress(bytes encodedAddress);
+    /// @dev Mirrors `FeeQuoter.TooManySVMExtraArgsAccounts`.
+    error TooManySVMExtraArgsAccounts(uint256 numAccounts, uint256 maxAccounts);
+    /// @dev Mirrors `FeeQuoter.InvalidSVMExtraArgsWritableBitmap`.
+    error InvalidSVMExtraArgsWritableBitmap(uint64 accountIsWritableBitmap, uint256 numAccounts);
+    /// @dev Local mode only: token transfers to Solana are not simulated yet, so they are rejected rather than dropped.
+    error SvmTokenTransfersNotSupported();
+
+    /// @notice Emitted for every accepted send to Solana. Nothing is delivered onchain; an offchain layer reads this
+    ///         event and delivers the message to a Solana validator.
+    /// @param messageId Unique id of the message, generated the same way as for EVM destinations.
+    /// @param destinationChainSelector Always `SOLANA_CHAIN_SELECTOR`.
+    /// @param sender The EVM contract that called `ccipSend`.
+    /// @param receiver The 32-byte Solana program ID (or zero when the message carries no instruction).
+    /// @param data The message payload.
+    /// @param extraArgs The decoded and validated `SVMExtraArgsV1`.
+    /// @param feeToken The fee token, `address(0)` for native.
+    /// @param feeTokenAmount The fee charged, in `feeToken` units.
+    /// @param nonce The value of the router nonce that produced `messageId`.
+    event SvmMessageSent(
+        bytes32 indexed messageId,
+        uint64 indexed destinationChainSelector,
+        address indexed sender,
+        bytes32 receiver,
+        bytes data,
+        Client.SVMExtraArgsV1 extraArgs,
+        address feeToken,
+        uint256 feeTokenAmount,
+        uint256 nonce
+    );
+
     event MessageExecuted(bytes32 messageId, uint64 sourceChainSelector, address offRamp, bytes32 calldataHash);
     event MsgExecuted(bool success, bytes retData, uint256 gasUsed);
 
@@ -51,6 +87,11 @@ contract CCIPLocalRouter is IRouter, IRouterClient {
     uint32 public constant DEFAULT_GAS_LIMIT = 200_000;
     /// @dev Source chain selector stamped on local messages (Ethereum Sepolia), as in `MockCCIPRouter`.
     uint64 internal constant SOURCE_CHAIN_SELECTOR = 16015286601757825753;
+    /// @notice CCIP chain selector of Solana (solana-devnet), the only non-EVM destination simulated locally.
+    uint64 public constant SOLANA_CHAIN_SELECTOR = 16423721717087811551;
+    /// @notice Solana's per-transaction compute unit maximum. On a live lane the limit is lane config
+    ///         (`DestChainConfig.maxPerMsgGasLimit`), which local mode does not have.
+    uint32 public constant SVM_MAX_COMPUTE_UNITS = 1_400_000;
 
     uint256 internal s_mockFeeTokenAmount; //use setFee() to change to non-zero to test fees
     /// @dev Nonce used to guarantee a unique messageId per send, see `ccipSend`.
@@ -90,7 +131,8 @@ contract CCIPLocalRouter is IRouter, IRouterClient {
     }
 
     /// @notice Sends the tx locally to the receiver instead of on the destination chain.
-    /// @dev Ignores destinationChainSelector
+    /// @dev Ignores destinationChainSelector, except for Solana: those sends are validated like the CCIP 2.0
+    ///      FeeQuoter would, charged, and emitted as `SvmMessageSent` without calling any receiver.
     /// @dev Returns a mock message ID, which is not calculated from the message contents in the
     /// same way as the real message ID.
     function ccipSend(uint64 destinationChainSelector, Client.EVM2AnyMessage calldata message)
@@ -98,6 +140,8 @@ contract CCIPLocalRouter is IRouter, IRouterClient {
         payable
         returns (bytes32)
     {
+        if (destinationChainSelector == SOLANA_CHAIN_SELECTOR) return _ccipSendSvm(message);
+
         if (message.receiver.length != 32) revert InvalidAddress(message.receiver);
         uint256 decodedReceiver = abi.decode(message.receiver, (uint256));
         // We want to disallow sending to address(0) and to precompiles, which exist on address(1) through address(9).
@@ -142,6 +186,65 @@ contract CCIPLocalRouter is IRouter, IRouterClient {
         if (!success) revert ReceiverError(retData);
 
         return mockMsgId;
+    }
+
+    /// @dev Solana branch of `ccipSend`. Fee handling is identical to the EVM path.
+    function _ccipSendSvm(Client.EVM2AnyMessage calldata message) internal returns (bytes32 messageId) {
+        Client.SVMExtraArgsV1 memory svmExtraArgs = _parseSvmExtraArgs(message.extraArgs);
+        _validateSvmMessage(message.receiver, svmExtraArgs);
+        if (message.tokenAmounts.length > 0) revert SvmTokenTransfersNotSupported();
+
+        uint256 feeTokenAmount = getFee(SOLANA_CHAIN_SELECTOR, message);
+        if (message.feeToken == address(0)) {
+            if (msg.value < feeTokenAmount) revert InsufficientFeeTokenAmount();
+        } else {
+            if (msg.value > 0) revert InvalidMsgValue();
+            IERC20(message.feeToken).safeTransferFrom(msg.sender, address(this), feeTokenAmount);
+        }
+
+        uint256 nonce = ++s_nonce;
+        messageId = keccak256(abi.encode(nonce, msg.sender, SOLANA_CHAIN_SELECTOR, message));
+
+        emit SvmMessageSent(
+            messageId,
+            SOLANA_CHAIN_SELECTOR,
+            msg.sender,
+            bytes32(message.receiver),
+            message.data,
+            svmExtraArgs,
+            message.feeToken,
+            feeTokenAmount,
+            nonce
+        );
+    }
+
+    /// @dev Mirrors `FeeQuoter._parseSVMExtraArgsFromBytes`, with `SVM_MAX_COMPUTE_UNITS` as the limit.
+    function _parseSvmExtraArgs(bytes calldata extraArgs) internal pure returns (Client.SVMExtraArgsV1 memory) {
+        if (extraArgs.length < 4) revert InvalidExtraArgsData();
+        if (bytes4(extraArgs) != Client.SVM_EXTRA_ARGS_V1_TAG) revert InvalidExtraArgsTag();
+
+        Client.SVMExtraArgsV1 memory svmExtraArgs = abi.decode(extraArgs[4:], (Client.SVMExtraArgsV1));
+        if (svmExtraArgs.computeUnits > SVM_MAX_COMPUTE_UNITS) revert MessageComputeUnitLimitTooHigh();
+        return svmExtraArgs;
+    }
+
+    /// @dev Mirrors the SVM branch of `FeeQuoter._validateMessage` and `_validateDestFamilyAddress` (same order). There
+    ///      is deliberately no `allowOutOfOrderExecution` check: the 2.0 FeeQuoter has none for Solana.
+    function _validateSvmMessage(bytes calldata receiver, Client.SVMExtraArgsV1 memory svmExtraArgs) internal pure {
+        // Mirrors `Internal._validate32ByteAddress(receiver, gasLimit > 0 ? 1 : 0)`.
+        if (receiver.length != 32) revert Invalid32ByteAddress(receiver);
+        bool receiverIsZero = bytes32(receiver) == bytes32(0);
+        if (receiverIsZero && svmExtraArgs.computeUnits > 0) revert Invalid32ByteAddress(receiver);
+
+        uint256 accountsLength = svmExtraArgs.accounts.length;
+        // A zero receiver means no instruction is invoked on Solana, so no accounts can be passed.
+        if (receiverIsZero && accountsLength > 0) revert TooManySVMExtraArgsAccounts(accountsLength, 0);
+        if (accountsLength > Client.SVM_EXTRA_ARGS_MAX_ACCOUNTS) {
+            revert TooManySVMExtraArgsAccounts(accountsLength, Client.SVM_EXTRA_ARGS_MAX_ACCOUNTS);
+        }
+        if (svmExtraArgs.accountIsWritableBitmap >> accountsLength != 0) {
+            revert InvalidSVMExtraArgsWritableBitmap(svmExtraArgs.accountIsWritableBitmap, accountsLength);
+        }
     }
 
     /// @dev Same token-only rule as OffRamp 2.0 `_isTokenOnlyTransfer`, which also decides whether the receiver is called.
