@@ -36,8 +36,8 @@ jobs:
         with:
           version: ${{ env.FOUNDRY_VERSION }}
 
-      - name: forge build
-        run: forge build
+      - name: forge build --sizes
+        run: forge build --sizes
 
       - name: forge fmt --check
         run: forge fmt --check

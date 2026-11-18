@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- `forge build --sizes` passes without `--ignore-eip-3860`: the Foundry build enables the optimizer, and the repo and
+  npm-consumer CI runs check contract sizes for the CCIP and Data Streams simulators.
+
 ## [0.3.1] - 7 October 2026
 
 ### Dependencies
@@ -1086,3 +1093,4 @@ to the tag.
 [0.3.0-beta.0]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.3.0-beta.0
 [0.3.0]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.3.0
 [0.3.1]: https://github.com/smartcontractkit/chainlink-local/releases/tag/v0.3.1
+[Unreleased]: https://github.com/smartcontractkit/chainlink-local/compare/v0.3.1...HEAD

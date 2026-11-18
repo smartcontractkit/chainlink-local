@@ -87,7 +87,27 @@ EOF
 }
 
 # ---------------------------------------------------------------------------
-# 3. Hardhat 3 consumer (npm install of the tarball only, plus hardhat).
+# 3. Data Streams consumer test (exercises the EIP-3860 size check).
+# ---------------------------------------------------------------------------
+write_data_streams_test() {
+  local dest="$1"
+  cat > "$dest" <<'EOF'
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+
+import {Test} from "forge-std/Test.sol";
+import {DataStreamsLocalSimulator} from "@chainlink/local/src/data-streams/DataStreamsLocalSimulator.sol";
+
+contract DataStreamsSmokeTest is Test {
+    function test_deployDataStreamsLocalSimulator() public {
+        new DataStreamsLocalSimulator();
+    }
+}
+EOF
+}
+
+# ---------------------------------------------------------------------------
+# 4. Hardhat 3 consumer (npm install of the tarball only, plus hardhat).
 # ---------------------------------------------------------------------------
 log "Building Hardhat 3 consumer"
 HH_DIR="$WORK_DIR/hardhat-consumer"
@@ -125,7 +145,7 @@ log "Running npx hardhat test solidity (Hardhat consumer)"
 npx hardhat test solidity
 
 # ---------------------------------------------------------------------------
-# 4. Foundry consumer (npm install of the tarball only).
+# 5. Foundry consumer (npm install of the tarball only).
 # ---------------------------------------------------------------------------
 log "Building Foundry (npm) consumer"
 FOUNDRY_DIR="$WORK_DIR/foundry-consumer"
@@ -146,6 +166,7 @@ cat > foundry.toml <<'EOF'
 [profile.default]
 libs = ["node_modules"]
 evm_version = "cancun"
+optimizer = true
 EOF
 
 # Exact lines from README's "Foundry (npm)" installation section.
@@ -168,6 +189,10 @@ done < remappings.txt
 
 cp "$README_TEST_SRC" test/ReadmeUsageExample.t.sol
 write_network_details_test test/NetworkDetails.t.sol
+write_data_streams_test test/DataStreams.t.sol
+
+log "Running forge build --sizes (Foundry consumer)"
+forge build --sizes
 
 log "Running forge test (Foundry consumer)"
 forge test

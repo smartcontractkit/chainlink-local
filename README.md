@@ -27,6 +27,9 @@ forge install smartcontractkit/chainlink-local@v0.3.0
 
 and then set remappings to: `@chainlink/local/=lib/chainlink-local/` in either `remappings.txt` or `foundry.toml` file
 
+Enable the optimizer in your project (`optimizer = true` in `foundry.toml`) so `forge build --sizes` keeps the bundled
+simulators under the EIP-3860 initcode limit.
+
 #### Foundry (soldeer)
 
 ```
