@@ -5,6 +5,7 @@
     "module": "node16",
     "moduleResolution": "node16",
     "declaration": true,
+    "rewriteRelativeImportExtensions": true,
     "rootDir": "scripts/svm",
     "outDir": "dist/svm",
     "types": ["node"]
