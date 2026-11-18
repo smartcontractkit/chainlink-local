@@ -46,6 +46,7 @@
     "generate-docs": "npm run generate-solidity && npm run generate-jsdoc && npm run generate-index && npm run prettier",
     "update-register": "node helper_doc/updateRegisterContract.cjs",
     "build:svm": "tsc -p tsconfig.svm.json",
+    "test:svm": "npx hardhat build --no-tests --quiet && npm run build:svm && node --test --test-concurrency=1 test/unit/svm/*.test.ts test/smoke/svm/*.test.ts",
     "prepack": "npm run build:svm && cp remappings.txt .remappings.txt.dev-backup && cp remappings-npm.txt remappings.txt",
     "postpack": "mv .remappings.txt.dev-backup remappings.txt"
   },
