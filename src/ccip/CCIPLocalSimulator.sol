@@ -21,6 +21,9 @@ contract CCIPLocalSimulator {
     /// @notice The unique CCIP Chain Selector constant
     uint64 constant CHAIN_SELECTOR = 16015286601757825753;
 
+    /// @notice The CCIP Chain Selector of Solana (solana-devnet), a destination supported for messages only
+    uint64 constant SOLANA_CHAIN_SELECTOR = 16423721717087811551;
+
     /// @notice The wrapped native token instance
     WETH9 internal immutable i_wrappedNative;
 
@@ -107,7 +110,7 @@ contract CCIPLocalSimulator {
      * @return supported - Returns true if `chainSelector` is supported by the simulator.
      */
     function isChainSupported(uint64 chainSelector) public pure returns (bool supported) {
-        supported = chainSelector == CHAIN_SELECTOR;
+        supported = chainSelector == CHAIN_SELECTOR || chainSelector == SOLANA_CHAIN_SELECTOR;
     }
 
     /**
@@ -118,7 +121,8 @@ contract CCIPLocalSimulator {
      * @return tokens - Returns a list of token addresses that are supported for cross-chain transfers by the simulator.
      */
     function getSupportedTokens(uint64 chainSelector) external view returns (address[] memory tokens) {
-        if (!isChainSupported(chainSelector)) {
+        // Token transfers to Solana are not simulated, so no token is supported for it.
+        if (chainSelector != CHAIN_SELECTOR) {
             return new address[](0);
         }
 
