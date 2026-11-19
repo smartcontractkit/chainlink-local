@@ -38,10 +38,13 @@ assertPeersInstalled();
 const implementation = await import("./local.ts");
 const extraArgs = await import("./extraArgs.ts");
 const route = await import("./route.ts");
+const receiver = await import("./exampleReceiver.ts");
 
 export const startSvmLocal = implementation.startSvmLocal;
 export const svmExtraArgs = extraArgs.svmExtraArgs;
 export const routeToSvm = route.routeToSvm;
+export const exampleReceiver = receiver.exampleReceiver;
 export type { SvmExtraArgsOptions } from "./extraArgs.ts";
+export type { ExampleReceiver } from "./exampleReceiver.ts";
 export type { EvmReceiptLike, RouteResult } from "./route.ts";
 export type { DeliverOptions, DeliverResult, SvmLocal } from "./local.ts";

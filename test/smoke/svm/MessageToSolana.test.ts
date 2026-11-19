@@ -1,20 +1,18 @@
 // Journey 2: a Solidity contract sends a CCIP message to a Solana program, delivered through the real
 // CCIP 2.0 Solana programs running in a local Surfnet.
 import assert from "node:assert/strict";
-import path from "node:path";
 import { after, before, describe, it } from "node:test";
 import anchor from "@anchor-lang/core";
 import { PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
 import { network } from "hardhat";
-import { readIdl, resolveArtifacts } from "../../../scripts/svm/artifacts.ts";
-import { CCIP_PROGRAMS } from "../../../scripts/svm/programs.ts";
-import { routeToSvm, startSvmLocal, svmExtraArgs, type SvmLocal } from "../../../scripts/svm/index.ts";
+import { exampleReceiver, routeToSvm, startSvmLocal, svmExtraArgs, type SvmLocal } from "../../../scripts/svm/index.ts";
 
 const { AnchorProvider, Program, Wallet } = anchor;
 const SOLANA_SELECTOR = 16423721717087811551n;
 const LOCAL_EVM_SELECTOR = 16015286601757825753n;
 const FEE = 10n ** 16n;
 const fileStart = performance.now();
+const receiver = await exampleReceiver();
 
 async function timed<T>(step: string, work: () => Promise<T>): Promise<T> {
   const start = performance.now();
@@ -24,7 +22,7 @@ async function timed<T>(step: string, work: () => Promise<T>): Promise<T> {
 }
 
 describe("a Solidity contract sends a CCIP message to a Solana program", () => {
-  const receiverId = new PublicKey(CCIP_PROGRAMS.test_ccip_receiver);
+  const receiverId = receiver.programId;
   const counter = PublicKey.findProgramAddressSync([Buffer.from("counter")], receiverId)[0];
   const externalExecutionConfig = PublicKey.findProgramAddressSync([Buffer.from("external_execution_config")], receiverId)[0];
   const accounts = [externalExecutionConfig, counter, SystemProgram.programId];
@@ -61,13 +59,12 @@ describe("a Solidity contract sends a CCIP message to a Solana program", () => {
     await simulator.requestLinkFromFaucet(sender, ethers.parseEther("1"));
 
     svm = await timed("startSvmLocal", () => startSvmLocal());
-    const bundleDir = await resolveArtifacts();
-    await svm.deployProgram(path.join(bundleDir, "target", "deploy", "test_ccip_receiver.so"), receiverId);
-    const receiver = new Program(
-      readIdl(bundleDir, "test_ccip_receiver") as never,
+    await svm.deployProgram(receiver.programPath, receiverId);
+    const receiverProgram = new Program(
+      receiver.idl as never,
       new AnchorProvider(svm.connection, new Wallet(svm.payer), { commitment: "confirmed" }),
     );
-    const initialize = await receiver.methods
+    const initialize = await receiverProgram.methods
       .initialize(svm.ccip.router)
       .accounts({ counter, externalExecutionConfig, authority: svm.payer.publicKey, systemProgram: SystemProgram.programId })
       .instruction();
