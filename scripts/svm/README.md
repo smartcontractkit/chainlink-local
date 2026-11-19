@@ -1,7 +1,8 @@
 # Try the Solana POC
 
-A Solidity contract sends a CCIP message to a Solana program. The message is delivered through the real CCIP 2.0
-Solana programs (OffRamp, Router, RMN Remote, FeeQuoter, CommitteeVerifier) running in a local Surfnet.
+A Solidity contract sends a CCIP message to a Solana program. The message is delivered through the real CCIP Solana
+programs running in a local Surfnet: by default the CCIP 2.0 programs (OffRamp, Router, RMN Remote, FeeQuoter,
+CommitteeVerifier), or with `ccipVersion: "1.6"` the CCIP 1.6 programs (OffRamp, Router, RMN Remote, FeeQuoter).
 
 ## Requirements
 
@@ -10,8 +11,30 @@ Solana programs (OffRamp, Router, RMN Remote, FeeQuoter, CommitteeVerifier) runn
 - The git submodules in `lib/`, which the Solidity build reads: clone with `git clone --recurse-submodules`, or run
   `git submodule update --init --recursive` in an existing checkout. A project that installs `@chainlink/local` from
   npm does not need them.
-- The first run downloads the pinned CCIP Solana programs (about 11 MB extracted, SHA-256 verified) into
-  `~/.cache/chainlink-local/svm`. Set `CHAINLINK_LOCAL_SVM_ARTIFACTS` to an extracted bundle to skip the download.
+- The first run of each CCIP version downloads its pinned Solana programs (SHA-256 verified) into
+  `~/.cache/chainlink-local/svm`. Set `CHAINLINK_LOCAL_SVM_ARTIFACTS` (2.0) or `CHAINLINK_LOCAL_SVM_ARTIFACTS_1_6`
+  (1.6) to an extracted bundle to skip the download, and `CHAINLINK_LOCAL_SVM_OFFLINE=1` to forbid it.
+
+## CCIP versions
+
+`startSvmLocal({ ccipVersion })` picks the lane. `deliver()` and its result are the same.
+
+| `ccipVersion` | Pinned release | Download |
+| --- | --- | --- |
+| `"2.0"` (default) | `smartcontractkit/chainlink-ccip-solana` `contracts/v2.1.0` | about 11 MB extracted |
+| `"1.6"` | `smartcontractkit/chainlink-ccip` `solana-v1.6.4` | 2.2 MB, about 9 MB extracted |
+
+`svm.ccipVersion` reports the choice. `exampleReceiver({ ccipVersion })` returns that bundle's `test_ccip_receiver`; the
+1.6 bundle ships Anchor 0.29 IDLs, so the returned `idl` is converted to the format `anchor.Program` 1.x reads.
+
+On a 1.6 lane `deliver()` plays both DONs: it commits a one-message Merkle root signed by 2 of 4 local OCR3 keys, then
+executes the message, both sent by the one transmitter (the payer). Differences from 2.0 you can observe:
+
+- `messageNumber` is ignored. The sequence number of a message is the OffRamp's next expected one.
+- `messageId` is a local id (the OffRamp treats the id as opaque), not the EVM-side id.
+- `computeUnits` limits the execute transaction; the commit transaction has its own limit.
+- A failed commit returns `state: "Failure"` with `error` starting `commit failed:`. A failed execute still leaves the
+  root committed, as on a live lane, and the next `deliver()` commits the next sequence number.
 
 ## Run it
 
@@ -70,6 +93,9 @@ Real:
 
 - The CCIP 2.0 Solana programs, at the pinned release, executing `execute_v2` with the real account resolution,
   CommitteeVerifier signature check, RMN Remote curse check, source-chain and onRamp check, and the receiver's CPI.
+- With `ccipVersion: "1.6"`, the CCIP 1.6 programs executing the real `commit` (OCR3 signature check, Merkle root
+  stored per source chain, sequence-interval and onRamp checks) and `execute` (transmitter check, Merkle proof of the
+  message and its receiver accounts, RMN Remote curse check, the receiver's CPI).
 - The EVM side of the send: `CCIPLocalRouter` applies the Router 1.2 and OnRamp 2.0 checks for Solana (extra-args tag,
   3,000,000 compute-unit cap, 255 accounts, no tokens, 30,000-byte payload, 32-byte receiver) and nothing more.
 - The OffRamp accepts one onRamp for the EVM source chain, as a live lane does: the router that emitted the first
@@ -81,6 +107,8 @@ Simulated:
 
 - The committee is local: `deliver()` signs the message with keys it generated and the CommitteeVerifier trusts
   them (threshold 1 of 8). There is no commit, no finality wait and no executor or offchain network.
+- On 1.6 the commit and execution DONs are local: 4 deterministic signer keys with F = 1 (2 signatures per commit), the
+  payer as the only transmitter, no RMN signatures and no price updates (the FeeQuoter is deployed but not initialised).
 - There is one EVM source chain (selector 16015286601757825753) and one Solana chain (devnet selector).
 - Fees are the router's `setFee` value on the EVM side, with no Solana-side pricing. Token transfers to Solana
   are not supported.

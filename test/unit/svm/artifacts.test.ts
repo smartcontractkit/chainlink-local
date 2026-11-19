@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, it, mock } from "node:test";
-import { ARTIFACTS, ENV_ARTIFACTS, ENV_OFFLINE, resolveArtifacts } from "../../../scripts/svm/artifacts.ts";
+import { ARTIFACTS, BUNDLES, ENV_ARTIFACTS, ENV_ARTIFACTS_1_6, ENV_OFFLINE, resolveArtifacts } from "../../../scripts/svm/artifacts.ts";
 
 describe("resolveArtifacts", () => {
   let cacheDir: string;
@@ -12,6 +12,7 @@ describe("resolveArtifacts", () => {
   beforeEach(() => {
     cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), "svm-artifacts-"));
     delete process.env[ENV_ARTIFACTS];
+    delete process.env[ENV_ARTIFACTS_1_6];
     delete process.env[ENV_OFFLINE];
   });
 
@@ -70,5 +71,41 @@ describe("resolveArtifacts", () => {
   it("rejects an override that is not a bundle", async () => {
     process.env[ENV_ARTIFACTS] = cacheDir;
     await assert.rejects(resolveArtifacts(), /does not contain target\/deploy/);
+  });
+
+  it("pins one release per CCIP version and keeps 2.0 as the default", () => {
+    assert.equal(ARTIFACTS, BUNDLES["2.0"]);
+    assert.equal(BUNDLES["2.0"].release, "contracts/v2.1.0");
+    assert.equal(BUNDLES["1.6"].release, "solana-v1.6.4");
+    assert.notEqual(BUNDLES["1.6"].sha256, BUNDLES["2.0"].sha256);
+  });
+
+  it("caches each version in its own directory", async () => {
+    for (const bundle of [BUNDLES["2.0"], BUNDLES["1.6"]]) {
+      const dir = path.join(cacheDir, bundle.release.replace("/", "-"));
+      fs.mkdirSync(path.join(dir, "target", "deploy"), { recursive: true });
+      fs.mkdirSync(path.join(dir, "target", "idl"), { recursive: true });
+    }
+    assert.equal(await resolveArtifacts({ cacheDir, ccipVersion: "1.6" }), path.join(cacheDir, "solana-v1.6.4"));
+    assert.equal(await resolveArtifacts({ cacheDir }), path.join(cacheDir, "contracts-v2.1.0"));
+  });
+
+  it("checks a 1.6 download against the 1.6 digest and names the 1.6 override in the offline error", async () => {
+    mock.method(globalThis, "fetch", async () => new Response(Buffer.from("not the real tarball")));
+    await assert.rejects(resolveArtifacts({ cacheDir, ccipVersion: "1.6" }), /Digest mismatch.*chainlink-ccip\/releases.*expected sha256 d6305e9d/s);
+
+    process.env[ENV_OFFLINE] = "1";
+    await assert.rejects(resolveArtifacts({ cacheDir, ccipVersion: "1.6" }), new RegExp(ENV_ARTIFACTS_1_6));
+  });
+
+  it("applies each override variable to its own version only", async () => {
+    const extracted = path.join(cacheDir, "mine");
+    fs.mkdirSync(path.join(extracted, "target", "deploy"), { recursive: true });
+    fs.mkdirSync(path.join(extracted, "target", "idl"), { recursive: true });
+    process.env[ENV_ARTIFACTS_1_6] = extracted;
+    assert.equal(await resolveArtifacts({ cacheDir, ccipVersion: "1.6" }), extracted);
+
+    mock.method(globalThis, "fetch", async () => new Response(Buffer.from("not the real tarball")));
+    await assert.rejects(resolveArtifacts({ cacheDir }), /Digest mismatch/);
   });
 });

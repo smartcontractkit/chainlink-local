@@ -49,7 +49,7 @@ export function loadPrograms(runtime: SvmRuntime, bundleDir: string) {
 export type CcipPrograms = ReturnType<typeof loadPrograms>;
 
 /** Sends `instructions` in as few transactions as fit the size limit, preserving their order. */
-async function sendPacked(runtime: SvmRuntime, instructions: TransactionInstruction[]): Promise<void> {
+export async function sendPacked(runtime: SvmRuntime, instructions: TransactionInstruction[]): Promise<void> {
   const fits = async (batch: TransactionInstruction[]) => {
     const tx = new Transaction({ feePayer: runtime.payer.publicKey, recentBlockhash: "11111111111111111111111111111111" });
     tx.add(...batch);

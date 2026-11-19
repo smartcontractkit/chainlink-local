@@ -8,7 +8,6 @@
 
 import fs from "node:fs";
 import {
-  AddressLookupTableAccount,
   ComputeBudgetProgram,
   Keypair,
   PublicKey,
@@ -20,16 +19,17 @@ import {
   type Connection,
 } from "@solana/web3.js";
 import anchor from "@anchor-lang/core";
-import { readIdl, resolveArtifacts } from "./artifacts.ts";
+import { readIdl, resolveArtifacts, type CcipVersion } from "./artifacts.ts";
 import { encodeDestBlob, encodeMessage, messageId } from "./codec.ts";
 import {
-  ADDRESS_LOOKUP_TABLE_PROGRAM,
   EVM_CHAIN_SELECTOR,
   SEEDS,
   SVM_CHAIN_SELECTOR,
   pda,
   selectorSeed,
 } from "./constants.ts";
+import { checkDeliverOptions, describeFailure, sendForOutcome, writeLookupTable } from "./execution.ts";
+import { startSvmLocal16 } from "./local16.ts";
 import { CCIP_PROGRAMS, deployCcipPrograms } from "./programs.ts";
 import { resolveAccounts } from "./resolver.ts";
 import { SvmRuntime } from "./runtime.ts";
@@ -38,8 +38,6 @@ import { signVerifierResults, sortedCommittee } from "./signatures.ts";
 
 const { BN } = anchor;
 
-const DEFAULT_COMPUTE_UNITS = 200_000;
-const MAX_UINT64 = (1n << 64n) - 1n;
 /** Placeholder onRamp that `trust.ts` registers at startup, until a real one replaces it; and the default sender. */
 const LOCAL_ON_RAMP = Buffer.alloc(20, 1);
 const DEFAULT_SENDER = Buffer.alloc(20, 2);
@@ -83,7 +81,18 @@ export interface DeliverResult {
   error?: string;
 }
 
+export interface StartOptions {
+  /**
+   * Which CCIP lane the local Solana chain runs. "2.0" (default) deploys the CCIP 2.0 programs and delivers
+   * through `execute_v2` with a CommitteeVerifier signature. "1.6" deploys the CCIP 1.6 programs and delivers
+   * through the OffRamp's `commit` (OCR3 signatures) and `execute`.
+   */
+  ccipVersion?: CcipVersion;
+}
+
 export interface SvmLocal {
+  /** The lane version chosen at start. */
+  readonly ccipVersion: CcipVersion;
   connection: Connection;
   payer: Keypair;
   ccip: { router: PublicKey; offRamp: PublicKey; chainSelector: bigint };
@@ -97,8 +106,11 @@ export interface SvmLocal {
   stop(): void;
 }
 
-/** Boots a Surfnet, deploys the pinned CCIP 2.0 programs and initialises them with local keys. */
-export async function startSvmLocal(): Promise<SvmLocal> {
+/** Boots a Surfnet, deploys the pinned CCIP programs of `ccipVersion` (default "2.0") and initialises them with local keys. */
+export async function startSvmLocal(options: StartOptions = {}): Promise<SvmLocal> {
+  const ccipVersion = options.ccipVersion ?? "2.0";
+  if (ccipVersion === "1.6") return startSvmLocal16();
+  if (ccipVersion !== "2.0") throw new Error(`startSvmLocal: ccipVersion must be "2.0" or "1.6", got ${JSON.stringify(ccipVersion)}`);
   const bundleDir = await resolveArtifacts();
   const runtime = SvmRuntime.start();
   try {
@@ -113,6 +125,7 @@ export async function startSvmLocal(): Promise<SvmLocal> {
 }
 
 class Local implements SvmLocal {
+  readonly ccipVersion = "2.0" as const;
   readonly connection: Connection;
   readonly payer: Keypair;
   readonly ccip = {
@@ -153,24 +166,9 @@ class Local implements SvmLocal {
   }
 
   async deliver(options: DeliverOptions): Promise<DeliverResult> {
-    const computeUnits = options.computeUnits ?? DEFAULT_COMPUTE_UNITS;
-    // 0 is not misuse: a CCIP 2.0 EVM send accepts it, so the message runs and Solana decides the outcome.
-    if (!Number.isInteger(computeUnits) || computeUnits < 0) {
-      throw new Error(`deliver: computeUnits must be a non-negative integer, got ${computeUnits}`);
-    }
-    if (!(options.receiverProgram instanceof PublicKey) || !options.receiverAccounts.every((a) => a instanceof PublicKey)) {
-      throw new Error("deliver: receiverProgram and receiverAccounts must be PublicKeys");
-    }
+    const computeUnits = checkDeliverOptions(options);
     const bitmap = options.receiverWritableBitmap;
-    if (typeof bitmap !== "bigint" || bitmap < 0n || bitmap > MAX_UINT64) {
-      throw new Error(`deliver: receiverWritableBitmap must be a bigint in 0..2^64-1, got ${String(bitmap)}`);
-    }
-    // No other pre-checks: a bitmap with stray bits, a receiver that is not a program and a compute-unit
-    // limit above the runtime's cap are all accepted by a CCIP 2.0 EVM send, and fail (or not) on Solana.
     const sourceChainSelector = options.sourceChainSelector ?? EVM_CHAIN_SELECTOR;
-    if (options.onRampAddress !== undefined && options.onRampAddress.length !== 20) {
-      throw new Error(`deliver: onRampAddress must be 20 bytes, got ${options.onRampAddress.length}`);
-    }
     const onRampAddress = await this.laneOnRamp(sourceChainSelector, options.onRampAddress);
 
     const messageNumber = options.messageNumber ?? this.nextMessageNumber++;
@@ -220,7 +218,7 @@ class Local implements SvmLocal {
     });
 
     // The resolved account list does not fit a legacy transaction, so the accounts go in a lookup table.
-    const lookupTable = await this.writeLookupTable(resolved.accounts.map((account) => account.pubkey));
+    const lookupTable = await writeLookupTable(this.runtime, resolved.accounts.map((account) => account.pubkey));
     const message = new TransactionMessage({
       payerKey: this.payer.publicKey,
       recentBlockhash: (await this.connection.getLatestBlockhash()).blockhash,
@@ -229,7 +227,7 @@ class Local implements SvmLocal {
     const transaction = new VersionedTransaction(message);
     transaction.sign([this.payer]);
 
-    const outcome = await this.run(transaction);
+    const outcome = await sendForOutcome(this.runtime, transaction);
     return {
       messageId: "0x" + id.toString("hex"),
       state: outcome.err === null ? "Success" : "Failure",
@@ -280,54 +278,4 @@ class Local implements SvmLocal {
     this.laneOnRamps.set(sourceChainSelector, onRamp);
     return onRamp;
   }
-
-  /** Sends without preflight (so a failing execution still lands) and reads its logs and compute units. */
-  private async run(transaction: VersionedTransaction) {
-    const signature = await this.connection.sendRawTransaction(transaction.serialize(), { skipPreflight: true });
-    const deadline = Date.now() + 30_000;
-    let fetched = null;
-    while (Date.now() < deadline && !fetched) {
-      fetched = await this.connection.getTransaction(signature, {
-        commitment: "confirmed",
-        maxSupportedTransactionVersion: 0,
-      });
-      if (!fetched) await new Promise((resolve) => setTimeout(resolve, 50));
-    }
-    if (!fetched?.meta) throw new Error(`deliver: transaction ${signature} was not confirmed within 30s`);
-    return {
-      err: fetched.meta.err,
-      logs: fetched.meta.logMessages ?? [],
-      computeUnitsUsed: fetched.meta.computeUnitsConsumed ?? 0,
-    };
-  }
-
-  /** Creates an active lookup table holding `addresses` by writing the account directly. */
-  private async writeLookupTable(addresses: PublicKey[]): Promise<AddressLookupTableAccount> {
-    const key = Keypair.generate().publicKey;
-    // Layout: u32 type (1 = table) | u64 deactivation slot (max = active) | u64 last extended slot |
-    // u8 start index | Option<Pubkey> authority (none) | u16 padding | addresses.
-    const header = Buffer.alloc(56);
-    header.writeUInt32LE(1, 0);
-    header.writeBigUInt64LE(0xffffffffffffffffn, 4);
-    const data = Buffer.concat([header, ...addresses.map((address) => address.toBuffer())]);
-    await this.runtime.setAccount(key, {
-      lamports: await this.connection.getMinimumBalanceForRentExemption(data.length),
-      owner: ADDRESS_LOOKUP_TABLE_PROGRAM,
-      data,
-    });
-    const table = (await this.connection.getAddressLookupTable(key)).value;
-    if (!table) throw new Error("deliver: the lookup table was not created");
-    return table;
-  }
-}
-
-/** Turns a failed transaction into a sentence: the Anchor error, the compute budget, or the raw error. */
-function describeFailure(err: unknown, logs: string[], used: number, limit: number): string {
-  const anchorLine = logs.find((line) => line.includes("AnchorError"));
-  if (anchorLine) return anchorLine.replace(/^Program log: /, "");
-  if (/exceeded CUs meter|ComputationalBudgetExceeded/.test(logs.join("\n") + JSON.stringify(err))) {
-    return `compute budget exceeded: used ${used} of ${limit} compute units; raise computeUnits`;
-  }
-  const lastLog = logs.filter((line) => line.startsWith("Program log:")).at(-1);
-  return `${JSON.stringify(err)}${lastLog ? ` (${lastLog.replace(/^Program log: /, "")})` : ""}`;
 }
