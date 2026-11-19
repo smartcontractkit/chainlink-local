@@ -10,7 +10,8 @@ import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
 import {Internal} from "@chainlink/contracts-ccip/contracts/libraries/Internal.sol";
 
 /// @notice With `SvmLaneVersion.V1_6`, Solana sends through `CCIPLocalRouter` must follow the CCIP 1.6 lane (Router 1.2 +
-///         OnRamp 1.6.0 + FeeQuoter 1.6.x, contracts-ccip-v1.6.0): same checks, same errors, same order.
+///         OnRamp 1.6.0 + FeeQuoter 2.0.0, as on mainnet Ethereum -> Solana): same checks, same errors, same order, and
+///         the mainnet lane limits (1,400,000 compute units, 1,280 bytes).
 contract CCIPLocalRouterSvm16Test is Test {
     uint64 constant SOLANA = 16423721717087811551;
     uint64 constant LOCAL_EVM = 16015286601757825753;
@@ -129,9 +130,8 @@ contract CCIPLocalRouterSvm16Test is Test {
 
     /// @dev A rule that only exists on 1.6 stops applying once the lane is set back to 2.0.
     function test_switchingBackToV2_0RestoresTheLooserRules() public {
-        Client.SVMExtraArgsV1 memory args = _args(1, 0, 0);
-        args.allowOutOfOrderExecution = false;
-        vm.expectRevert(CCIPLocalRouter.ExtraArgOutOfOrderExecutionMustBeTrue.selector);
+        Client.SVMExtraArgsV1 memory args = _args(1, 4, 2);
+        vm.expectRevert(abi.encodeWithSelector(CCIPLocalRouter.InvalidSVMExtraArgsWritableBitmap.selector, 4, 2));
         _send(args);
 
         router.setSvmLaneVersion(CCIPLocalRouter.SvmLaneVersion.V2_0);
@@ -210,8 +210,22 @@ contract CCIPLocalRouterSvm16Test is Test {
     }
 
     function test_happyPath_boundaries() public {
-        // 3,000,000 CU, 64 accounts (the 1.6 maximum) with every bitmap bit set.
-        _send(_args(3_000_000, type(uint64).max, 64));
+        // 1,400,000 CU (the mainnet lane limit) and 37 accounts, all writable: with a 3-byte payload,
+        // 3 + (37 + 2) * 32 = 1,251 bytes fits in 1,280. 38 accounts would not (1,283).
+        _send(_args(1_400_000, (uint64(1) << 37) - 1, 37));
+    }
+
+    /// @dev 64 accounts pass the account-count check, but on this lane's 1,280 bytes they always exceed the size limit.
+    function test_revert_sixtyFourAccountsExceedTheLaneSize() public {
+        vm.expectRevert(abi.encodeWithSelector(CCIPLocalRouter.MessageTooLarge.selector, 1_280, 3 + 66 * 32));
+        _send(_args(1, 0, 64));
+    }
+
+    /// @dev FeeQuoter 2.0.0 treats every message as out-of-order, so `allowOutOfOrderExecution = false` is accepted.
+    function test_happyPath_outOfOrderFalseIsAccepted() public {
+        Client.SVMExtraArgsV1 memory args = _args(1, 0, 0);
+        args.allowOutOfOrderExecution = false;
+        _send(args);
     }
 
     function test_happyPath_zeroReceiverWithoutComputeUnitsAndAccounts() public {
@@ -225,7 +239,7 @@ contract CCIPLocalRouterSvm16Test is Test {
 
     function test_happyPath_payloadPlusAccountOverheadExactlyAtTheLimit() public {
         // 2 accounts: (2 + 2) * 32 = 128 bytes of overhead on top of the payload.
-        _send(_message(abi.encodePacked(PROGRAM), new bytes(30_000 - 128), Client._svmArgsToBytes(_args(1, 0, 2))));
+        _send(_message(abi.encodePacked(PROGRAM), new bytes(1_280 - 128), Client._svmArgsToBytes(_args(1, 0, 2))));
     }
 
     // ---------------------------------------------------------------- reverts
@@ -238,15 +252,15 @@ contract CCIPLocalRouterSvm16Test is Test {
     }
 
     function test_revert_dataTooLarge() public {
-        Client.EVM2AnyMessage memory message = _message(abi.encodePacked(PROGRAM), new bytes(30_001), _validArgs());
-        vm.expectRevert(abi.encodeWithSelector(CCIPLocalRouter.MessageTooLarge.selector, 30_000, 30_001));
+        Client.EVM2AnyMessage memory message = _message(abi.encodePacked(PROGRAM), new bytes(1_281), _validArgs());
+        vm.expectRevert(abi.encodeWithSelector(CCIPLocalRouter.MessageTooLarge.selector, 1_280, 1_281));
         _send(message);
     }
 
     function test_revert_expandedDataTooLarge() public {
-        // The payload alone fits, but the receiver and OffRamp signer accounts push it over: 29_937 + 2 * 32 = 30_001.
-        Client.EVM2AnyMessage memory message = _message(abi.encodePacked(PROGRAM), new bytes(29_937), _validArgs());
-        vm.expectRevert(abi.encodeWithSelector(CCIPLocalRouter.MessageTooLarge.selector, 30_000, 30_001));
+        // The payload alone fits, but the receiver and OffRamp signer accounts push it over: 1_217 + 2 * 32 = 1_281.
+        Client.EVM2AnyMessage memory message = _message(abi.encodePacked(PROGRAM), new bytes(1_217), _validArgs());
+        vm.expectRevert(abi.encodeWithSelector(CCIPLocalRouter.MessageTooLarge.selector, 1_280, 1_281));
         _send(message);
     }
 
@@ -262,19 +276,16 @@ contract CCIPLocalRouterSvm16Test is Test {
         _send(hex"");
     }
 
-    /// @dev `bytes4(extraArgs[:4])` on a 1 to 3 byte slice reverts with no data in production. Unlike 2.0, which reverts
-    ///      `InvalidExtraArgsData` for them.
-    function test_revert_extraArgsOneToThreeBytesRevertEmpty() public {
+    /// @dev FeeQuoter 2.0.0 rejects anything shorter than the 4-byte tag with `InvalidExtraArgsData`.
+    function test_revert_extraArgsOneToThreeBytes() public {
         bytes memory extraArgs = hex"1f3b3a";
         for (uint256 length = 1; length <= 3; ++length) {
             bytes memory shortArgs = new bytes(length);
             for (uint256 i; i < length; ++i) {
                 shortArgs[i] = extraArgs[i];
             }
-            (bool success, bytes memory revertData) =
-                address(router).call{value: FEE}(abi.encodeCall(router.ccipSend, (SOLANA, _message(shortArgs))));
-            assertFalse(success, "must revert");
-            assertEq(revertData.length, 0, "empty revert data");
+            vm.expectRevert(CCIPLocalRouter.InvalidExtraArgsData.selector);
+            _send(shortArgs);
         }
     }
 
@@ -293,16 +304,9 @@ contract CCIPLocalRouterSvm16Test is Test {
         assertEq(revertData.length, 0, "empty revert data");
     }
 
-    function test_revert_outOfOrderExecutionFalse() public {
-        Client.SVMExtraArgsV1 memory args = _args(1, 0, 0);
-        args.allowOutOfOrderExecution = false;
-        vm.expectRevert(CCIPLocalRouter.ExtraArgOutOfOrderExecutionMustBeTrue.selector);
-        _send(args);
-    }
-
     function test_revert_computeUnitsTooHigh() public {
         vm.expectRevert(CCIPLocalRouter.MessageComputeUnitLimitTooHigh.selector);
-        _send(_args(3_000_001, 0, 0));
+        _send(_args(1_400_001, 0, 0));
     }
 
     function test_revert_receiverNot32Bytes() public {
@@ -360,7 +364,7 @@ contract CCIPLocalRouterSvm16Test is Test {
         _send(message);
     }
 
-    // ----------------------------------------- error order (FeeQuoter.sol:992)
+    // ----------------------------------------- error order (FeeQuoter.sol:761)
 
     /// @dev Router checks msg.value on a fee-token payment before it quotes the fee.
     function test_order_invalidMsgValueBeforeValidation() public {
@@ -371,9 +375,9 @@ contract CCIPLocalRouterSvm16Test is Test {
     }
 
     function test_order_dataSizeBeforeTokenCount() public {
-        Client.EVM2AnyMessage memory message = _message(abi.encodePacked(PROGRAM), new bytes(30_001), hex"");
+        Client.EVM2AnyMessage memory message = _message(abi.encodePacked(PROGRAM), new bytes(1_281), hex"");
         message.tokenAmounts = _tokens(2, 1);
-        vm.expectRevert(abi.encodeWithSelector(CCIPLocalRouter.MessageTooLarge.selector, 30_000, 30_001));
+        vm.expectRevert(abi.encodeWithSelector(CCIPLocalRouter.MessageTooLarge.selector, 1_280, 1_281));
         _send(message);
     }
 
@@ -384,16 +388,9 @@ contract CCIPLocalRouterSvm16Test is Test {
         _send(message);
     }
 
-    function test_order_outOfOrderBeforeComputeUnits() public {
-        Client.SVMExtraArgsV1 memory args = _args(3_000_001, 0, 0);
-        args.allowOutOfOrderExecution = false;
-        vm.expectRevert(CCIPLocalRouter.ExtraArgOutOfOrderExecutionMustBeTrue.selector);
-        _send(args);
-    }
-
     function test_order_computeUnitsBeforeReceiver() public {
         vm.expectRevert(CCIPLocalRouter.MessageComputeUnitLimitTooHigh.selector);
-        _send(_message(hex"1234", hex"c0ffee", Client._svmArgsToBytes(_args(3_000_001, 0, 0))));
+        _send(_message(hex"1234", hex"c0ffee", Client._svmArgsToBytes(_args(1_400_001, 0, 0))));
     }
 
     /// @dev In 1.6 the receiver is validated in getValidatedFee, before the fee is paid (2.0 checks it after).
@@ -424,7 +421,7 @@ contract CCIPLocalRouterSvm16Test is Test {
 
     function test_order_bitmapBeforeExpandedSize() public {
         Client.EVM2AnyMessage memory message =
-            _message(abi.encodePacked(PROGRAM), new bytes(29_937), Client._svmArgsToBytes(_args(1, 4, 0)));
+            _message(abi.encodePacked(PROGRAM), new bytes(1_217), Client._svmArgsToBytes(_args(1, 4, 0)));
         vm.expectRevert(abi.encodeWithSelector(CCIPLocalRouter.InvalidSVMExtraArgsWritableBitmap.selector, 4, 0));
         _send(message);
     }
