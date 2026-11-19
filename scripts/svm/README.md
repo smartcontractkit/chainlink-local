@@ -45,6 +45,11 @@ const [result] = await routeToSvm(svm, receipt); // { state: "Success" | "Failur
 svm.stop();
 ```
 
+`exampleReceiver()` returns `{ programId, programPath, idl }` for `test_ccip_receiver`, the stand-in receiver program
+shipped in the pinned CCIP Solana bundle (downloaded on first use). Pass `programPath` and `programId` to
+`svm.deployProgram`, and `idl` to `new anchor.Program(idl as never, provider)`. It does not deploy or initialize
+anything, and your own program replaces it in a real project.
+
 ## Timing
 
 Measured on a MacBook (Apple silicon), warm unless noted; two runs.

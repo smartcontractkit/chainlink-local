@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # Consumer smoke test for the @chainlink/local npm tarball.
 #
-# Packs the repo (npm pack), then builds two throwaway consumer projects that install ONLY the
+# Packs the repo (npm pack), then builds three throwaway consumer projects that install ONLY the
 # published tarball (plus hardhat for the Hardhat consumer) and run two Solidity tests against it:
 #   1. The README usage example (test/smoke/ccip/ReadmeUsageExample.t.sol), copied verbatim.
 #   2. A CCIPLocalSimulatorFork smoke test asserting known Sepolia network details.
+# A third consumer installs the Solana peer packages and runs a TypeScript test through
+# `@chainlink/local/svm` (kept apart from the Hardhat consumer, which proves EVM users need no Solana peers).
 #
 # Assumes `npm ci` has already been run in the repo (this script does not install repo devDependencies).
 # Needs network access to registry.npmjs.org (tarball deps) and github.com (forge-std is a git dependency).
@@ -196,5 +198,136 @@ forge build --sizes
 
 log "Running forge test (Foundry consumer)"
 forge test
+
+# ---------------------------------------------------------------------------
+# 6. SVM consumer (tarball + Hardhat + the Solana peer packages): Solidity -> Solana through /svm.
+# ---------------------------------------------------------------------------
+log "Building SVM consumer"
+SVM_DIR="$WORK_DIR/svm-consumer"
+mkdir -p "$SVM_DIR/contracts" "$SVM_DIR/test"
+cd "$SVM_DIR"
+
+cat > package.json <<EOF
+{
+  "name": "chainlink-local-consumer-svm-smoke",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0"
+}
+EOF
+
+npm install --silent --no-audit --no-fund "$TGZ" hardhat@3.1.10 @nomicfoundation/hardhat-ethers@4.0.5 \
+  ethers@6.17.0 @solana/surfpool@1.7.0 @solana/web3.js@1.99.0 @anchor-lang/core@1.2.2 @types/node@22
+
+cat > hardhat.config.ts <<'EOF'
+import { defineConfig } from "hardhat/config";
+import hardhatEthers from "@nomicfoundation/hardhat-ethers";
+
+export default defineConfig({
+  plugins: [hardhatEthers],
+  solidity: {
+    version: "0.8.24",
+    settings: { evmVersion: "cancun" },
+    // Compile the simulator from the package so the test can deploy it.
+    npmFilesToBuild: ["@chainlink/local/src/ccip/CCIPLocalSimulator.sol"],
+  },
+});
+EOF
+
+cat > contracts/HelloSolana.sol <<'EOF'
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.24;
+
+import {IRouterClient} from "@chainlink/contracts-ccip/contracts/interfaces/IRouterClient.sol";
+import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
+
+/// Sends a text message to a Solana program over CCIP, paying the fee in native.
+contract HelloSolana {
+  IRouterClient public immutable router;
+
+  event Sent(bytes32 indexed messageId, uint256 fee);
+
+  constructor(address _router) {
+    router = IRouterClient(_router);
+  }
+
+  function sendText(
+    uint64 destinationChainSelector,
+    bytes32 receiverProgram,
+    string calldata text,
+    bytes calldata extraArgs
+  ) external payable returns (bytes32 messageId) {
+    Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
+      receiver: abi.encodePacked(receiverProgram),
+      data: bytes(text),
+      tokenAmounts: new Client.EVMTokenAmount[](0),
+      feeToken: address(0),
+      extraArgs: extraArgs
+    });
+    uint256 fee = router.getFee(destinationChainSelector, message);
+    messageId = router.ccipSend{value: fee}(destinationChainSelector, message);
+    emit Sent(messageId, fee);
+  }
+}
+EOF
+
+cat > test/HelloSolana.test.ts <<'EOF'
+import assert from "node:assert/strict";
+import { after, before, describe, it } from "node:test";
+import { network } from "hardhat";
+import anchor from "@anchor-lang/core";
+import { SystemProgram, PublicKey, Transaction } from "@solana/web3.js";
+import { exampleReceiver, routeToSvm, startSvmLocal, svmExtraArgs, type SvmLocal } from "@chainlink/local/svm";
+
+const SOLANA_DEVNET_SELECTOR = 16423721717087811551n;
+const receiver = await exampleReceiver();
+
+describe("HelloSolana", () => {
+  const receiverProgram = receiver.programId;
+  const [counter] = PublicKey.findProgramAddressSync([Buffer.from("counter")], receiverProgram);
+  const [externalExecutionConfig] = PublicKey.findProgramAddressSync([Buffer.from("external_execution_config")], receiverProgram);
+  const accounts = [externalExecutionConfig, counter, SystemProgram.programId];
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let ethers: any, hello: any, svm: SvmLocal;
+
+  before(async () => {
+    ({ ethers } = await network.connect());
+    const simulator = await ethers.deployContract("CCIPLocalSimulator");
+    const [, router] = await simulator.configuration();
+    hello = await ethers.deployContract("HelloSolana", [router]);
+
+    svm = await startSvmLocal();
+    await svm.deployProgram(receiver.programPath, receiverProgram);
+    const program = new anchor.Program(
+      receiver.idl as never,
+      new anchor.AnchorProvider(svm.connection, new anchor.Wallet(svm.payer), { commitment: "confirmed" }),
+    );
+    const initialize = await program.methods
+      .initialize(svm.ccip.router)
+      .accounts({ counter, externalExecutionConfig, authority: svm.payer.publicKey, systemProgram: SystemProgram.programId })
+      .instruction();
+    await svm.sendAndConfirm(new Transaction().add(initialize));
+  });
+
+  after(() => svm?.stop());
+
+  it("delivers a message from Solidity to the Solana program", async () => {
+    const extraArgs = svmExtraArgs({ computeUnits: 200_000, accounts, writableBitmap: 0b11n });
+    const tx = await hello.sendText(SOLANA_DEVNET_SELECTOR, receiverProgram.toBytes(), "hello solana", extraArgs);
+
+    const [result] = await routeToSvm(svm, await tx.wait());
+
+    assert.equal(result.state, "Success", result.error);
+    assert.equal((await svm.connection.getAccountInfo(counter))!.data.readBigUInt64LE(8), 1n);
+  });
+});
+EOF
+
+log "Running npx hardhat build (SVM consumer)"
+npx hardhat build
+
+log "Running node --test (SVM consumer)"
+node --test 'test/**/*.test.ts'
 
 log "Consumer smoke tests passed"
