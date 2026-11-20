@@ -36,6 +36,23 @@ executes the message, both sent by the one transmitter (the payer). Differences 
 - A failed commit returns `state: "Failure"` with `error` starting `commit failed:`. A failed execute still leaves the
   root committed, as on a live lane, and the next `deliver()` commits the next sequence number.
 
+## Enable Solana sends on the router
+
+Solana-bound sends are validated by `CCIPLocalSvmLane`, a separate contract that is not built into
+`CCIPLocalSimulator`, so EVM-only users do not pay for its size. Register it once; without it a send to Solana reverts
+`SvmLaneNotSet()`. Sends to EVM destinations never need it.
+
+```solidity
+CCIPLocalRouter(router).setSvmLane(address(new CCIPLocalSvmLane()));
+```
+
+```ts
+// Hardhat 3: add "@chainlink/local/src/ccip/CCIPLocalSvmLane.sol" and "@chainlink/local/src/ccip/CCIPLocalRouter.sol"
+// to solidity.npmFilesToBuild.
+const routerContract = await ethers.getContractAt("CCIPLocalRouter", router);
+await routerContract.setSvmLane(await ethers.deployContract("CCIPLocalSvmLane"));
+```
+
 ## Lane version on both sides
 
 A lane has one CCIP version, and both halves must agree. On Solana, `startSvmLocal({ ccipVersion })` picks the programs.
@@ -61,11 +78,14 @@ git submodule update --init --recursive && npm ci && npm run test:svm
 ```
 
 It compiles the Solidity contracts, builds `dist/svm`, then runs the unit tests and the smoke tests, which include
-`test/smoke/svm/MessageToSolana.test.ts`. Expected output ends with every test passing, and prints lines such as:
+`test/smoke/svm/MessageToSolana.test.ts`. The smoke tests run once per lane version, and timing lines carry the version
+as a suffix. Expected output ends with every test passing, and prints lines such as:
 
 ```
-[svm-timing] startSvmLocal 342ms
-[svm-timing] journey-2 send-to-result 63ms
+[svm-timing] startSvmLocal@2.0 342ms
+[svm-timing] journey-2 send-to-result@2.0 62ms
+[svm-timing] startSvmLocal@1.6 173ms
+[svm-timing] journey-2 send-to-result@1.6 55ms
 [svm-result] 1000 CU: compute budget exceeded: used 1000 of 1000 compute units; raise computeUnits
 ```
 
@@ -75,6 +95,7 @@ It compiles the Solidity contracts, builds `dist/svm`, then runs the unit tests 
 const { ethers } = await network.connect();
 const simulator = await ethers.deployContract("CCIPLocalSimulator");
 const [, router, , , link] = await simulator.configuration();
+await (await ethers.getContractAt("CCIPLocalRouter", router)).setSvmLane(await ethers.deployContract("CCIPLocalSvmLane"));
 const sender = await ethers.deployContract("SvmMessageSender", [router, link]);
 
 const svm = await startSvmLocal();
@@ -93,17 +114,18 @@ anything, and your own program replaces it in a real project.
 
 ## Timing
 
-Measured on a MacBook (Apple silicon), warm unless noted; two runs.
+Measured on a MacBook (Apple silicon), warm cache unless noted; ranges over several runs.
 
-| Step | Run 1 | Run 2 |
+| Step | CCIP 2.0 | CCIP 1.6 |
 | --- | --- | --- |
-| First run, cold program cache: `startSvmLocal()` (includes the download) | 1163 ms | 668 ms |
-| `startSvmLocal()`, warm cache | 320 ms | 351 ms |
-| One `deliver()` (receiver-only test, first call) | 51 ms | 43 ms |
-| Journey 2, from `send` to result | 56 ms | 57 ms |
-| `MessageToSolana.test.ts`, whole file | 836 ms | 886 ms |
+| First run, cold program cache: `startSvmLocal()` (includes the download) | 668–1163 ms | not measured |
+| `startSvmLocal()` | 320–401 ms | 161–182 ms |
+| One `deliver()` (receiver-only test, first call) | 39–51 ms | 33–41 ms |
+| Journey 2, from `send` to result | 56–65 ms | 52–56 ms |
+| `MessageToSolana.test.ts`, whole file | 836–1096 ms | 1844 ms |
 
-The cold-cache download time depends on the network.
+A 1.6 `deliver()` sends two transactions (commit, then execute) and is still about as fast as 2.0. The cold-cache
+download time depends on the network.
 
 ## What is real and what is simulated
 
@@ -114,23 +136,29 @@ Real:
 - With `ccipVersion: "1.6"`, the CCIP 1.6 programs executing the real `commit` (OCR3 signature check, Merkle root
   stored per source chain, sequence-interval and onRamp checks) and `execute` (transmitter check, Merkle proof of the
   message and its receiver accounts, RMN Remote curse check, the receiver's CPI).
-- The EVM side of the send: `CCIPLocalRouter` applies the Router 1.2 and OnRamp 2.0 checks for Solana (extra-args tag,
-  3,000,000 compute-unit cap, 255 accounts, no tokens, 30,000-byte payload, 32-byte receiver) and nothing more.
+- The EVM side of the send, through `CCIPLocalRouter` and its `CCIPLocalSvmLane`:
+  - 2.0 lane (default): the Router 1.2 and OnRamp 2.0 checks for Solana (extra-args tag, 3,000,000 compute-unit cap,
+    255 accounts, no tokens, 30,000-byte payload, 32-byte receiver) and nothing more.
+  - 1.6 lane (`setSvmLaneVersion(1)`): the Router 1.2, OnRamp 1.6.0 and FeeQuoter 2.0.0 checks of the live mainnet
+    Ethereum -> Solana lane, in its order and with its errors: 1,400,000 compute units, 1,280 bytes (payload plus 32
+    bytes per account and 2 fixed ones), at most 64 accounts, the writable bitmap, no accounts for a zero receiver, a
+    token receiver when tokens are sent, one token at most.
 - The OffRamp accepts one onRamp for the EVM source chain, as a live lane does: the router that emitted the first
-  routed message. A message from another onRamp fails on Solana with the OffRamp's `InvalidOnrampAddress`.
-- Solana decides the outcome: a stray writable-bitmap bit, a receiver that is not a program, or a compute-unit limit
-  above 1,400,000 are not rejected by the harness.
+  routed message. A message from another onRamp fails on Solana: on 2.0 with the OffRamp's `InvalidOnrampAddress` at
+  execution, on 1.6 with `OnrampNotConfigured` at commit.
+- Solana decides the outcome of anything the EVM side lets through: on 2.0 a stray writable-bitmap bit, a receiver
+  that is not a program, or a compute-unit limit above 1,400,000 are not rejected by the harness.
 
 Simulated:
 
-- The committee is local: `deliver()` signs the message with keys it generated and the CommitteeVerifier trusts
+- On 2.0 the committee is local: `deliver()` signs the message with keys it generated and the CommitteeVerifier trusts
   them (threshold 1 of 8). There is no commit, no finality wait and no executor or offchain network.
 - On 1.6 the commit and execution DONs are local: 4 deterministic signer keys with F = 1 (2 signatures per commit), the
   payer as the only transmitter, no RMN signatures and no price updates (the FeeQuoter is deployed but not initialised).
 - There is one EVM source chain (selector 16015286601757825753) and one Solana chain (devnet selector).
 - Fees are the router's `setFee` value on the EVM side, with no Solana-side pricing. Token transfers to Solana
   are not supported.
-- Surfnet clamps a compute-unit limit above 1,400,000 to 1,400,000, as a validator does, while the EVM send allows
+- Surfnet clamps a compute-unit limit above 1,400,000 to 1,400,000, as a validator does, while a 2.0 EVM send allows
   3,000,000. A message that needs more than 1.4M compute units cannot succeed on real Solana either.
 - Until the first routed message, that one onRamp is a placeholder registered at startup, so `deliver()` works
   without an EVM chain. `deliver()` without `onRampAddress` always uses the onRamp the lane currently accepts.
