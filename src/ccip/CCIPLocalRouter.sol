@@ -10,6 +10,7 @@ import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
 import {ExtraArgsCodec} from "@chainlink/contracts-ccip/contracts/libraries/ExtraArgsCodec.sol";
 import {FinalityCodec} from "@chainlink/contracts-ccip/contracts/libraries/FinalityCodec.sol";
 import {Internal} from "@chainlink/contracts-ccip/contracts/libraries/Internal.sol";
+import {Pool} from "@chainlink/contracts-ccip/contracts/libraries/Pool.sol";
 import {CallWithExactGas} from "@chainlink/contracts/src/v0.8/shared/call/CallWithExactGas.sol";
 
 import {IERC20} from "@openzeppelin/contracts@5.3.0/token/ERC20/IERC20.sol";
@@ -55,6 +56,24 @@ contract CCIPLocalRouter is IRouter, IRouterClient {
     /// @dev Mirrors `OnRamp.InvalidDestChainAddress` (2.0).
     error InvalidDestChainAddress(bytes destChainAddress);
 
+    /// @dev Mirrors `FeeQuoter.InvalidTokenReceiver` (1.6).
+    error InvalidTokenReceiver();
+    /// @dev Mirrors `FeeQuoter.TooManySVMExtraArgsAccounts` (1.6).
+    error TooManySVMExtraArgsAccounts(uint256 numAccounts, uint256 maxAccounts);
+    /// @dev Mirrors `FeeQuoter.InvalidSVMExtraArgsWritableBitmap` (1.6).
+    error InvalidSVMExtraArgsWritableBitmap(uint64 accountIsWritableBitmap, uint256 numAccounts);
+    /// @dev Mirrors `FeeQuoter.UnsupportedNumberOfTokens` (1.6).
+    error UnsupportedNumberOfTokens(uint256 numberOfTokens, uint256 maxNumberOfTokensPerMsg);
+
+    /// @notice The CCIP version of the lane that Solana-bound sends are validated against.
+    /// @dev V2_0: Router 1.2 + OnRamp 2.0.0 + FeeQuoter 2.0.0. V1_6: Router 1.2 + OnRamp 1.6.0 + FeeQuoter 2.0.0, the
+    ///      lane mainnet Ethereum -> Solana runs today (OnRamp 0x913814782144864e523C3FdB78E3ca25D2c2aeCa uses
+    ///      FeeQuoter 0x93669Cf8EabE869687544De34B453063fb23Bb69, read on 19 Nov 2026).
+    enum SvmLaneVersion {
+        V2_0,
+        V1_6
+    }
+
     /// @notice Emitted for every accepted send to Solana. Nothing is delivered onchain; an offchain layer reads this
     ///         event and delivers the message to a Solana validator.
     /// @param messageId Unique id of the message, generated the same way as for EVM destinations.
@@ -95,7 +114,15 @@ contract CCIPLocalRouter is IRouter, IRouterClient {
     ///         payload plus verifier and executor overhead; local mode checks the payload alone, a lower bound.
     uint32 public constant SVM_MAX_DATA_BYTES = 30_000;
 
+    /// @dev Limits of the CCIP 1.6 Ethereum -> Solana mainnet lane (`FeeQuoter 2.0.0` `DestChainConfig`, read at
+    ///      Ethereum block 26449551). FeeQuoter 2.0.0 hard-codes one token per message.
+    uint32 internal constant SVM_MAX_COMPUTE_UNITS_V1_6 = 1_400_000;
+    uint32 internal constant SVM_MAX_DATA_BYTES_V1_6 = 1_280;
+    uint256 internal constant SVM_MAX_TOKENS_PER_MSG_V1_6 = 1;
+
     uint256 internal s_mockFeeTokenAmount; //use setFee() to change to non-zero to test fees
+    /// @dev Lane version applied to Solana-bound sends, see `setSvmLaneVersion`.
+    SvmLaneVersion internal s_svmLaneVersion;
     /// @dev Nonce used to guarantee a unique messageId per send, see `ccipSend`.
     uint256 internal s_nonce;
 
@@ -194,12 +221,14 @@ contract CCIPLocalRouter is IRouter, IRouterClient {
     ///      then OnRamp 2.0 `getFee`, the fee payment, and OnRamp 2.0 `forwardFromRouter`), with the same errors, so a
     ///      message with several problems reports the same one it would on Ethereum Sepolia -> Solana devnet.
     function _ccipSendSvm(Client.EVM2AnyMessage calldata message) internal returns (bytes32 messageId) {
-        // Router: a fee paid in a token must not carry native value. Checked before the fee quote.
+        // Router (both lane versions): a fee paid in a token must not carry native value. Checked before the fee quote.
         if (message.feeToken != address(0) && msg.value > 0) revert InvalidMsgValue();
+
+        if (s_svmLaneVersion == SvmLaneVersion.V1_6) return _ccipSendSvmV1_6(message);
 
         // OnRamp.getFee.
         if (message.tokenAmounts.length > 1) revert CanOnlySendOneTokenPerMessage();
-        Client.SVMExtraArgsV1 memory svmExtraArgs = _parseSvmExtraArgs(message.extraArgs);
+        Client.SVMExtraArgsV1 memory svmExtraArgs = _parseSvmExtraArgs(message.extraArgs, SVM_MAX_COMPUTE_UNITS);
         // FeeQuoter.resolveLegacyArgs re-encodes the accounts with a one-byte length.
         if (svmExtraArgs.accounts.length > type(uint8).max) {
             revert ExtraArgsCodec.InvalidDataLength(ExtraArgsCodec.EncodingErrorLocation.ENCODE_SVM_ACCOUNTS_LENGTH, 0);
@@ -207,19 +236,55 @@ contract CCIPLocalRouter is IRouter, IRouterClient {
         // No token pool for Solana exists locally, so every token is unregistered on this lane.
         if (message.tokenAmounts.length == 1) revert UnsupportedToken(message.tokenAmounts[0].token);
         if (message.data.length > SVM_MAX_DATA_BYTES) revert MessageTooLarge(SVM_MAX_DATA_BYTES, message.data.length);
-        uint256 feeTokenAmount = getFee(SOLANA_CHAIN_SELECTOR, message);
+        uint256 feeTokenAmount = _collectSvmFee(message);
 
-        // Router: fee payment. Like the Router, native payment keeps the whole msg.value.
+        // OnRamp.forwardFromRouter: Solana addresses are 32 bytes; zero is allowed.
+        if (message.receiver.length != 32) revert InvalidDestChainAddress(message.receiver);
+
+        return _emitSvmMessageSent(message, svmExtraArgs, feeTokenAmount);
+    }
+
+    /// @dev Solana branch of `ccipSend` for `SvmLaneVersion.V1_6`. Checks run in the order of a send on a CCIP 1.6 lane
+    ///      (Router 1.2.0 and OnRamp 1.6.0 from contracts-ccip-v1.6.0, commit e9476e99; FeeQuoter 2.0.0 from
+    ///      lib/chainlink-ccip, as the mainnet OnRamp 1.6.0 uses it), with the same errors:
+    ///      1. Router.ccipSend (Router.sol:134): fee-token payment with native value, `InvalidMsgValue`.
+    ///      2. OnRamp.getFee -> FeeQuoter.getValidatedFee (FeeQuoter.sol:692) -> `_validateSvmMessageV1_6`
+    ///         (_validateMessageAndResolveGasLimitForDestination, FeeQuoter.sol:761, SVM branch from 848).
+    ///      3. Router.ccipSend (Router.sol:127): native fee payment, `InsufficientFeeTokenAmount`.
+    ///      4. OnRamp.forwardFromRouter (OnRamp.sol:161) -> `_lockOrBurnSingleToken` (OnRamp.sol:279): the token checks.
+    ///         Router.ccipSend (Router.sol:141) moves tokens to the pool first; with no pool locally, the OnRamp's
+    ///         `UnsupportedToken` is what is reported.
+    function _ccipSendSvmV1_6(Client.EVM2AnyMessage calldata message) internal returns (bytes32 messageId) {
+        Client.SVMExtraArgsV1 memory svmExtraArgs = _validateSvmMessageV1_6(message);
+        uint256 feeTokenAmount = _collectSvmFee(message);
+
+        if (message.tokenAmounts.length == 1) {
+            if (message.tokenAmounts[0].amount == 0) revert CannotSendZeroTokens();
+            revert UnsupportedToken(message.tokenAmounts[0].token);
+        }
+
+        return _emitSvmMessageSent(message, svmExtraArgs, feeTokenAmount);
+    }
+
+    /// @dev Router fee payment, shared by both lane versions. Quotes the fee, then, like the Router, native payment
+    ///      keeps the whole msg.value.
+    /// @return feeTokenAmount The fee charged, in `message.feeToken` units.
+    function _collectSvmFee(Client.EVM2AnyMessage calldata message) internal returns (uint256 feeTokenAmount) {
+        feeTokenAmount = getFee(SOLANA_CHAIN_SELECTOR, message);
         if (message.feeToken == address(0)) {
             if (msg.value < feeTokenAmount) revert InsufficientFeeTokenAmount();
             feeTokenAmount = msg.value;
         } else {
             IERC20(message.feeToken).safeTransferFrom(msg.sender, address(this), feeTokenAmount);
         }
+    }
 
-        // OnRamp.forwardFromRouter: Solana addresses are 32 bytes; zero is allowed.
-        if (message.receiver.length != 32) revert InvalidDestChainAddress(message.receiver);
-
+    /// @dev Derives the message id exactly as for EVM destinations and emits `SvmMessageSent`.
+    function _emitSvmMessageSent(
+        Client.EVM2AnyMessage calldata message,
+        Client.SVMExtraArgsV1 memory svmExtraArgs,
+        uint256 feeTokenAmount
+    ) internal returns (bytes32 messageId) {
         uint256 nonce = ++s_nonce;
         messageId = keccak256(abi.encode(nonce, msg.sender, SOLANA_CHAIN_SELECTOR, message));
 
@@ -236,15 +301,72 @@ contract CCIPLocalRouter is IRouter, IRouterClient {
         );
     }
 
-    /// @dev Mirrors `FeeQuoter._parseSVMExtraArgsFromBytes` (2.0), with `SVM_MAX_COMPUTE_UNITS` as the limit. An
-    ///      undecodable body reverts with empty data, as in production. CCIP 2.0 has no `allowOutOfOrderExecution`,
-    ///      account-count (beyond 255), writable-bitmap or zero-receiver check at send time; those fail on Solana.
-    function _parseSvmExtraArgs(bytes calldata extraArgs) internal pure returns (Client.SVMExtraArgsV1 memory) {
+    /// @dev Mirrors FeeQuoter 2.0.0 `_validateMessageAndResolveGasLimitForDestination` for an SVM destination
+    ///      (FeeQuoter.sol:767-900), check for check and in the same order. FeeQuoter 2.0.0 always treats messages as
+    ///      out-of-order, so there is no out-of-order check. The lane limits are constants, as local mode has no lane
+    ///      config.
+    function _validateSvmMessageV1_6(Client.EVM2AnyMessage calldata message)
+        internal
+        pure
+        returns (Client.SVMExtraArgsV1 memory svmExtraArgs)
+    {
+        uint256 dataLength = message.data.length;
+        uint256 numberOfTokens = message.tokenAmounts.length;
+
+        // FeeQuoter.sol:770-775.
+        if (dataLength > SVM_MAX_DATA_BYTES_V1_6) revert MessageTooLarge(SVM_MAX_DATA_BYTES_V1_6, dataLength);
+        if (numberOfTokens > SVM_MAX_TOKENS_PER_MSG_V1_6) {
+            revert UnsupportedNumberOfTokens(numberOfTokens, SVM_MAX_TOKENS_PER_MSG_V1_6);
+        }
+
+        // FeeQuoter.sol:850, _parseSVMExtraArgsFromBytes (442-461).
+        svmExtraArgs = _parseSvmExtraArgs(message.extraArgs, SVM_MAX_COMPUTE_UNITS_V1_6);
+
+        // _validateDestFamilyAddress: 32 bytes, non-zero when compute units are set.
+        if (message.receiver.length != 32 || (svmExtraArgs.computeUnits > 0 && bytes32(message.receiver) == bytes32(0)))
+        {
+            revert Internal.Invalid32ByteAddress(message.receiver);
+        }
+
+        // FeeQuoter.sol:856-884.
+        uint256 accountsLength = svmExtraArgs.accounts.length;
+        uint256 svmExpandedDataLength = dataLength;
+        if (bytes32(message.receiver) == bytes32(0)) {
+            // The CCIP receiver is not invoked on SVM for a zero receiver, so it takes no accounts.
+            if (accountsLength > 0) revert TooManySVMExtraArgsAccounts(accountsLength, 0);
+        } else {
+            svmExpandedDataLength += (accountsLength + Client.SVM_MESSAGING_ACCOUNTS_OVERHEAD)
+                * Client.SVM_ACCOUNT_BYTE_SIZE;
+        }
+        if (numberOfTokens > 0 && svmExtraArgs.tokenReceiver == bytes32(0)) revert InvalidTokenReceiver();
+        if (accountsLength > Client.SVM_EXTRA_ARGS_MAX_ACCOUNTS) {
+            revert TooManySVMExtraArgsAccounts(accountsLength, Client.SVM_EXTRA_ARGS_MAX_ACCOUNTS);
+        }
+        if (svmExtraArgs.accountIsWritableBitmap >> accountsLength != 0) {
+            revert InvalidSVMExtraArgsWritableBitmap(svmExtraArgs.accountIsWritableBitmap, accountsLength);
+        }
+
+        // No per-token `destBytesOverhead` override exists locally, so the pool default applies.
+        svmExpandedDataLength += numberOfTokens
+            * (Client.SVM_TOKEN_TRANSFER_DATA_OVERHEAD + Pool.CCIP_LOCK_OR_BURN_V1_RET_BYTES);
+        if (svmExpandedDataLength > SVM_MAX_DATA_BYTES_V1_6) {
+            revert MessageTooLarge(SVM_MAX_DATA_BYTES_V1_6, svmExpandedDataLength);
+        }
+    }
+
+    /// @dev Mirrors `FeeQuoter._parseSVMExtraArgsFromBytes` (2.0.0), which both lane versions use. An undecodable body
+    ///      reverts with empty data, as in production. The 2.0 lane has no account-count (beyond 255), writable-bitmap
+    ///      or zero-receiver check at send time; those fail on Solana.
+    function _parseSvmExtraArgs(bytes calldata extraArgs, uint256 maxComputeUnits)
+        internal
+        pure
+        returns (Client.SVMExtraArgsV1 memory)
+    {
         if (extraArgs.length < 4) revert InvalidExtraArgsData();
         if (bytes4(extraArgs) != Client.SVM_EXTRA_ARGS_V1_TAG) revert InvalidExtraArgsTag();
 
         Client.SVMExtraArgsV1 memory svmExtraArgs = abi.decode(extraArgs[4:], (Client.SVMExtraArgsV1));
-        if (svmExtraArgs.computeUnits > SVM_MAX_COMPUTE_UNITS) revert MessageComputeUnitLimitTooHigh();
+        if (svmExtraArgs.computeUnits > maxComputeUnits) revert MessageComputeUnitLimitTooHigh();
         return svmExtraArgs;
     }
 
@@ -362,6 +484,16 @@ contract CCIPLocalRouter is IRouter, IRouterClient {
     /// @notice Sets the fees returned by getFee but is only checked when using native fee tokens
     function setFee(uint256 feeAmount) external {
         s_mockFeeTokenAmount = feeAmount;
+    }
+
+    /// @notice Selects the CCIP version whose send rules Solana-bound sends follow. Default `V2_0`.
+    function setSvmLaneVersion(SvmLaneVersion version) external {
+        s_svmLaneVersion = version;
+    }
+
+    /// @notice The CCIP version whose send rules Solana-bound sends follow.
+    function getSvmLaneVersion() external view returns (SvmLaneVersion) {
+        return s_svmLaneVersion;
     }
 
     /// @notice Always returns address(1234567890)
