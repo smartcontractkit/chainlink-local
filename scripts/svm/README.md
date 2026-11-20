@@ -36,6 +36,23 @@ executes the message, both sent by the one transmitter (the payer). Differences 
 - A failed commit returns `state: "Failure"` with `error` starting `commit failed:`. A failed execute still leaves the
   root committed, as on a live lane, and the next `deliver()` commits the next sequence number.
 
+## Enable Solana sends on the router
+
+Solana-bound sends are validated by `CCIPLocalSvmLane`, a separate contract that is not built into
+`CCIPLocalSimulator`, so EVM-only users do not pay for its size. Register it once; without it a send to Solana reverts
+`SvmLaneNotSet()`. Sends to EVM destinations never need it.
+
+```solidity
+CCIPLocalRouter(router).setSvmLane(address(new CCIPLocalSvmLane()));
+```
+
+```ts
+// Hardhat 3: add "@chainlink/local/src/ccip/CCIPLocalSvmLane.sol" and "@chainlink/local/src/ccip/CCIPLocalRouter.sol"
+// to solidity.npmFilesToBuild.
+const routerContract = await ethers.getContractAt("CCIPLocalRouter", router);
+await routerContract.setSvmLane(await ethers.deployContract("CCIPLocalSvmLane"));
+```
+
 ## Lane version on both sides
 
 A lane has one CCIP version, and both halves must agree. On Solana, `startSvmLocal({ ccipVersion })` picks the programs.
@@ -75,6 +92,7 @@ It compiles the Solidity contracts, builds `dist/svm`, then runs the unit tests 
 const { ethers } = await network.connect();
 const simulator = await ethers.deployContract("CCIPLocalSimulator");
 const [, router, , , link] = await simulator.configuration();
+await (await ethers.getContractAt("CCIPLocalRouter", router)).setSvmLane(await ethers.deployContract("CCIPLocalSvmLane"));
 const sender = await ethers.deployContract("SvmMessageSender", [router, link]);
 
 const svm = await startSvmLocal();

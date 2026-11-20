@@ -54,6 +54,8 @@ for (const ccipVersion of VERSIONS) {
       const simulator = await ethers.deployContract("CCIPLocalSimulator");
       const [, sourceRouter, , , linkToken] = await simulator.configuration();
       router = await ethers.getContractAt("CCIPLocalRouter", sourceRouter);
+      // Solana sends need the lane contract, which is not built into the simulator.
+      await router.setSvmLane(await ethers.deployContract("CCIPLocalSvmLane"));
       link = await ethers.getContractAt("LinkToken", linkToken);
       sender = await ethers.deployContract("SvmMessageSender", [sourceRouter, linkToken]);
 
