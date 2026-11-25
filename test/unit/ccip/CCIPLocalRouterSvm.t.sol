@@ -152,7 +152,9 @@ contract CCIPLocalRouterSvmTest is Test {
         bytes32 id = keccak256(abi.encode(uint256(1), address(sender), SOLANA, message));
 
         vm.expectEmit(true, true, true, true, address(router));
-        emit CCIPLocalRouter.SvmMessageSent(id, SOLANA, address(sender), PROGRAM, hex"c0ffee", args, address(0), FEE, 1);
+        emit CCIPLocalRouter.SvmMessageSent(
+            id, SOLANA, address(sender), PROGRAM, hex"c0ffee", args, address(0), FEE, 1, address(0), 0
+        );
         _send(PROGRAM, extraArgs);
     }
 
@@ -292,10 +294,12 @@ contract CCIPLocalRouterSvmTest is Test {
         router.ccipSend{value: FEE}(SOLANA, message);
     }
 
-    function test_revert_oneTokenIsUnsupported() public {
+    /// @dev A token is accepted now; it is pulled from the sender (details in CCIPLocalRouterSvmToken.t.sol).
+    function test_oneTokenIsAccepted() public {
         Client.EVM2AnyMessage memory message = _message(abi.encodePacked(PROGRAM), _tokens(1), _validArgs(), address(0));
-        vm.expectRevert(abi.encodeWithSelector(CCIPLocalRouter.UnsupportedToken.selector, address(link)));
+        uint256 before = link.balanceOf(address(this));
         router.ccipSend{value: FEE}(SOLANA, message);
+        assertEq(link.balanceOf(address(this)), before - 1, "token pulled");
     }
 
     function test_revert_twoTokens() public {
@@ -331,8 +335,8 @@ contract CCIPLocalRouterSvmTest is Test {
         router.ccipSend(SOLANA, message);
     }
 
-    /// @dev getFee parses extra args before it looks up the token's pool.
-    function test_order_extraArgsBeforeUnsupportedToken() public {
+    /// @dev getFee parses extra args before anything token-related.
+    function test_order_extraArgsBeforeToken() public {
         Client.EVM2AnyMessage memory message =
             _message(abi.encodePacked(PROGRAM), _tokens(1), _wrongTagArgs(), address(0));
         vm.expectRevert(CCIPLocalRouter.InvalidExtraArgsTag.selector);
@@ -347,11 +351,14 @@ contract CCIPLocalRouterSvmTest is Test {
         router.ccipSend{value: FEE}(SOLANA, message);
     }
 
-    /// @dev The pool lookup is in getFee, so an unsupported token wins over an insufficient native fee.
-    function test_order_unsupportedTokenBeforeInsufficientNativeFee() public {
+    /// @dev Token custody is in OnRamp.forwardFromRouter, after the fee, so an insufficient native fee wins and no
+    ///      token moves.
+    function test_order_insufficientNativeFeeBeforeTokenCustody() public {
         Client.EVM2AnyMessage memory message = _message(abi.encodePacked(PROGRAM), _tokens(1), _validArgs(), address(0));
-        vm.expectRevert(abi.encodeWithSelector(CCIPLocalRouter.UnsupportedToken.selector, address(link)));
+        uint256 before = link.balanceOf(address(this));
+        vm.expectRevert(IRouterClient.InsufficientFeeTokenAmount.selector);
         router.ccipSend{value: FEE - 1}(SOLANA, message);
+        assertEq(link.balanceOf(address(this)), before, "no token moved");
     }
 
     /// @dev The receiver is validated in OnRamp.forwardFromRouter, after the fee is paid.

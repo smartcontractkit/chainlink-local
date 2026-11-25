@@ -15,7 +15,8 @@ import {ICCIPLocalSvmLane} from "./interfaces/ICCIPLocalSvmLane.sol";
 /// @dev Applies the checks of a send on a CCIP 2.0 lane (Router 1.2 `ccipSend`, then OnRamp 2.0 `getFee`) or on a
 ///      CCIP 1.6 lane, with the same errors, so a message with several problems reports the same one it would on
 ///      Ethereum Sepolia -> Solana devnet (2.0) or Ethereum -> Solana mainnet (1.6). The router runs the checks that
-///      need state (fee payment) or come after it.
+///      need state (fee payment, token custody) or come after it. Exactly one token (any ERC20, no pool registry
+///      locally) is accepted on both versions.
 contract CCIPLocalSvmLane is ICCIPLocalSvmLane {
     /// @notice Compute unit limit of the Ethereum Sepolia -> Solana devnet lane (`FeeQuoter 2.0.0`
     ///         `DestChainConfig.maxPerMsgGasLimit`, read on 18 Nov 2026).
@@ -52,8 +53,9 @@ contract CCIPLocalSvmLane is ICCIPLocalSvmLane {
         if (svmExtraArgs.accounts.length > type(uint8).max) {
             revert ExtraArgsCodec.InvalidDataLength(ExtraArgsCodec.EncodingErrorLocation.ENCODE_SVM_ACCOUNTS_LENGTH, 0);
         }
-        // No token pool for Solana exists locally, so every token is unregistered on this lane.
-        if (message.tokenAmounts.length == 1) revert UnsupportedToken(message.tokenAmounts[0].token);
+        // A token needs no check here: the Sepolia -> Solana devnet OnRamp allows `tokenReceiver` (read 20 Nov 2026,
+        // `DestChainConfig.tokenReceiverAllowed` is true), and OnRamp 2.0 does not reject a zero one. There is no pool
+        // registry locally, so every ERC20 counts as registered; a zero amount is rejected by the router after the fee.
         if (message.data.length > SVM_MAX_DATA_BYTES) revert MessageTooLarge(SVM_MAX_DATA_BYTES, message.data.length);
     }
 

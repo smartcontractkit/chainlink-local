@@ -1,6 +1,6 @@
 // `routeToSvm()`: delivers the Solana-bound messages of an EVM transaction through the real OffRamp of the local Solana side (CCIP 2.0 or 1.6).
 
-import { Interface, getAddress, getBytes } from "ethers";
+import { Interface, ZeroAddress, getAddress, getBytes } from "ethers";
 import { PublicKey } from "@solana/web3.js";
 import { EVM_CHAIN_SELECTOR } from "./constants.ts";
 import type { CcipVersion } from "./artifacts.ts";
@@ -9,7 +9,8 @@ import type { DeliverResult, SvmLocal } from "./local.ts";
 const SVM_MESSAGE_SENT = new Interface([
   "event SvmMessageSent(bytes32 indexed messageId, uint64 indexed destinationChainSelector, address indexed sender, " +
     "bytes32 receiver, bytes data, (uint32 computeUnits, uint64 accountIsWritableBitmap, bool allowOutOfOrderExecution, " +
-    "bytes32 tokenReceiver, bytes32[] accounts) extraArgs, address feeToken, uint256 feeTokenAmount, uint256 nonce)",
+    "bytes32 tokenReceiver, bytes32[] accounts) extraArgs, address feeToken, uint256 feeTokenAmount, uint256 nonce, " +
+    "address token, uint256 tokenAmount)",
 ]);
 const SVM_MESSAGE_SENT_TOPIC = SVM_MESSAGE_SENT.getEvent("SvmMessageSent")!.topicHash;
 const LANE_VERSION = new Interface(["function getSvmLaneVersion() view returns (uint8)"]);
@@ -49,6 +50,9 @@ export async function routeToSvm(svm: SvmLocal, receipt: EvmReceiptLike): Promis
   const results: RouteResult[] = [];
   for (const log of logs) {
     const event = SVM_MESSAGE_SENT.parseLog({ topics: [...log.topics], data: log.data })!.args;
+    if (event.token !== ZeroAddress) {
+      throw new Error(`routeToSvm: the message carries the EVM token ${event.token}; token delivery to Solana is not supported yet.`);
+    }
     const result = await svm.deliver({
       receiverProgram: new PublicKey(getBytes(event.receiver)),
       receiverAccounts: (event.extraArgs.accounts as string[]).map((account) => new PublicKey(getBytes(account))),
