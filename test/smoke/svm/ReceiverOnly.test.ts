@@ -1,11 +1,9 @@
 import assert from "node:assert/strict";
-import path from "node:path";
 import { after, before, describe, it } from "node:test";
 import anchor from "@anchor-lang/core";
 import { PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
-import { readIdl, resolveArtifacts } from "../../../scripts/svm/artifacts.ts";
 import { CCIP_PROGRAMS } from "../../../scripts/svm/programs.ts";
-import { startSvmLocal, type SvmLocal } from "../../../scripts/svm/index.ts";
+import { exampleReceiver, startSvmLocal, type SvmLocal } from "../../../scripts/svm/index.ts";
 
 const { AnchorProvider, Program, Wallet } = anchor;
 
@@ -16,8 +14,10 @@ async function timed<T>(step: string, work: () => Promise<T>): Promise<T> {
   return value;
 }
 
+const receiver = await exampleReceiver();
+
 describe("deliver a message to a receiver program through the real OffRamp", () => {
-  const receiverId = new PublicKey(CCIP_PROGRAMS.test_ccip_receiver);
+  const receiverId = receiver.programId;
   const counter = PublicKey.findProgramAddressSync([Buffer.from("counter")], receiverId)[0];
   const externalExecutionConfig = PublicKey.findProgramAddressSync(
     [Buffer.from("external_execution_config")],
@@ -37,13 +37,11 @@ describe("deliver a message to a receiver program through the real OffRamp", () 
     // Warm cache: the bundle is already downloaded, so this is boot + deploy + trust-layer setup.
     svm = await timed("startSvmLocal", () => startSvmLocal());
 
-    const bundleDir = await resolveArtifacts();
-    const soPath = path.join(bundleDir, "target", "deploy", "test_ccip_receiver.so");
-    await timed("deployProgram", () => svm.deployProgram(soPath, receiverId));
+    await timed("deployProgram", () => svm.deployProgram(receiver.programPath, receiverId));
 
     const provider = new AnchorProvider(svm.connection, new Wallet(svm.payer), { commitment: "confirmed" });
-    const receiver = new Program(readIdl(bundleDir, "test_ccip_receiver") as never, provider);
-    const initialize = await receiver.methods
+    const receiverProgram = new Program(receiver.idl as never, provider);
+    const initialize = await receiverProgram.methods
       .initialize(svm.ccip.router)
       .accounts({ counter, externalExecutionConfig, authority: svm.payer.publicKey, systemProgram: SystemProgram.programId })
       .instruction();
