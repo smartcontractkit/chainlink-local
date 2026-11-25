@@ -100,6 +100,9 @@ contract CCIPLocalRouter is IRouter, IRouterClient {
     /// @param feeTokenAmount The fee charged, in `feeToken` units. For native payment it is the whole `msg.value`, as
     ///        the Router keeps any overpayment.
     /// @param nonce The value of the router nonce that produced `messageId`.
+    /// @param token The token sent with the message, `address(0)` when the message carries none. At most one.
+    /// @param tokenAmount The amount of `token` pulled from `sender` into this router, 0 when there is no token. The
+    ///        offchain layer releases it on Solana to `extraArgs.tokenReceiver` through the BurnMint pool.
     event SvmMessageSent(
         bytes32 indexed messageId,
         uint64 indexed destinationChainSelector,
@@ -109,7 +112,9 @@ contract CCIPLocalRouter is IRouter, IRouterClient {
         Client.SVMExtraArgsV1 extraArgs,
         address feeToken,
         uint256 feeTokenAmount,
-        uint256 nonce
+        uint256 nonce,
+        address token,
+        uint256 tokenAmount
     );
 
     event MessageExecuted(bytes32 messageId, uint64 sourceChainSelector, address offRamp, bytes32 calldataHash);
@@ -226,8 +231,11 @@ contract CCIPLocalRouter is IRouter, IRouterClient {
     ///      1. Router.ccipSend: fee-token payment with native value, `InvalidMsgValue` (both versions).
     ///      2. OnRamp.getFee / FeeQuoter validation, in `CCIPLocalSvmLane.validate`.
     ///      3. Router.ccipSend: native fee payment, `InsufficientFeeTokenAmount`.
-    ///      4. OnRamp.forwardFromRouter: 2.0 requires a 32-byte receiver; 1.6 rejects tokens (`_lockOrBurnSingleToken`,
-    ///         OnRamp.sol:279). With no pool locally, `UnsupportedToken` is what is reported.
+    ///      4. OnRamp.forwardFromRouter: 2.0 requires a 32-byte receiver; both versions then reject a zero token
+    ///         amount (`_lockOrBurnSingleToken`, `CannotSendZeroTokens`) and take custody of the token.
+    /// @dev A token is any ERC20 with a non-zero amount, at most one per message. There is no pool registry locally, so
+    ///      a token that is not linked to a Solana mint passes here; the offchain layer rejects it. Production would
+    ///      revert in `getFee` with `UnsupportedToken`. The sender must approve this router for the token.
     /// @dev The lane call is a plain external call to a `pure` function, so it is a STATICCALL and its revert data,
     ///      including empty data, bubbles up unchanged.
     function _ccipSendSvm(Client.EVM2AnyMessage calldata message) internal returns (bytes32 messageId) {
@@ -242,14 +250,15 @@ contract CCIPLocalRouter is IRouter, IRouterClient {
 
         uint256 feeTokenAmount = _collectSvmFee(message);
 
-        if (version == SvmLaneVersion.V1_6) {
-            if (message.tokenAmounts.length == 1) {
-                if (message.tokenAmounts[0].amount == 0) revert CannotSendZeroTokens();
-                revert UnsupportedToken(message.tokenAmounts[0].token);
-            }
-        } else if (message.receiver.length != 32) {
-            // OnRamp.forwardFromRouter: Solana addresses are 32 bytes; zero is allowed.
+        // OnRamp.forwardFromRouter: Solana addresses are 32 bytes; zero is allowed.
+        if (version == SvmLaneVersion.V2_0 && message.receiver.length != 32) {
             revert InvalidDestChainAddress(message.receiver);
+        }
+        // `_lockOrBurnSingleToken`. The lane has already rejected more than one token.
+        if (message.tokenAmounts.length == 1) {
+            Client.EVMTokenAmount calldata tokenAmount = message.tokenAmounts[0];
+            if (tokenAmount.amount == 0) revert CannotSendZeroTokens();
+            IERC20(tokenAmount.token).safeTransferFrom(msg.sender, address(this), tokenAmount.amount);
         }
 
         return _emitSvmMessageSent(message, svmExtraArgs, feeTokenAmount);
@@ -276,6 +285,8 @@ contract CCIPLocalRouter is IRouter, IRouterClient {
     ) internal returns (bytes32 messageId) {
         uint256 nonce = ++s_nonce;
         messageId = keccak256(abi.encode(nonce, msg.sender, SOLANA_CHAIN_SELECTOR, message));
+        Client.EVMTokenAmount memory sent;
+        if (message.tokenAmounts.length == 1) sent = message.tokenAmounts[0];
 
         emit SvmMessageSent(
             messageId,
@@ -286,7 +297,9 @@ contract CCIPLocalRouter is IRouter, IRouterClient {
             svmExtraArgs,
             message.feeToken,
             feeTokenAmount,
-            nonce
+            nonce,
+            sent.token,
+            sent.amount
         );
     }
 

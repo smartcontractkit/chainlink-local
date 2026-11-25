@@ -348,13 +348,15 @@ contract CCIPLocalRouterSvm16Test is Test {
         router.ccipSend{value: FEE - 1}(SOLANA, _message(_validArgs()));
     }
 
-    function test_revert_oneTokenIsUnsupported() public {
+    /// @dev A token is accepted now; it is pulled from the sender (details in CCIPLocalRouterSvmToken.t.sol).
+    function test_oneTokenIsAccepted() public {
         Client.SVMExtraArgsV1 memory args = _args(1, 0, 0);
         args.tokenReceiver = bytes32(uint256(1));
         Client.EVM2AnyMessage memory message = _message(Client._svmArgsToBytes(args));
         message.tokenAmounts = _tokens(1, 1);
-        vm.expectRevert(abi.encodeWithSelector(CCIPLocalRouter.UnsupportedToken.selector, address(link)));
+        uint256 before = link.balanceOf(address(this));
         _send(message);
+        assertEq(link.balanceOf(address(this)), before - 1, "token pulled");
     }
 
     function test_revert_zeroAmountToken() public {
@@ -428,8 +430,8 @@ contract CCIPLocalRouterSvm16Test is Test {
         _send(message);
     }
 
-    /// @dev The fee is paid before the OnRamp rejects the token.
-    function test_order_insufficientNativeFeeBeforeUnsupportedToken() public {
+    /// @dev The fee is paid before the OnRamp takes the token.
+    function test_order_insufficientNativeFeeBeforeTokenCustody() public {
         Client.SVMExtraArgsV1 memory args = _args(1, 0, 0);
         args.tokenReceiver = bytes32(uint256(1));
         Client.EVM2AnyMessage memory message = _message(Client._svmArgsToBytes(args));
