@@ -34,6 +34,7 @@ import {
 import { CCIP_PROGRAMS_1_6, deployCcipPrograms } from "./programs.ts";
 import { SvmRuntime } from "./runtime.ts";
 import type { DeliverOptions, DeliverResult, SvmLocal } from "./local.ts";
+import { TokenSupport, encodeDecimals, type BurnMintToken, type LinkTokenOptions } from "./tokens.ts";
 import {
   COMMIT_CONFIG_DIGEST,
   EXECUTION_CONFIG_DIGEST,
@@ -59,7 +60,7 @@ export async function startSvmLocal16(): Promise<SvmLocal> {
     await deployCcipPrograms(runtime, bundleDir, "1.6");
     const programs = loadPrograms16(runtime, bundleDir);
     await initializeTrustLayer16(runtime, programs);
-    return new Local16(runtime, programs);
+    return new Local16(runtime, programs, bundleDir);
   } catch (error) {
     runtime.stop();
     throw error;
@@ -77,11 +78,13 @@ class Local16 implements SvmLocal {
   };
   private readonly runtime: SvmRuntime;
   private readonly programs: CcipPrograms16;
+  private readonly tokens: TokenSupport;
   private readonly offRampConfig = pda([Buffer.from(SEEDS.config)], this.ccip.offRamp);
 
-  constructor(runtime: SvmRuntime, programs: CcipPrograms16) {
+  constructor(runtime: SvmRuntime, programs: CcipPrograms16, bundleDir: string) {
     this.runtime = runtime;
     this.programs = programs;
+    this.tokens = new TokenSupport({ runtime, ccipVersion: "1.6", bundleDir, router: programs.router, offRamp: this.ccip.offRamp });
     this.connection = runtime.connection;
     this.payer = runtime.payer;
   }
@@ -91,6 +94,26 @@ class Local16 implements SvmLocal {
     const id = new PublicKey(programId);
     await this.runtime.writeProgram(id, fs.readFileSync(soPath));
     await this.runtime.setProgramAuthority(id, this.payer.publicKey);
+  }
+
+  createBurnMintToken(options?: { decimals?: number }): Promise<BurnMintToken> {
+    return this.tokens.createBurnMintToken(options);
+  }
+
+  linkToken(token: { mint: PublicKey }, options: LinkTokenOptions): Promise<void> {
+    return this.tokens.linkToken(token, options);
+  }
+
+  linkedMint(evmToken: string): PublicKey | undefined {
+    return this.tokens.linkedMint(evmToken);
+  }
+
+  createTokenAccount(mint: PublicKey, owner: PublicKey): Promise<PublicKey> {
+    return this.tokens.createTokenAccount(mint, owner);
+  }
+
+  tokenBalance(mint: PublicKey, owner: PublicKey): Promise<bigint> {
+    return this.tokens.tokenBalance(mint, owner);
   }
 
   sendAndConfirm(transaction: Transaction, signers: Keypair[] = []): Promise<string> {
@@ -106,19 +129,32 @@ class Local16 implements SvmLocal {
    * number of a message is the OffRamp's next expected one (the commit must start there).
    */
   async deliver(options: DeliverOptions): Promise<DeliverResult> {
-    const computeUnits = checkDeliverOptions(options);
+    const { computeUnits, receiverAccounts, receiverWritableBitmap, data } = checkDeliverOptions(options);
+    const token = options.token ? this.tokens.resolve(options.token) : undefined;
     const sourceChainSelector = options.sourceChainSelector ?? EVM_CHAIN_SELECTOR;
     const { onRamp, sequenceNumber } = await this.laneState(sourceChainSelector, options.onRampAddress);
 
     const sender = Buffer.from(options.sender ?? DEFAULT_SENDER);
-    const data = typeof options.data === "string" ? Buffer.from(options.data) : Buffer.from(options.data);
     const idFields = { sourceChainSelector, destChainSelector: SVM_CHAIN_SELECTOR, sequenceNumber, sender, data, onRamp };
     const message: Message16 = {
       ...idFields,
-      messageId: localMessageId(idFields, options.receiverProgram),
+      messageId: localMessageId(idFields, options.receiverProgram ?? PublicKey.default),
       computeUnits,
-      writableBitmap: options.receiverWritableBitmap,
-      receiverAndAccounts: [options.receiverProgram, ...options.receiverAccounts],
+      writableBitmap: receiverWritableBitmap,
+      // A token-only message has no receiver program and no messaging accounts.
+      receiverAndAccounts: options.receiverProgram ? [options.receiverProgram, ...receiverAccounts] : [],
+      ...(token && {
+        tokenReceiver: token.receiver,
+        tokenAmounts: [
+          {
+            sourcePool: token.evmPool,
+            destToken: token.mint,
+            destGasAmount: 100,
+            extraData: encodeDecimals(token.evmDecimals),
+            amount: token.amount,
+          },
+        ],
+      }),
     };
     const messageId = "0x" + Buffer.from(message.messageId).toString("hex");
 
@@ -143,20 +179,34 @@ class Local16 implements SvmLocal {
     }
 
     // Execute: message accounts follow the receiver and its external-execution signer. A bit set in the
-    // bitmap makes the account writable in the transaction, which the OffRamp checks.
-    const signer = pda([Buffer.from("external_execution_config"), options.receiverProgram.toBuffer()], this.ccip.offRamp);
+    // bitmap makes the account writable in the transaction, which the OffRamp checks. The token accounts come
+    // after them, and `token_indexes` tells the OffRamp where they start.
+    const messageAccounts = options.receiverProgram
+      ? [
+          { pubkey: options.receiverProgram, isWritable: false, isSigner: false },
+          {
+            pubkey: pda([Buffer.from("external_execution_config"), options.receiverProgram.toBuffer()], this.ccip.offRamp),
+            isWritable: false,
+            isSigner: false,
+          },
+          ...receiverAccounts.map((pubkey, i) => ({
+            pubkey,
+            isWritable: i < 64 && ((receiverWritableBitmap >> BigInt(i)) & 1n) === 1n,
+            isSigner: false,
+          })),
+        ]
+      : [];
+    const tokenAccounts = token
+      ? this.tokens.accounts16(token, sourceChainSelector).map((account) => ({ ...account, isSigner: false }))
+      : [];
     const execute = await this.programs.offRamp.methods
-      .execute(encodeExecutionReport(message), reportContext(EXECUTION_CONFIG_DIGEST, sequenceNumber), Buffer.alloc(0))
+      .execute(
+        encodeExecutionReport(message),
+        reportContext(EXECUTION_CONFIG_DIGEST, sequenceNumber),
+        token ? Buffer.from([messageAccounts.length]) : Buffer.alloc(0),
+      )
       .accounts(this.executeAccounts(sourceChainSelector, root))
-      .remainingAccounts([
-        { pubkey: options.receiverProgram, isWritable: false, isSigner: false },
-        { pubkey: signer, isWritable: false, isSigner: false },
-        ...options.receiverAccounts.map((pubkey, i) => ({
-          pubkey,
-          isWritable: i < 64 && ((options.receiverWritableBitmap >> BigInt(i)) & 1n) === 1n,
-          isSigner: false,
-        })),
-      ])
+      .remainingAccounts([...messageAccounts, ...tokenAccounts])
       .instruction();
     const outcome = await this.sendWithLookupTable(computeUnits, execute);
     return {

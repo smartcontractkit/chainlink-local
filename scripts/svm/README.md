@@ -36,6 +36,41 @@ executes the message, both sent by the one transmitter (the payer). Differences 
 - A failed commit returns `state: "Failure"` with `error` starting `commit failed:`. A failed execute still leaves the
   root committed, as on a live lane, and the next `deliver()` commits the next sequence number.
 
+## Tokens
+
+`deliver({ token })` mints a token to a Solana wallet through the real BurnMint pool, the way a CCIP token transfer does.
+Both lane versions support it, with the same API. Only BurnMint pools and classic SPL Token mints are supported
+(no lock-and-release pools, no Token-2022).
+
+```ts
+const token = await svm.createBurnMintToken({ decimals: 9 }); // { mint, pool, decimals }; decimals default 9
+await svm.linkToken(token, { evmToken: "0x...", evmDecimals: 18 }); // evmPool defaults to a derived address; evmDecimals to 18
+svm.linkedMint("0x...");                                          // the mint, or undefined
+
+const wallet = Keypair.generate().publicKey;
+await svm.createTokenAccount(token.mint, wallet);                 // the wallet's associated token account (ATA), returned
+const result = await svm.deliver({ token: { evmToken: "0x...", amount: 1_500_000_000_000_000_000n, receiver: wallet } });
+await svm.tokenBalance(token.mint, wallet);                       // 1_500_000_000n; 0n if the ATA does not exist
+```
+
+- `createBurnMintToken` writes the mint with the pool's signer as mint authority, deploys the version's
+  `burnmint_token_pool` on the first call, and sets up the pool, the Router's token admin registry and the pool lookup
+  table, with the payer as every authority. `linkToken` writes the pool's remote config for the EVM chain (token, pool
+  and decimals) and records `evmToken` (case-insensitive) as the token's EVM counterpart. Linking a mint or an EVM token
+  twice throws.
+- `deliver({ token })` sends `amount`, in the EVM token's smallest units. Without `receiverProgram` the delivery is
+  token-only (`receiverAccounts`, `receiverWritableBitmap` and `data` must be left out). With `receiverProgram` the
+  tokens and the message arrive in one execution. An `evmToken` that is not linked throws.
+- Decimals: the pool converts from the EVM token's decimals to the mint's. 1.5e18 of an 18-decimal token becomes
+  1,500,000,000 on a 9-decimal mint. Anything below one Solana unit is dropped, not rounded: 999,999,999 wei mints 0
+  and still succeeds, and 1,999,999,999 wei mints 1.
+- Receiver token account, the one difference between the versions: on 2.0 the OffRamp creates the receiver's ATA if it
+  is missing. On 1.6 the ATA must already exist, as on the live lane, or the execution fails with `AccountNotInitialized`;
+  call `createTokenAccount` first. A failed execute still leaves its root committed (see "CCIP versions").
+- Compute units: a token delivery measured 170,000 to 255,000 units, against about 50,000 for data only, so the default
+  limit is 500,000 (200,000 + 300,000) when a `token` is present. `computeUnits` still overrides it, and
+  `computeUnitsUsed` reports the real figure.
+
 ## Enable Solana sends on the router
 
 Solana-bound sends are validated by `CCIPLocalSvmLane`, a separate contract that is not built into
@@ -156,8 +191,9 @@ Simulated:
 - On 1.6 the commit and execution DONs are local: 4 deterministic signer keys with F = 1 (2 signatures per commit), the
   payer as the only transmitter, no RMN signatures and no price updates (the FeeQuoter is deployed but not initialised).
 - There is one EVM source chain (selector 16015286601757825753) and one Solana chain (devnet selector).
-- Fees are the router's `setFee` value on the EVM side, with no Solana-side pricing. Token transfers to Solana
-  are not supported.
+- Fees are the router's `setFee` value on the EVM side, with no Solana-side pricing.
+- Tokens: the Solana side of a transfer is real (see "Tokens"); the EVM side is not wired yet, so `deliver({ token })`
+  stands in for a message that carries tokens. There is no rate limit on the pool and no pool-side attestation.
 - Surfnet clamps a compute-unit limit above 1,400,000 to 1,400,000, as a validator does, while a 2.0 EVM send allows
   3,000,000. A message that needs more than 1.4M compute units cannot succeed on real Solana either.
 - Until the first routed message, that one onRamp is a placeholder registered at startup, so `deliver()` works

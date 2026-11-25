@@ -11,34 +11,69 @@ import { ADDRESS_LOOKUP_TABLE_PROGRAM } from "./constants.ts";
 import type { SvmRuntime } from "./runtime.ts";
 
 export const DEFAULT_COMPUTE_UNITS = 200_000;
+/**
+ * Added to the default when a token is delivered: the pool CPI, the mint and (on 2.0) the receiver's token account
+ * creation took 203,000 to 273,000 compute units in total, against about 50,000 for a data-only message.
+ */
+export const TOKEN_COMPUTE_UNITS = 300_000;
 const MAX_UINT64 = (1n << 64n) - 1n;
+const MAX_UINT256 = (1n << 256n) - 1n;
 
-/** The `deliver()` arguments both lanes validate the same way. Returns the compute-unit limit to use. */
-export function checkDeliverOptions(options: {
-  receiverProgram: PublicKey;
+export interface CheckedDeliver {
+  /** The compute-unit limit of the execution transaction. */
+  computeUnits: number;
   receiverAccounts: PublicKey[];
   receiverWritableBitmap: bigint;
+  data: Buffer;
+}
+
+/** The `deliver()` arguments both lanes validate the same way, with the optional ones defaulted. */
+export function checkDeliverOptions(options: {
+  receiverProgram?: PublicKey;
+  receiverAccounts?: PublicKey[];
+  receiverWritableBitmap?: bigint;
+  data?: string | Uint8Array;
+  token?: { evmToken: string; amount: bigint; receiver: PublicKey };
   computeUnits?: number;
   onRampAddress?: Uint8Array;
-}): number {
-  const computeUnits = options.computeUnits ?? DEFAULT_COMPUTE_UNITS;
+}): CheckedDeliver {
+  const computeUnits = options.computeUnits ?? DEFAULT_COMPUTE_UNITS + (options.token ? TOKEN_COMPUTE_UNITS : 0);
   // 0 is not misuse: a CCIP 2.0 EVM send accepts it, so the message runs and Solana decides the outcome.
   if (!Number.isInteger(computeUnits) || computeUnits < 0) {
     throw new Error(`deliver: computeUnits must be a non-negative integer, got ${computeUnits}`);
   }
-  if (!(options.receiverProgram instanceof PublicKey) || !options.receiverAccounts.every((a) => a instanceof PublicKey)) {
+  const receiverAccounts = options.receiverAccounts ?? [];
+  const receiverWritableBitmap = options.receiverWritableBitmap ?? 0n;
+  const data = typeof options.data === "string" ? Buffer.from(options.data) : Buffer.from(options.data ?? []);
+  if (
+    (options.receiverProgram !== undefined && !(options.receiverProgram instanceof PublicKey)) ||
+    !receiverAccounts.every((a) => a instanceof PublicKey)
+  ) {
     throw new Error("deliver: receiverProgram and receiverAccounts must be PublicKeys");
   }
-  const bitmap = options.receiverWritableBitmap;
+  const bitmap = receiverWritableBitmap;
   if (typeof bitmap !== "bigint" || bitmap < 0n || bitmap > MAX_UINT64) {
     throw new Error(`deliver: receiverWritableBitmap must be a bigint in 0..2^64-1, got ${String(bitmap)}`);
+  }
+  if (options.receiverProgram === undefined) {
+    if (!options.token) throw new Error("deliver: receiverProgram is required unless a token is delivered");
+    if (receiverAccounts.length > 0 || bitmap !== 0n || data.length > 0) {
+      throw new Error("deliver: a token-only delivery (no receiverProgram) cannot carry receiverAccounts, receiverWritableBitmap or data");
+    }
+  }
+  if (options.token) {
+    const { amount, receiver } = options.token;
+    if (typeof amount !== "bigint" || amount < 0n || amount > MAX_UINT256) {
+      throw new Error(`deliver: token.amount must be a bigint in 0..2^256-1 (source units), got ${String(amount)}`);
+    }
+    if (!(receiver instanceof PublicKey)) throw new Error("deliver: token.receiver must be a PublicKey");
   }
   // No other pre-checks: a bitmap with stray bits, a receiver that is not a program and a compute-unit
   // limit above the runtime's cap are all accepted by a CCIP EVM send, and fail (or not) on Solana.
   if (options.onRampAddress !== undefined && options.onRampAddress.length !== 20) {
     throw new Error(`deliver: onRampAddress must be 20 bytes, got ${options.onRampAddress.length}`);
   }
-  return computeUnits;
+  return { computeUnits, receiverAccounts, receiverWritableBitmap, data };
 }
 
 /** Sends without preflight (so a failing execution still lands) and reads its logs and compute units. */
@@ -62,9 +97,12 @@ export async function sendForOutcome(runtime: SvmRuntime, transaction: Versioned
   };
 }
 
-/** Creates an active lookup table holding `addresses` by writing the account directly. */
-export async function writeLookupTable(runtime: SvmRuntime, addresses: PublicKey[]): Promise<AddressLookupTableAccount> {
-  const key = Keypair.generate().publicKey;
+/** Creates an active lookup table holding `addresses` by writing the account directly, at `key` (default: a new address). */
+export async function writeLookupTable(
+  runtime: SvmRuntime,
+  addresses: PublicKey[],
+  key: PublicKey = Keypair.generate().publicKey,
+): Promise<AddressLookupTableAccount> {
   // Layout: u32 type (1 = table) | u64 deactivation slot (max = active) | u64 last extended slot |
   // u8 start index | Option<Pubkey> authority (none) | u16 padding | addresses.
   const header = Buffer.alloc(56);

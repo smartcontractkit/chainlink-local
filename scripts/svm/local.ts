@@ -20,7 +20,7 @@ import {
 } from "@solana/web3.js";
 import anchor from "@anchor-lang/core";
 import { readIdl, resolveArtifacts, type CcipVersion } from "./artifacts.ts";
-import { encodeDestBlob, encodeMessage, messageId } from "./codec.ts";
+import { encodeDestBlob, encodeMessage, encodeTokenTransfer, messageId } from "./codec.ts";
 import {
   EVM_CHAIN_SELECTOR,
   SEEDS,
@@ -33,6 +33,7 @@ import { startSvmLocal16 } from "./local16.ts";
 import { CCIP_PROGRAMS, deployCcipPrograms } from "./programs.ts";
 import { resolveAccounts } from "./resolver.ts";
 import { SvmRuntime } from "./runtime.ts";
+import { TokenSupport, encodeDecimals, type BurnMintToken, type DeliverToken, type LinkTokenOptions } from "./tokens.ts";
 import { COMMITTEE_SIZE, COMMITTEE_THRESHOLD, initializeTrustLayer, loadPrograms } from "./trust.ts";
 import { signVerifierResults, sortedCommittee } from "./signatures.ts";
 
@@ -43,14 +44,23 @@ const LOCAL_ON_RAMP = Buffer.alloc(20, 1);
 const DEFAULT_SENDER = Buffer.alloc(20, 2);
 
 export interface DeliverOptions {
-  /** Program that receives the message through `ccip_receive`. Must be deployed. */
-  receiverProgram: PublicKey;
-  /** Accounts the receiver needs after the fixed CCIP ones, in the order the receiver expects. */
-  receiverAccounts: PublicKey[];
-  /** Bit i set = `receiverAccounts[i]` is writable. */
-  receiverWritableBitmap: bigint;
-  /** Message payload. A string is sent as its UTF-8 bytes. */
-  data: string | Uint8Array;
+  /**
+   * Program that receives the message through `ccip_receive`. Must be deployed. Absent = a token-only delivery
+   * (`token` is then required, and `receiverAccounts`, `receiverWritableBitmap` and `data` must be left out).
+   */
+  receiverProgram?: PublicKey;
+  /** Accounts the receiver needs after the fixed CCIP ones, in the order the receiver expects. Default none. */
+  receiverAccounts?: PublicKey[];
+  /** Bit i set = `receiverAccounts[i]` is writable. Default 0. */
+  receiverWritableBitmap?: bigint;
+  /** Message payload. A string is sent as its UTF-8 bytes. Default empty. */
+  data?: string | Uint8Array;
+  /**
+   * Tokens delivered with the message: `amount` of a token linked with `linkToken`, in the EVM token's smallest
+   * units, minted to `receiver`'s associated token account. See the README for decimals and for the account
+   * creation difference between CCIP versions.
+   */
+  token?: DeliverToken;
   /** Source-chain sender address bytes. Default: a fixed 20-byte address. */
   sender?: Uint8Array;
   /** Default: the EVM selector (Ethereum Sepolia). */
@@ -58,7 +68,8 @@ export interface DeliverOptions {
   /** Default: auto-increment, so identical calls get distinct message ids. */
   messageNumber?: bigint;
   /**
-   * Compute-unit limit of the execution transaction. Default 200,000. Not capped here: a CCIP 2.0 lane
+   * Compute-unit limit of the execution transaction. Default 200,000, or 500,000 when a token is delivered (a token
+   * delivery used 203,000 to 273,000 in measurements). Not capped here: a CCIP 2.0 lane
    * accepts up to 3,000,000 at send time, and what the runtime does with more is returned in the result.
    */
   computeUnits?: number;
@@ -98,6 +109,19 @@ export interface SvmLocal {
   ccip: { router: PublicKey; offRamp: PublicKey; chainSelector: bigint };
   /** Loads a compiled program (`.so`) at `programId`, with the payer as upgrade authority. */
   deployProgram(soPath: string, programId: PublicKey | string): Promise<void>;
+  /**
+   * Makes a token on the local chain: an SPL mint (`decimals`, default 9) whose mint authority is the real BurnMint
+   * pool, registered in the real Router. The pool program is deployed on the first call. Classic SPL Token only.
+   */
+  createBurnMintToken(options?: { decimals?: number }): Promise<BurnMintToken>;
+  /** Connects the token to an EVM token, so `deliver({ token })` can mint it. Throws if either side is already linked. */
+  linkToken(token: { mint: PublicKey }, options: LinkTokenOptions): Promise<void>;
+  /** The Solana mint linked to `evmToken` (case-insensitive), if any. */
+  linkedMint(evmToken: string): PublicKey | undefined;
+  /** Creates the associated token account of `owner` for `mint` and returns its address. An existing one is left untouched. */
+  createTokenAccount(mint: PublicKey, owner: PublicKey): Promise<PublicKey>;
+  /** Balance of the associated token account of `owner` for `mint`, in the mint's smallest units; 0n if it does not exist. */
+  tokenBalance(mint: PublicKey, owner: PublicKey): Promise<bigint>;
   /** Runs a message through the real OffRamp. Whatever Solana does is returned; only harness misuse throws. */
   deliver(options: DeliverOptions): Promise<DeliverResult>;
   /** Signs with the payer plus `signers`, sends and waits for confirmation. Returns the signature. */
@@ -117,7 +141,7 @@ export async function startSvmLocal(options: StartOptions = {}): Promise<SvmLoca
     await deployCcipPrograms(runtime, bundleDir);
     const programs = loadPrograms(runtime, bundleDir);
     await initializeTrustLayer(runtime, programs);
-    return new Local(runtime, bundleDir, programs.offRamp);
+    return new Local(runtime, bundleDir, programs);
   } catch (error) {
     runtime.stop();
     throw error;
@@ -139,12 +163,13 @@ class Local implements SvmLocal {
   private readonly runtime: SvmRuntime;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private readonly offRamp: any;
+  private readonly tokens: TokenSupport;
   private readonly offRampIdl: { instructions: { name: string; discriminator: number[] }[] };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  constructor(runtime: SvmRuntime, bundleDir: string, offRamp: any) {
+  constructor(runtime: SvmRuntime, bundleDir: string, programs: ReturnType<typeof loadPrograms>) {
     this.runtime = runtime;
-    this.offRamp = offRamp;
+    this.offRamp = programs.offRamp;
+    this.tokens = new TokenSupport({ runtime, ccipVersion: "2.0", bundleDir, router: programs.router, offRamp: this.ccip.offRamp });
     this.connection = runtime.connection;
     this.payer = runtime.payer;
     this.offRampIdl = readIdl(bundleDir, "ccip_offramp") as never;
@@ -157,6 +182,26 @@ class Local implements SvmLocal {
     await this.runtime.setProgramAuthority(id, this.payer.publicKey);
   }
 
+  createBurnMintToken(options?: { decimals?: number }): Promise<BurnMintToken> {
+    return this.tokens.createBurnMintToken(options);
+  }
+
+  linkToken(token: { mint: PublicKey }, options: LinkTokenOptions): Promise<void> {
+    return this.tokens.linkToken(token, options);
+  }
+
+  linkedMint(evmToken: string): PublicKey | undefined {
+    return this.tokens.linkedMint(evmToken);
+  }
+
+  createTokenAccount(mint: PublicKey, owner: PublicKey): Promise<PublicKey> {
+    return this.tokens.createTokenAccount(mint, owner);
+  }
+
+  tokenBalance(mint: PublicKey, owner: PublicKey): Promise<bigint> {
+    return this.tokens.tokenBalance(mint, owner);
+  }
+
   sendAndConfirm(transaction: Transaction, signers: Keypair[] = []): Promise<string> {
     return this.runtime.sendAndConfirm(transaction, signers);
   }
@@ -166,8 +211,8 @@ class Local implements SvmLocal {
   }
 
   async deliver(options: DeliverOptions): Promise<DeliverResult> {
-    const computeUnits = checkDeliverOptions(options);
-    const bitmap = options.receiverWritableBitmap;
+    const { computeUnits, receiverAccounts, receiverWritableBitmap, data } = checkDeliverOptions(options);
+    const token = options.token ? this.tokens.resolve(options.token) : undefined;
     const sourceChainSelector = options.sourceChainSelector ?? EVM_CHAIN_SELECTOR;
     const onRampAddress = await this.laneOnRamp(sourceChainSelector, options.onRampAddress);
 
@@ -177,16 +222,23 @@ class Local implements SvmLocal {
       destChainSelector: SVM_CHAIN_SELECTOR,
       messageNumber,
       executionGasLimit: computeUnits,
-      ccipReceiveGasLimit: computeUnits,
+      ccipReceiveGasLimit: options.receiverProgram ? computeUnits : 0,
       onRampAddress,
       offRampAddress: this.ccip.offRamp.toBuffer(),
       sender: options.sender ?? DEFAULT_SENDER,
-      receiver: options.receiverProgram.toBuffer(),
-      destBlob: encodeDestBlob({
-        accounts: options.receiverAccounts,
-        accountIsWritableBitmap: bitmap,
+      // A token-only message has a zero receiver, as the executor sends it.
+      receiver: options.receiverProgram?.toBuffer() ?? Buffer.alloc(32),
+      // useAta 0 = DeriveAtaAndCreate: the OffRamp creates the receiver's associated token account.
+      destBlob: encodeDestBlob({ accounts: receiverAccounts, accountIsWritableBitmap: receiverWritableBitmap, useAta: 0 }),
+      tokenTransfer: token && encodeTokenTransfer({
+        amount: token.amount,
+        sourcePool: token.evmPool,
+        sourceToken: token.evmToken,
+        destToken: token.mint,
+        tokenReceiver: token.receiver,
+        extraData: encodeDecimals(token.evmDecimals),
       }),
-      data: typeof options.data === "string" ? Buffer.from(options.data) : options.data,
+      data,
     });
     const id = messageId(encodedMessage);
     const verifierResults = signVerifierResults(id, sortedCommittee(COMMITTEE_SIZE), COMMITTEE_THRESHOLD);

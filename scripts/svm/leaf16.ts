@@ -9,6 +9,17 @@
 import { PublicKey } from "@solana/web3.js";
 import { SigningKey, getBytes, keccak256 } from "ethers";
 
+/** One entry of `Any2SVMRampMessage.token_amounts`. */
+export interface TokenAmount16 {
+  sourcePool: Uint8Array;
+  destToken: PublicKey;
+  /** Gas the source reserved for the destination pool call; the SVM OffRamp does not use it. */
+  destGasAmount: number;
+  extraData: Uint8Array;
+  /** Source-token units. */
+  amount: bigint;
+}
+
 export interface Message16 {
   messageId: Uint8Array;
   sourceChainSelector: bigint;
@@ -22,6 +33,9 @@ export interface Message16 {
   receiverAndAccounts: PublicKey[];
   /** The onRamp bytes the source chain config holds. */
   onRamp: Uint8Array;
+  /** Wallet that receives `tokenAmounts`. Default: none (the zero address, no tokens). */
+  tokenReceiver?: PublicKey;
+  tokenAmounts?: TokenAmount16[];
 }
 
 const u16le = (n: number) => { const b = Buffer.alloc(2); b.writeUInt16LE(n); return b; };
@@ -33,12 +47,27 @@ const u64be = (n: bigint) => { const b = Buffer.alloc(8); b.writeBigUInt64BE(n);
 const vec = (bytes: Uint8Array) => Buffer.concat([u32le(bytes.length), bytes]);
 const keccak = (...parts: Uint8Array[]) => Buffer.from(getBytes(keccak256(Buffer.concat(parts))));
 
+/** Borsh `Vec<Any2SVMTokenAmount>`: the amount is a 32-byte little-endian `CrossChainAmount`. */
+function tokenAmountsBorsh(tokens: TokenAmount16[] = []): Buffer {
+  return Buffer.concat([
+    u32le(tokens.length),
+    ...tokens.map((t) => {
+      const amount = Buffer.alloc(32);
+      amount.writeBigUInt64LE(t.amount & 0xffffffffffffffffn, 0);
+      amount.writeBigUInt64LE((t.amount >> 64n) & 0xffffffffffffffffn, 8);
+      amount.writeBigUInt64LE((t.amount >> 128n) & 0xffffffffffffffffn, 16);
+      amount.writeBigUInt64LE((t.amount >> 192n) & 0xffffffffffffffffn, 24);
+      return Buffer.concat([vec(t.sourcePool), t.destToken.toBuffer(), u32le(t.destGasAmount), vec(t.extraData), amount]);
+    }),
+  ]);
+}
+
 /** Borsh `Any2SVMRampExtraArgs`. */
 const extraArgs = (m: Message16) => Buffer.concat([u32le(m.computeUnits), u64le(m.writableBitmap)]);
 
 /**
- * `keccak256` over the same fields, in the same order, as `execute.rs::hash`. The token receiver is the zero
- * address and there are no token transfers: this lane carries data messages only.
+ * `keccak256` over the same fields, in the same order, as `execute.rs::hash`. Without tokens the token receiver is
+ * the zero address and `token_amounts` is empty.
  */
 export function leafHash(m: Message16): Buffer {
   return keccak(
@@ -49,7 +78,7 @@ export function leafHash(m: Message16): Buffer {
     u16be(m.onRamp.length),
     m.onRamp,
     m.messageId,
-    PublicKey.default.toBuffer(), // token receiver
+    (m.tokenReceiver ?? PublicKey.default).toBuffer(),
     u64be(m.sequenceNumber),
     extraArgs(m),
     u64be(0n), // nonce: the OffRamp requires 0
@@ -57,12 +86,12 @@ export function leafHash(m: Message16): Buffer {
     m.sender,
     u16be(m.data.length),
     m.data,
-    u32le(0), // token_amounts, Borsh: an empty Vec
+    tokenAmountsBorsh(m.tokenAmounts),
     ...m.receiverAndAccounts.map((key) => key.toBuffer()),
   );
 }
 
-/** Borsh `ExecutionReportSingleChain` with no tokens and an empty proof. */
+/** Borsh `ExecutionReportSingleChain` with an empty proof. */
 export function encodeExecutionReport(m: Message16): Buffer {
   return Buffer.concat([
     u64le(m.sourceChainSelector),
@@ -74,10 +103,12 @@ export function encodeExecutionReport(m: Message16): Buffer {
     u64le(0n),
     vec(m.sender),
     vec(m.data),
-    PublicKey.default.toBuffer(),
-    u32le(0),
+    (m.tokenReceiver ?? PublicKey.default).toBuffer(),
+    tokenAmountsBorsh(m.tokenAmounts),
     extraArgs(m),
-    u32le(0), // offchain_token_data
+    // offchain_token_data: one empty entry per token (a BurnMint pool needs no attestation)
+    u32le((m.tokenAmounts ?? []).length),
+    ...(m.tokenAmounts ?? []).map(() => vec(Buffer.alloc(0))),
     u32le(0), // proofs
   ]);
 }
@@ -126,7 +157,7 @@ export function signCommit(report: Buffer, context: [number[], number[]], keys: 
 }
 
 /** Id of a locally delivered 1.6 message. The OffRamp treats the id as opaque, so any unique 32 bytes work. */
-export function localMessageId(m: Omit<Message16, "messageId" | "receiverAndAccounts" | "computeUnits" | "writableBitmap">, receiver: PublicKey): Buffer {
+export function localMessageId(m: Pick<Message16, "sourceChainSelector" | "destChainSelector" | "sequenceNumber" | "sender" | "data" | "onRamp">, receiver: PublicKey): Buffer {
   return keccak(
     Buffer.from("chainlink-local-svm-1.6:message"),
     u64be(m.sourceChainSelector),
