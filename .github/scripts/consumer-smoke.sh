@@ -229,7 +229,13 @@ export default defineConfig({
     version: "0.8.24",
     settings: { evmVersion: "cancun" },
     // Compile the simulator from the package so the test can deploy it.
-    npmFilesToBuild: ["@chainlink/local/src/ccip/CCIPLocalSimulator.sol"],
+    npmFilesToBuild: [
+      "@chainlink/local/src/ccip/CCIPLocalSimulator.sol",
+      // The test reaches the router by name (`getContractAt`), so it needs its own artifact.
+      "@chainlink/local/src/ccip/CCIPLocalRouter.sol",
+      // Solana send rules: separate from the simulator, so EVM-only users do not pay for them.
+      "@chainlink/local/src/ccip/CCIPLocalSvmLane.sol",
+    ],
   },
 });
 EOF
@@ -295,6 +301,8 @@ describe("HelloSolana", () => {
     ({ ethers } = await network.connect());
     const simulator = await ethers.deployContract("CCIPLocalSimulator");
     const [, router] = await simulator.configuration();
+    const lane = await ethers.deployContract("CCIPLocalSvmLane");
+    await (await (await ethers.getContractAt("CCIPLocalRouter", router)).setSvmLane(lane)).wait();
     hello = await ethers.deployContract("HelloSolana", [router]);
 
     svm = await startSvmLocal();
