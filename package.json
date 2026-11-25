@@ -4,12 +4,21 @@
   "license": "MIT",
   "version": "0.3.1",
   "type": "module",
+  "exports": {
+    "./svm": {
+      "types": "./dist/svm/index.d.ts",
+      "import": "./dist/svm/index.js"
+    },
+    "./*": "./*",
+    "./package.json": "./package.json"
+  },
   "files": [
     "src/**/*.sol",
     "!src/test/**/*",
     "scripts/CCIPLocalSimulatorFork.js",
     "scripts/CCIPLocalSimulatorFork.d.ts",
     "scripts/data-streams/**/*.js",
+    "dist/svm/**",
     "remappings.txt"
   ],
   "engines": {
@@ -36,17 +45,23 @@
     "generate-index": "node helper_doc/generate-index-files.mjs",
     "generate-docs": "npm run generate-solidity && npm run generate-jsdoc && npm run generate-index && npm run prettier",
     "update-register": "node helper_doc/updateRegisterContract.cjs",
-    "prepack": "cp remappings.txt .remappings.txt.dev-backup && cp remappings-npm.txt remappings.txt",
+    "build:svm": "tsc -p tsconfig.svm.json",
+    "prepack": "npm run build:svm && cp remappings.txt .remappings.txt.dev-backup && cp remappings-npm.txt remappings.txt",
     "postpack": "mv .remappings.txt.dev-backup remappings.txt"
   },
   "devDependencies": {
+    "@anchor-lang/core": "^1.2.2",
     "@chainlink/ace": "^1.0.0",
     "@nomicfoundation/hardhat-ethers": "4.0.5",
+    "@solana/surfpool": "1.7.0",
+    "@solana/web3.js": "^1.99.0",
+    "@types/node": "^22.20.5",
     "dotenv": "^16.4.5",
     "ethers": "6.17.0",
     "hardhat": "^3.1.10",
     "jsdoc-to-markdown": "^8.0.1",
-    "prettier": "^3.3.3"
+    "prettier": "^3.3.3",
+    "typescript": "^5.9.3"
   },
   "dependencies": {
     "@chainlink/contracts": "1.5.0",
@@ -56,11 +71,23 @@
     "forge-std": "github:foundry-rs/forge-std#v1.9.4"
   },
   "peerDependencies": {
+    "@anchor-lang/core": "^1.2",
     "@nomicfoundation/hardhat-ethers": "^4.0.5",
+    "@solana/surfpool": "1.7.0",
+    "@solana/web3.js": "^1.98",
     "ethers": "^6.17.0",
     "hardhat": "^3.1.10"
   },
   "peerDependenciesMeta": {
+    "@anchor-lang/core": {
+      "optional": true
+    },
+    "@solana/surfpool": {
+      "optional": true
+    },
+    "@solana/web3.js": {
+      "optional": true
+    },
     "hardhat": {
       "optional": true
     },
