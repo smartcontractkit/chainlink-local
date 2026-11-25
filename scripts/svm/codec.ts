@@ -2,7 +2,7 @@
 //
 // Ported in part from the prototype by Stefano Magini (magiodev-cll/chainlink-local, feat/svm-local,
 // src/ccip-svm/src/codec.ts): `encodeMessage`, `decodeMessage`, `messageId`, `encodeDestBlob` and the
-// length-prefix helpers. Token transfers are out of scope here: the field is carried as raw bytes.
+// length-prefix helpers. `encodeTokenTransfer` is new (the prototype carried the field as raw bytes).
 
 import { PublicKey } from "@solana/web3.js";
 import { getBytes, keccak256 } from "ethers";
@@ -29,6 +29,7 @@ export interface MessageV1 {
 export type DecodedMessage = Required<MessageV1>;
 
 const MESSAGE_V1_VERSION = 1;
+const TOKEN_TRANSFER_V1_VERSION = 1;
 
 function be(bytes: number, write: (buf: Buffer) => void): Buffer {
   const buf = Buffer.alloc(bytes);
@@ -136,5 +137,27 @@ export function encodeDestBlob(blob: {
     beU64(blob.accountIsWritableBitmap ?? 0n),
     Buffer.from([blob.accounts.length]),
     ...blob.accounts.map((account) => account.toBuffer()),
+  ]);
+}
+
+/** `TokenTransferV1` for one token. Addresses are raw bytes (an EVM address is 20), `amount` is in source-token units. */
+export function encodeTokenTransfer(transfer: {
+  amount: bigint;
+  sourcePool: Uint8Array;
+  sourceToken: Uint8Array;
+  destToken: PublicKey;
+  tokenReceiver: PublicKey;
+  /** For a BurnMint source pool: `abi.encode(uint8 sourceDecimals)`. */
+  extraData: Uint8Array;
+}): Buffer {
+  if (transfer.amount < 0n || transfer.amount >= 1n << 256n) throw new Error("token amount does not fit 32 bytes");
+  return Buffer.concat([
+    Buffer.from([TOKEN_TRANSFER_V1_VERSION]),
+    Buffer.from(transfer.amount.toString(16).padStart(64, "0"), "hex"), // uint256, big-endian
+    lenU8(transfer.sourcePool),
+    lenU8(transfer.sourceToken),
+    lenU8(transfer.destToken.toBuffer()),
+    lenU8(transfer.tokenReceiver.toBuffer()),
+    lenU16(transfer.extraData),
   ]);
 }

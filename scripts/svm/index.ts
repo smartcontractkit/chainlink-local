@@ -49,3 +49,4 @@ export type { ExampleReceiver } from "./exampleReceiver.ts";
 export type { EvmReceiptLike, RouteResult } from "./route.ts";
 export type { DeliverOptions, DeliverResult, StartOptions, SvmLocal } from "./local.ts";
 export type { CcipVersion } from "./artifacts.ts";
+export type { BurnMintToken, DeliverToken, LinkTokenOptions } from "./tokens.ts";
