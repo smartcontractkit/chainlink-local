@@ -26,6 +26,7 @@ abstract contract CCIPLocalRouterSvmTokenBase is Test {
 
     CCIPLocalSimulator simulator;
     CCIPLocalRouter router;
+    CCIPLocalSvmLane lane;
     LinkToken link;
     BurnMintERC677Helper bnm;
 
@@ -42,7 +43,8 @@ abstract contract CCIPLocalRouterSvmTokenBase is Test {
         (, IRouterClient sourceRouter,,,,,) = simulator.configuration();
         router = CCIPLocalRouter(address(sourceRouter));
         router.setFee(FEE);
-        router.setSvmLane(address(new CCIPLocalSvmLane()));
+        lane = new CCIPLocalSvmLane(address(router));
+        router.setSvmLane(address(lane));
         router.setSvmLaneVersion(_version());
         bnm.drip(address(this)); // 1e18 CCIP-BnM
         simulator.requestLinkFromFaucet(address(this), 10 ether);
@@ -127,7 +129,7 @@ abstract contract CCIPLocalRouterSvmTokenBase is Test {
         (Sent memory sent, bytes32 messageId) = _lastEvent();
 
         assertEq(bnm.balanceOf(address(this)), senderBefore - AMOUNT, "sender balance down");
-        assertEq(bnm.balanceOf(address(router)), AMOUNT, "router holds the token");
+        assertEq(bnm.balanceOf(address(lane)), AMOUNT, "lane holds the token");
         assertEq(messageId, returnedId, "messageId");
         assertEq(returnedId, keccak256(abi.encode(uint256(1), address(this), SOLANA, message)), "id derivation");
         assertEq(sent.token, address(bnm), "token");
@@ -179,7 +181,7 @@ abstract contract CCIPLocalRouterSvmTokenBase is Test {
         assertEq(sent.data.length, 0, "no data");
         assertEq(sent.token, address(bnm), "token");
         assertEq(sent.tokenAmount, AMOUNT, "tokenAmount");
-        assertEq(bnm.balanceOf(address(router)), AMOUNT, "router holds the token");
+        assertEq(bnm.balanceOf(address(lane)), AMOUNT, "lane holds the token");
     }
 
     function test_token_linkFee() public {
@@ -209,7 +211,8 @@ abstract contract CCIPLocalRouterSvmTokenBase is Test {
         _send(message);
 
         assertEq(link.balanceOf(address(this)), linkBefore - FEE - AMOUNT, "fee and token pulled");
-        assertEq(link.balanceOf(address(router)), FEE + AMOUNT);
+        assertEq(link.balanceOf(address(router)), FEE, "the router keeps the fee");
+        assertEq(link.balanceOf(address(lane)), AMOUNT, "the lane escrows the token");
     }
 
     function test_noToken_eventTokenFieldsAreZero() public {
@@ -292,7 +295,7 @@ abstract contract CCIPLocalRouterSvmTokenBase is Test {
 
         assertEq(bnm.balanceOf(address(this)), senderBefore - AMOUNT);
         assertEq(bnm.balanceOf(receiver), AMOUNT, "receiver got the token");
-        assertEq(bnm.balanceOf(address(router)), 0, "router custody is Solana only");
+        assertEq(bnm.balanceOf(address(lane)), 0, "lane escrow is Solana only");
         for (uint256 i; i < logs.length; ++i) {
             assertTrue(logs[i].topics[0] != CCIPLocalRouter.SvmMessageSent.selector, "no Solana event");
         }
@@ -320,7 +323,7 @@ contract CCIPLocalRouterSvmToken20Test is CCIPLocalRouterSvmTokenBase {
         assertEq(sent.extraArgs.tokenReceiver, bytes32(0), "tokenReceiver");
         assertEq(sent.token, address(bnm), "token");
         assertEq(sent.tokenAmount, AMOUNT, "tokenAmount");
-        assertEq(bnm.balanceOf(address(router)), AMOUNT, "custody taken");
+        assertEq(bnm.balanceOf(address(lane)), AMOUNT, "custody taken");
     }
 
     /// @dev OnRamp.forwardFromRouter validates the receiver before `_lockOrBurnSingleToken`.

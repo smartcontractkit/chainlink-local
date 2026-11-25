@@ -45,7 +45,7 @@ for (const ccipVersion of VERSIONS) {
     const accounts = [externalExecutionConfig, counter, SystemProgram.programId];
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let ethers: any, router: any, bnm: any, lnm: any, sender: any, svm: SvmLocal, mint: BurnMintToken;
+    let ethers: any, router: any, lane: any, bnm: any, lnm: any, sender: any, svm: SvmLocal, mint: BurnMintToken;
     const wallet = () => Keypair.generate().publicKey;
     const readCounter = async () => (await svm.connection.getAccountInfo(counter))!.data.readBigUInt64LE(8);
 
@@ -79,7 +79,8 @@ for (const ccipVersion of VERSIONS) {
       const simulator = await ethers.deployContract("CCIPLocalSimulator");
       const [, sourceRouter, , , linkToken, ccipBnM, ccipLnM] = await simulator.configuration();
       router = await ethers.getContractAt("CCIPLocalRouter", sourceRouter);
-      await router.setSvmLane(await ethers.deployContract("CCIPLocalSvmLane"));
+      lane = await ethers.deployContract("CCIPLocalSvmLane", [router]);
+      await router.setSvmLane(lane);
       await router.setSvmLaneVersion(LANE_VERSION[ccipVersion]);
       await router.setFee(FEE);
       bnm = await ethers.getContractAt("BurnMintERC677Helper", ccipBnM);
@@ -117,12 +118,12 @@ for (const ccipVersion of VERSIONS) {
       await svm.createTokenAccount(mint.mint, owner); // required on 1.6, harmless on 2.0
       const amount = 3n * ONE_TOKEN / 2n;
       const senderBefore = await bnm.balanceOf(sender);
-      const routerBefore = await bnm.balanceOf(router);
+      const laneBefore = await bnm.balanceOf(lane);
 
       const start = performance.now();
       const receipt = await sendToken(owner, amount);
       assert.equal(senderBefore - (await bnm.balanceOf(sender)), amount, "EVM balance of the sender is down");
-      assert.equal((await bnm.balanceOf(router)) - routerBefore, amount, "the router holds the tokens");
+      assert.equal((await bnm.balanceOf(lane)) - laneBefore, amount, "the lane holds the tokens");
 
       const [result] = await routeToSvm(svm, receipt);
       console.log(`[svm-timing] journey-3 token-only send-to-result@${ccipVersion} ${Math.round(performance.now() - start)}ms`);

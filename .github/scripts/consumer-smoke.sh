@@ -340,7 +340,7 @@ describe("TokenSolana", () => {
     const simulator = await ethers.deployContract("CCIPLocalSimulator");
     const [, router, , , , ccipBnM] = await simulator.configuration();
     const routerContract = await ethers.getContractAt("CCIPLocalRouter", router);
-    await (await routerContract.setSvmLane(await ethers.deployContract("CCIPLocalSvmLane"))).wait();
+    await (await routerContract.setSvmLane(await ethers.deployContract("CCIPLocalSvmLane", [router]))).wait();
     await (await routerContract.setFee(10n ** 16n)).wait();
     bnm = await ethers.getContractAt("BurnMintERC677Helper", ccipBnM);
     sender = await ethers.deployContract("TokenSolana", [router]);
@@ -396,7 +396,7 @@ describe("HelloSolana", () => {
     ({ ethers } = await network.connect());
     const simulator = await ethers.deployContract("CCIPLocalSimulator");
     const [, router] = await simulator.configuration();
-    const lane = await ethers.deployContract("CCIPLocalSvmLane");
+    const lane = await ethers.deployContract("CCIPLocalSvmLane", [router]);
     await (await (await ethers.getContractAt("CCIPLocalRouter", router)).setSvmLane(lane)).wait();
     hello = await ethers.deployContract("HelloSolana", [router]);
 
