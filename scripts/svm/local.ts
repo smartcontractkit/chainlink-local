@@ -12,6 +12,7 @@ import {
   ComputeBudgetProgram,
   Keypair,
   PublicKey,
+  SystemProgram,
   Transaction,
   TransactionInstruction,
   TransactionMessage,
@@ -37,10 +38,9 @@ import { signVerifierResults, sortedCommittee } from "./signatures.ts";
 
 const { BN } = anchor;
 
-/** Largest compute-unit limit a transaction can request. */
-const MAX_COMPUTE_UNITS = 1_400_000;
 const DEFAULT_COMPUTE_UNITS = 200_000;
-/** The on-ramp address the source chain config accepts, and the default source-chain sender. */
+const MAX_UINT64 = (1n << 64n) - 1n;
+/** Placeholder onRamp that `trust.ts` registers at startup, until a real one replaces it; and the default sender. */
 const LOCAL_ON_RAMP = Buffer.alloc(20, 1);
 const DEFAULT_SENDER = Buffer.alloc(20, 2);
 
@@ -59,8 +59,18 @@ export interface DeliverOptions {
   sourceChainSelector?: bigint;
   /** Default: auto-increment, so identical calls get distinct message ids. */
   messageNumber?: bigint;
-  /** Compute-unit limit of the execution transaction. Default 200,000. */
+  /**
+   * Compute-unit limit of the execution transaction. Default 200,000. Not capped here: a CCIP 2.0 lane
+   * accepts up to 3,000,000 at send time, and what the runtime does with more is returned in the result.
+   */
   computeUnits?: number;
+  /**
+   * 20-byte address of the source chain's OnRamp (for messages from `CCIPLocalRouter`, the router address).
+   * Like a live lane, the OffRamp accepts one onRamp per source chain. It is a placeholder at startup, and the
+   * first explicit `onRampAddress` replaces it. A message from any other onRamp runs and fails on Solana.
+   * Default: the onRamp the source chain currently accepts.
+   */
+  onRampAddress?: Uint8Array;
 }
 
 export interface DeliverResult {
@@ -79,7 +89,7 @@ export interface SvmLocal {
   ccip: { router: PublicKey; offRamp: PublicKey; chainSelector: bigint };
   /** Loads a compiled program (`.so`) at `programId`, with the payer as upgrade authority. */
   deployProgram(soPath: string, programId: PublicKey | string): Promise<void>;
-  /** Runs a message through the real OffRamp. Destination failures are returned, misuse throws. */
+  /** Runs a message through the real OffRamp. Whatever Solana does is returned; only harness misuse throws. */
   deliver(options: DeliverOptions): Promise<DeliverResult>;
   /** Signs with the payer plus `signers`, sends and waits for confirmation. Returns the signature. */
   sendAndConfirm(transaction: Transaction, signers?: Keypair[]): Promise<string>;
@@ -111,6 +121,8 @@ class Local implements SvmLocal {
     chainSelector: SVM_CHAIN_SELECTOR,
   };
   private nextMessageNumber = 1n;
+  /** The one onRamp the OffRamp accepts, per source chain selector. */
+  private readonly laneOnRamps = new Map<bigint, Buffer>();
   private readonly runtime: SvmRuntime;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private readonly offRamp: any;
@@ -142,26 +154,24 @@ class Local implements SvmLocal {
 
   async deliver(options: DeliverOptions): Promise<DeliverResult> {
     const computeUnits = options.computeUnits ?? DEFAULT_COMPUTE_UNITS;
-    if (!Number.isInteger(computeUnits) || computeUnits < 1 || computeUnits > MAX_COMPUTE_UNITS) {
-      throw new Error(`deliver: computeUnits must be an integer in 1..${MAX_COMPUTE_UNITS}, got ${computeUnits}`);
+    // 0 is not misuse: a CCIP 2.0 EVM send accepts it, so the message runs and Solana decides the outcome.
+    if (!Number.isInteger(computeUnits) || computeUnits < 0) {
+      throw new Error(`deliver: computeUnits must be a non-negative integer, got ${computeUnits}`);
+    }
+    if (!(options.receiverProgram instanceof PublicKey) || !options.receiverAccounts.every((a) => a instanceof PublicKey)) {
+      throw new Error("deliver: receiverProgram and receiverAccounts must be PublicKeys");
     }
     const bitmap = options.receiverWritableBitmap;
-    if (bitmap < 0n || bitmap >= 1n << BigInt(Math.max(options.receiverAccounts.length, 1))) {
-      throw new Error(
-        `deliver: receiverWritableBitmap ${bitmap} has bits beyond the ${options.receiverAccounts.length} receiver accounts`,
-      );
+    if (typeof bitmap !== "bigint" || bitmap < 0n || bitmap > MAX_UINT64) {
+      throw new Error(`deliver: receiverWritableBitmap must be a bigint in 0..2^64-1, got ${String(bitmap)}`);
     }
-    const receiver = await this.connection.getAccountInfo(options.receiverProgram);
-    if (!receiver?.executable) {
-      throw new Error(`deliver: ${options.receiverProgram.toBase58()} is not a deployed program; call deployProgram first`);
-    }
+    // No other pre-checks: a bitmap with stray bits, a receiver that is not a program and a compute-unit
+    // limit above the runtime's cap are all accepted by a CCIP 2.0 EVM send, and fail (or not) on Solana.
     const sourceChainSelector = options.sourceChainSelector ?? EVM_CHAIN_SELECTOR;
-    const sourceChainConfig = await this.connection.getAccountInfo(
-      pda([Buffer.from(SEEDS.sourceChain), selectorSeed(sourceChainSelector)], this.ccip.offRamp),
-    );
-    if (!sourceChainConfig) {
-      throw new Error(`deliver: source chain ${sourceChainSelector} is not configured; only ${EVM_CHAIN_SELECTOR} is`);
+    if (options.onRampAddress !== undefined && options.onRampAddress.length !== 20) {
+      throw new Error(`deliver: onRampAddress must be 20 bytes, got ${options.onRampAddress.length}`);
     }
+    const onRampAddress = await this.laneOnRamp(sourceChainSelector, options.onRampAddress);
 
     const messageNumber = options.messageNumber ?? this.nextMessageNumber++;
     const encodedMessage = encodeMessage({
@@ -170,7 +180,7 @@ class Local implements SvmLocal {
       messageNumber,
       executionGasLimit: computeUnits,
       ccipReceiveGasLimit: computeUnits,
-      onRampAddress: LOCAL_ON_RAMP,
+      onRampAddress,
       offRampAddress: this.ccip.offRamp.toBuffer(),
       sender: options.sender ?? DEFAULT_SENDER,
       receiver: options.receiverProgram.toBuffer(),
@@ -227,6 +237,48 @@ class Local implements SvmLocal {
       logs: outcome.logs,
       ...(outcome.err === null ? {} : { error: describeFailure(outcome.err, outcome.logs, outcome.computeUnitsUsed, computeUnits) }),
     };
+  }
+
+  /**
+   * Returns the onRamp a message from `sourceChainSelector` carries. The OffRamp accepts exactly one onRamp
+   * per source chain, as on a live lane: the placeholder from startup until the first explicit `requested`
+   * onRamp replaces it, through the OffRamp's own admin instruction (`update_source_chain_config`).
+   * After that, a different `requested` onRamp is returned as is, and the real OffRamp rejects the message.
+   */
+  private async laneOnRamp(sourceChainSelector: bigint, requested?: Uint8Array): Promise<Buffer> {
+    const sourceChain = pda([Buffer.from(SEEDS.sourceChain), selectorSeed(sourceChainSelector)], this.ccip.offRamp);
+    let accepted = this.laneOnRamps.get(sourceChainSelector);
+    if (!accepted) {
+      const state = await this.offRamp.account.sourceChain.fetchNullable(sourceChain, "confirmed");
+      if (!state) {
+        throw new Error(`deliver: source chain ${sourceChainSelector} is not configured; only ${EVM_CHAIN_SELECTOR} is`);
+      }
+      const [entry] = state.config.onRamps as { bytes: number[]; len: number }[];
+      accepted = Buffer.from(entry.bytes.slice(0, entry.len));
+      this.laneOnRamps.set(sourceChainSelector, accepted);
+    }
+    if (requested === undefined) return accepted;
+    const onRamp = Buffer.from(requested);
+    if (!accepted.equals(LOCAL_ON_RAMP) || onRamp.equals(accepted)) return onRamp;
+
+    const state = await this.offRamp.account.sourceChain.fetch(sourceChain, "confirmed");
+    const padded = Buffer.alloc(64);
+    onRamp.copy(padded);
+    const update = await this.offRamp.methods
+      .updateSourceChainConfig({
+        sourceChainSelector: new BN(sourceChainSelector.toString()),
+        sourceChainConfig: { ...state.config, onRamps: [{ bytes: Array.from(padded), len: onRamp.length }] },
+      })
+      .accounts({
+        sourceChain,
+        config: pda([Buffer.from(SEEDS.config)], this.ccip.offRamp),
+        authority: this.payer.publicKey,
+        systemProgram: SystemProgram.programId,
+      })
+      .instruction();
+    await this.runtime.sendAndConfirm(new Transaction().add(update));
+    this.laneOnRamps.set(sourceChainSelector, onRamp);
+    return onRamp;
   }
 
   /** Sends without preflight (so a failing execution still lands) and reads its logs and compute units. */

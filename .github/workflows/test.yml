@@ -78,6 +78,9 @@ jobs:
       - name: Data Streams JS smoke tests
         run: node --test test/smoke/data-streams/*.test.js
 
+      - name: Solana (SVM) unit and smoke tests
+        run: npm run test:svm
+
   consumer-smoke:
     name: Consumer smoke (npm tarball)
     runs-on: ubuntu-latest

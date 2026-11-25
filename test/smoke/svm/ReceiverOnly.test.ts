@@ -115,22 +115,44 @@ describe("deliver a message to a receiver program through the real OffRamp", () 
     assert.equal(await readCounter(), before + 10n);
   });
 
+  const base = { receiverProgram: receiverId, receiverAccounts, receiverWritableBitmap, data: "x" };
+
+  it("executes a message whose writable bitmap has bits beyond the accounts", async () => {
+    // A CCIP 2.0 lane accepts this at send time; the real OffRamp ignores the extra bits.
+    const before = await readCounter();
+    const result = await svm.deliver({ ...base, receiverWritableBitmap: 0b11n | (1n << 10n) });
+    assert.equal(result.state, "Success", result.error);
+    assert.equal(await readCounter(), before + 1n);
+  });
+
+  it("returns Failure when the receiver is not a deployed program", async () => {
+    const result = await svm.deliver({ ...base, receiverProgram: PublicKey.unique() });
+    assert.equal(result.state, "Failure");
+    assert.match(result.error ?? "", /UnsupportedProgramId/);
+  });
+
+  it("executes with more than 1,400,000 compute units: Surfnet clamps the limit to 1,400,000", async () => {
+    // The EVM lane accepts up to 3,000,000. Like a validator, Surfnet caps the transaction budget at 1.4M.
+    const result = await svm.deliver({ ...base, computeUnits: 3_000_000 });
+    assert.equal(result.state, "Success", result.error);
+    assert.ok(result.logs.some((line) => /consumed \d+ of 1399850 compute units/.test(line)), "budget should be 1.4M minus the limit instruction");
+  });
+
+  it("runs a message with 0 compute units instead of throwing: a CCIP 2.0 EVM send accepts it", async () => {
+    const before = await readCounter();
+    const result = await svm.deliver({ ...base, computeUnits: 0 });
+    console.log(`[svm-result] 0 compute units: ${result.state}${result.error ? `, ${result.error}` : ""}`);
+    assert.equal(result.state, "Failure");
+    assert.ok(result.error, "a failure must explain itself");
+    assert.equal(await readCounter(), before, "the receiver must not run");
+  });
+
   it("throws on misuse", async () => {
-    await assert.rejects(
-      svm.deliver({ receiverProgram: PublicKey.unique(), receiverAccounts, receiverWritableBitmap, data: "x" }),
-      /not a deployed program/,
-    );
-    await assert.rejects(
-      svm.deliver({ receiverProgram: receiverId, receiverAccounts, receiverWritableBitmap, data: "x", computeUnits: 0 }),
-      /computeUnits/,
-    );
-    await assert.rejects(
-      svm.deliver({ receiverProgram: receiverId, receiverAccounts, receiverWritableBitmap: 0b1000n, data: "x" }),
-      /receiverWritableBitmap/,
-    );
-    await assert.rejects(
-      svm.deliver({ receiverProgram: receiverId, receiverAccounts, receiverWritableBitmap, data: "x", sourceChainSelector: 1n }),
-      /not configured/,
-    );
+    await assert.rejects(svm.deliver({ ...base, computeUnits: -1 }), /computeUnits/);
+    await assert.rejects(svm.deliver({ ...base, computeUnits: 1.5 }), /computeUnits/);
+    await assert.rejects(svm.deliver({ ...base, receiverWritableBitmap: 1n << 64n }), /receiverWritableBitmap/);
+    await assert.rejects(svm.deliver({ ...base, receiverProgram: "x" as never }), /PublicKey/);
+    await assert.rejects(svm.deliver({ ...base, onRampAddress: new Uint8Array(19) }), /onRampAddress/);
+    await assert.rejects(svm.deliver({ ...base, sourceChainSelector: 1n }), /not configured/);
   });
 });
