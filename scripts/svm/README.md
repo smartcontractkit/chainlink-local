@@ -36,6 +36,30 @@ executes the message, both sent by the one transmitter (the payer). Differences 
 - A failed commit returns `state: "Failure"` with `error` starting `commit failed:`. A failed execute still leaves the
   root committed, as on a live lane, and the next `deliver()` commits the next sequence number.
 
+### Receiver account limits (1.6)
+
+The CCIP 1.6.4 OffRamp can execute a message with only a few receiver accounts. The program uses Solana's default
+32 KiB bump heap, which never frees memory, and hashing the Merkle leaf allocates about 1 KiB for each receiver
+account. With more accounts than the table below allows, `deliver()` returns `Failure` with `error` saying the OffRamp
+ran out of heap (`memory allocation failed, out of memory`), before the receiver runs. The live lane has the same
+limit, because it runs the same program: the EVM side accepts up to 64 accounts, but the OffRamp cannot execute the
+message, and manual execution fails the same way. Adding a `requestHeapFrame` instruction does not help, because the
+program's allocator ignores it.
+
+Largest `receiverAccounts` length that delivers on 1.6 (the receiver's own accounts count, the receiver program and
+its external-execution signer do not):
+
+| `data` length | data only | data and one token |
+| ------------- | --------- | ------------------ |
+| 0 bytes       | 14        | 8                  |
+| 32 bytes      | 13        | 8                  |
+| 128 bytes     | 13        | 7                  |
+| 256 bytes     | 12        | 7                  |
+| 512 bytes     | 11        | 5                  |
+
+So the 1.6.4 `ping_pong_demo` program, which needs 20 accounts, cannot receive on a 1.6 lane. The 2.0 OffRamp did not
+run out of heap at any account count that fits in one transaction.
+
 ## Tokens
 
 `deliver({ token })` mints a token to a Solana wallet through the real BurnMint pool, the way a CCIP token transfer does.

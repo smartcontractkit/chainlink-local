@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
 import anchor from "@anchor-lang/core";
-import { PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
+import { ComputeBudgetProgram, PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
 import { programIds } from "../../../scripts/svm/programs.ts";
 import { exampleReceiver, startSvmLocal, type CcipVersion, type SvmLocal } from "../../../scripts/svm/index.ts";
 
@@ -148,6 +148,22 @@ for (const ccipVersion of VERSIONS) {
       assert.ok(result.error, "a failure must explain itself");
       assert.equal(await readCounter(), before, "the receiver must not run");
     });
+
+    if (ccipVersion === "1.6") {
+      it("runs the 1.6 OffRamp out of heap above 14 receiver accounts, as on the live lane", async () => {
+        // test_ccip_receiver CPIs into its first extra account with the rest; ComputeBudget is a no-op target.
+        const extra = [ComputeBudgetProgram.programId, ...Array.from({ length: 11 }, () => PublicKey.unique())];
+        const fourteen = await svm.deliver({ receiverProgram: receiverId, receiverAccounts: [...receiverAccounts, ...extra.slice(0, 11)], receiverWritableBitmap });
+        assert.equal(fourteen.state, "Success", fourteen.error);
+
+        const before = await readCounter();
+        const fifteen = await svm.deliver({ receiverProgram: receiverId, receiverAccounts: [...receiverAccounts, ...extra], receiverWritableBitmap });
+        console.log(`[svm-result] 15 receiver accounts@${ccipVersion}: ${fifteen.error}`);
+        assert.equal(fifteen.state, "Failure");
+        assert.match(fifteen.error ?? "", new RegExp(`^${svm.ccip.offRamp.toBase58()} ran out of heap`));
+        assert.equal(await readCounter(), before, "the receiver must not run");
+      });
+    }
 
     it("throws on misuse", async () => {
       await assert.rejects(svm.deliver({ ...base, computeUnits: -1 }), /computeUnits/);
