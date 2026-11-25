@@ -47,4 +47,5 @@ export const exampleReceiver = receiver.exampleReceiver;
 export type { SvmExtraArgsOptions } from "./extraArgs.ts";
 export type { ExampleReceiver } from "./exampleReceiver.ts";
 export type { EvmReceiptLike, RouteResult } from "./route.ts";
-export type { DeliverOptions, DeliverResult, SvmLocal } from "./local.ts";
+export type { DeliverOptions, DeliverResult, StartOptions, SvmLocal } from "./local.ts";
+export type { CcipVersion } from "./artifacts.ts";
