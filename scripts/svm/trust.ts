@@ -4,8 +4,7 @@
 // Ported in part from the prototype by Stefano Magini (magiodev-cll/chainlink-local, feat/svm-local,
 // src/ccip-svm/src/simulator.ts, `bootstrap`). Differences: instructions are packed into a few
 // transactions instead of one each, the LINK stand-in mint is written with a cheatcode (no spl-token
-// dependency), and the executor is not initialised because inbound `execute_v2` does not use it
-// (only the send path does).
+// dependency), and the executor is not initialised: `ccip_send_v2` uses the NO_EXECUTION executor (send20.ts).
 
 import anchor from "@anchor-lang/core";
 import { Keypair, PublicKey, SystemProgram, Transaction, TransactionInstruction } from "@solana/web3.js";
@@ -71,12 +70,12 @@ export async function sendPacked(runtime: SvmRuntime, instructions: TransactionI
 }
 
 /** Writes an initialised SPL mint (the LINK stand-in the FeeQuoter and Router validate) with a cheatcode. */
-async function createStandInMint(runtime: SvmRuntime): Promise<PublicKey> {
+export async function createStandInMint(runtime: SvmRuntime, decimals = 6): Promise<PublicKey> {
   const mint = Keypair.generate().publicKey;
   const data = Buffer.alloc(82);
   data.writeUInt32LE(1, 0); // mint authority: Some
   runtime.payer.publicKey.toBuffer().copy(data, 4);
-  data[44] = 6; // decimals
+  data[44] = decimals;
   data[45] = 1; // is_initialized
   await runtime.setAccount(mint, {
     lamports: await runtime.connection.getMinimumBalanceForRentExemption(82),
@@ -178,7 +177,8 @@ export async function initializeTrustLayer(runtime: SvmRuntime, programs: CcipPr
       .initChainConfig({
         remoteChainSelector: evmSelector,
         chainConfig: {
-          routerSigner: pda([Buffer.from(SEEDS.ccvSigner)], ids.ccip_router),
+          // The Router's per-verifier signer: the PDA `ccip_send_v2` signs the verifier CPI with.
+          routerSigner: pda([Buffer.from(SEEDS.ccvSigner), ids.committee_verifier.toBuffer()], ids.ccip_router),
           fee: 0,
           gasForVerification: 500_000,
           payloadSizeBytes: 390,

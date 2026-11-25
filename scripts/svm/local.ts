@@ -33,6 +33,8 @@ import { startSvmLocal16 } from "./local16.ts";
 import { CCIP_PROGRAMS, deployCcipPrograms } from "./programs.ts";
 import { resolveAccounts } from "./resolver.ts";
 import { SvmRuntime } from "./runtime.ts";
+import { Sender20 } from "./send20.ts";
+import type { SentMessagesOptions, SvmSendOptions, SvmSentMessage } from "./send.ts";
 import { TokenSupport, encodeDecimals, type BurnMintToken, type DeliverToken, type LinkTokenOptions } from "./tokens.ts";
 import { COMMITTEE_SIZE, COMMITTEE_THRESHOLD, initializeTrustLayer, loadPrograms } from "./trust.ts";
 import { signVerifierResults, sortedCommittee } from "./signatures.ts";
@@ -122,8 +124,24 @@ export interface SvmLocal {
   createTokenAccount(mint: PublicKey, owner: PublicKey): Promise<PublicKey>;
   /** Balance of the associated token account of `owner` for `mint`, in the mint's smallest units; 0n if it does not exist. */
   tokenBalance(mint: PublicKey, owner: PublicKey): Promise<bigint>;
+  /**
+   * Adds `amount` (mint decimals) to the associated token account of `owner`, creating it if needed, and to the mint's
+   * supply, so the tokens can be sent. Returns the account.
+   */
+  mintTokens(mint: PublicKey, owner: PublicKey, amount: bigint): Promise<PublicKey>;
   /** Runs a message through the real OffRamp. Whatever Solana does is returned; only harness misuse throws. */
   deliver(options: DeliverOptions): Promise<DeliverResult>;
+  /**
+   * Sends a message to an EVM address through the real Router (`ccip_send` on 1.6, `ccip_send_v2` on 2.0), paid in
+   * native SOL, and returns it as the Router emitted it. Throws on misuse (an unlinked mint) and when the
+   * transaction fails.
+   */
+  send(options: SvmSendOptions): Promise<SvmSentMessage>;
+  /**
+   * The messages sent through the Router: in one transaction (`signature`), or in all Router transactions after
+   * `afterSignature` (default: since start), oldest first.
+   */
+  sentMessages(options?: SentMessagesOptions): Promise<SvmSentMessage[]>;
   /** Signs with the payer plus `signers`, sends and waits for confirmation. Returns the signature. */
   sendAndConfirm(transaction: Transaction, signers?: Keypair[]): Promise<string>;
   /** Stops the Surfnet. Safe to call more than once. */
@@ -141,7 +159,9 @@ export async function startSvmLocal(options: StartOptions = {}): Promise<SvmLoca
     await deployCcipPrograms(runtime, bundleDir);
     const programs = loadPrograms(runtime, bundleDir);
     await initializeTrustLayer(runtime, programs);
-    return new Local(runtime, bundleDir, programs);
+    const tokens = new TokenSupport({ runtime, ccipVersion: "2.0", bundleDir, router: programs.router, offRamp: new PublicKey(CCIP_PROGRAMS.ccip_offramp) });
+    const sender = await Sender20.create(runtime, programs, bundleDir, tokens);
+    return new Local(runtime, bundleDir, programs, tokens, sender);
   } catch (error) {
     runtime.stop();
     throw error;
@@ -164,12 +184,14 @@ class Local implements SvmLocal {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private readonly offRamp: any;
   private readonly tokens: TokenSupport;
+  private readonly sender: Sender20;
   private readonly offRampIdl: { instructions: { name: string; discriminator: number[] }[] };
 
-  constructor(runtime: SvmRuntime, bundleDir: string, programs: ReturnType<typeof loadPrograms>) {
+  constructor(runtime: SvmRuntime, bundleDir: string, programs: ReturnType<typeof loadPrograms>, tokens: TokenSupport, sender: Sender20) {
     this.runtime = runtime;
     this.offRamp = programs.offRamp;
-    this.tokens = new TokenSupport({ runtime, ccipVersion: "2.0", bundleDir, router: programs.router, offRamp: this.ccip.offRamp });
+    this.tokens = tokens;
+    this.sender = sender;
     this.connection = runtime.connection;
     this.payer = runtime.payer;
     this.offRampIdl = readIdl(bundleDir, "ccip_offramp") as never;
@@ -200,6 +222,18 @@ class Local implements SvmLocal {
 
   tokenBalance(mint: PublicKey, owner: PublicKey): Promise<bigint> {
     return this.tokens.tokenBalance(mint, owner);
+  }
+
+  mintTokens(mint: PublicKey, owner: PublicKey, amount: bigint): Promise<PublicKey> {
+    return this.tokens.mintTokens(mint, owner, amount);
+  }
+
+  send(options: SvmSendOptions): Promise<SvmSentMessage> {
+    return this.sender.send(options);
+  }
+
+  sentMessages(options?: SentMessagesOptions): Promise<SvmSentMessage[]> {
+    return this.sender.sentMessages(options);
   }
 
   sendAndConfirm(transaction: Transaction, signers: Keypair[] = []): Promise<string> {

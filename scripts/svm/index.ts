@@ -39,14 +39,18 @@ const implementation = await import("./local.ts");
 const extraArgs = await import("./extraArgs.ts");
 const route = await import("./route.ts");
 const receiver = await import("./exampleReceiver.ts");
+const send20 = await import("./send20.ts");
 
 export const startSvmLocal = implementation.startSvmLocal;
 export const svmExtraArgs = extraArgs.svmExtraArgs;
 export const routeToSvm = route.routeToSvm;
 export const exampleReceiver = receiver.exampleReceiver;
+export const PLACEHOLDER_OFFRAMP_2_0 = send20.PLACEHOLDER_OFFRAMP_2_0;
+export const NO_EXECUTION_EXECUTOR = send20.NO_EXECUTION_EXECUTOR;
 export type { SvmExtraArgsOptions } from "./extraArgs.ts";
 export type { ExampleReceiver } from "./exampleReceiver.ts";
 export type { EvmReceiptLike, RouteResult } from "./route.ts";
 export type { DeliverOptions, DeliverResult, StartOptions, SvmLocal } from "./local.ts";
+export type { SentMessagesOptions, SvmSendOptions, SvmSentMessage } from "./send.ts";
 export type { CcipVersion } from "./artifacts.ts";
 export type { BurnMintToken, DeliverToken, LinkTokenOptions } from "./tokens.ts";

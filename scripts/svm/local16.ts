@@ -33,6 +33,8 @@ import {
 } from "./leaf16.ts";
 import { CCIP_PROGRAMS_1_6, deployCcipPrograms } from "./programs.ts";
 import { SvmRuntime } from "./runtime.ts";
+import { Sender16 } from "./send16.ts";
+import type { SentMessagesOptions, SvmSendOptions, SvmSentMessage } from "./send.ts";
 import type { DeliverOptions, DeliverResult, SvmLocal } from "./local.ts";
 import { TokenSupport, encodeDecimals, type BurnMintToken, type LinkTokenOptions } from "./tokens.ts";
 import {
@@ -60,7 +62,9 @@ export async function startSvmLocal16(): Promise<SvmLocal> {
     await deployCcipPrograms(runtime, bundleDir, "1.6");
     const programs = loadPrograms16(runtime, bundleDir);
     await initializeTrustLayer16(runtime, programs);
-    return new Local16(runtime, programs, bundleDir);
+    const tokens = new TokenSupport({ runtime, ccipVersion: "1.6", bundleDir, router: programs.router, offRamp: new PublicKey(CCIP_PROGRAMS_1_6.ccip_offramp) });
+    const sender = await Sender16.create(runtime, programs, tokens);
+    return new Local16(runtime, programs, tokens, sender);
   } catch (error) {
     runtime.stop();
     throw error;
@@ -79,12 +83,14 @@ class Local16 implements SvmLocal {
   private readonly runtime: SvmRuntime;
   private readonly programs: CcipPrograms16;
   private readonly tokens: TokenSupport;
+  private readonly sender: Sender16;
   private readonly offRampConfig = pda([Buffer.from(SEEDS.config)], this.ccip.offRamp);
 
-  constructor(runtime: SvmRuntime, programs: CcipPrograms16, bundleDir: string) {
+  constructor(runtime: SvmRuntime, programs: CcipPrograms16, tokens: TokenSupport, sender: Sender16) {
     this.runtime = runtime;
     this.programs = programs;
-    this.tokens = new TokenSupport({ runtime, ccipVersion: "1.6", bundleDir, router: programs.router, offRamp: this.ccip.offRamp });
+    this.tokens = tokens;
+    this.sender = sender;
     this.connection = runtime.connection;
     this.payer = runtime.payer;
   }
@@ -114,6 +120,18 @@ class Local16 implements SvmLocal {
 
   tokenBalance(mint: PublicKey, owner: PublicKey): Promise<bigint> {
     return this.tokens.tokenBalance(mint, owner);
+  }
+
+  mintTokens(mint: PublicKey, owner: PublicKey, amount: bigint): Promise<PublicKey> {
+    return this.tokens.mintTokens(mint, owner, amount);
+  }
+
+  send(options: SvmSendOptions): Promise<SvmSentMessage> {
+    return this.sender.send(options);
+  }
+
+  sentMessages(options?: SentMessagesOptions): Promise<SvmSentMessage[]> {
+    return this.sender.sentMessages(options);
   }
 
   sendAndConfirm(transaction: Transaction, signers: Keypair[] = []): Promise<string> {
@@ -167,7 +185,7 @@ class Local16 implements SvmLocal {
       .commit(commitContext, commitReport, rs, ss, rawVs)
       .accounts(this.commitAccounts(sourceChainSelector, root))
       .instruction();
-    const committed = await this.send([ComputeBudgetProgram.setComputeUnitLimit({ units: COMMIT_COMPUTE_UNITS }), commit]);
+    const committed = await this.sendInstructions([ComputeBudgetProgram.setComputeUnitLimit({ units: COMMIT_COMPUTE_UNITS }), commit]);
     if (committed.err !== null) {
       return {
         messageId,
@@ -295,7 +313,7 @@ class Local16 implements SvmLocal {
     return { onRamp: accepted(), sequenceNumber: BigInt(state.state.minSeqNr.toString()) };
   }
 
-  private async send(instructions: TransactionInstruction[]) {
+  private async sendInstructions(instructions: TransactionInstruction[]) {
     const message = new TransactionMessage({
       payerKey: this.payer.publicKey,
       recentBlockhash: (await this.connection.getLatestBlockhash()).blockhash,

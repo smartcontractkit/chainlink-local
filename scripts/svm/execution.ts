@@ -92,6 +92,9 @@ export async function sendForOutcome(runtime: SvmRuntime, transaction: Versioned
   }
   if (!fetched?.meta) throw new Error(`deliver: transaction ${signature} was not confirmed within 30s`);
   return {
+    signature,
+    /** The confirmed transaction, for callers that read its inner instructions. */
+    transaction: fetched,
     err: fetched.meta.err,
     logs: fetched.meta.logMessages ?? [],
     computeUnitsUsed: fetched.meta.computeUnitsConsumed ?? 0,
