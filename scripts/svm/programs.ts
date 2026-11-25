@@ -31,8 +31,6 @@ export const CCIP_PROGRAMS_1_6 = {
   test_ccip_receiver: "EvhgrPhTDt4LcSPS2kfJgH6T6XWZ6wT3X9ncDGLT1vui",
 } as const;
 
-export type CcipProgramName16 = keyof typeof CCIP_PROGRAMS_1_6;
-
 export const programIds = (version: CcipVersion): Record<string, string> =>
   version === "1.6" ? CCIP_PROGRAMS_1_6 : CCIP_PROGRAMS;
 

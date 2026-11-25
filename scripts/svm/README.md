@@ -36,6 +36,24 @@ executes the message, both sent by the one transmitter (the payer). Differences 
 - A failed commit returns `state: "Failure"` with `error` starting `commit failed:`. A failed execute still leaves the
   root committed, as on a live lane, and the next `deliver()` commits the next sequence number.
 
+## Lane version on both sides
+
+A lane has one CCIP version, and both halves must agree. On Solana, `startSvmLocal({ ccipVersion })` picks the programs.
+On the EVM side, `router.setSvmLaneVersion(1)` makes `CCIPLocalRouter` apply the CCIP 1.6 send rules to Solana-bound
+messages (0 = `V2_0`, the default; `getSvmLaneVersion()` reads it back). On 1.6 the router rejects at send time what the
+live 1.6 lane rejects: more than 1,400,000 compute units or 1,280 bytes (payload plus 32 bytes per account and 2
+fixed ones), a writable bitmap with bits beyond the accounts (`InvalidSVMExtraArgsWritableBitmap`), more than 64
+accounts, accounts with a zero receiver. The 2.0 limits are 3,000,000 compute units and 30,000 bytes. `routeToSvm` reads the
+router's version from the receipt's provider and throws if it differs from `svm.ccipVersion`.
+
+```ts
+await router.setSvmLaneVersion(1); // V1_6
+const svm = await startSvmLocal({ ccipVersion: "1.6" });
+const receiver = await exampleReceiver({ ccipVersion: "1.6" });
+// deploy and initialise the receiver as above, then send and route exactly as for 2.0
+const [result] = await routeToSvm(svm, receipt);
+```
+
 ## Run it
 
 ```sh
