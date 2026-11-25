@@ -235,6 +235,8 @@ export default defineConfig({
       "@chainlink/local/src/ccip/CCIPLocalRouter.sol",
       // Solana send rules: separate from the simulator, so EVM-only users do not pay for them.
       "@chainlink/local/src/ccip/CCIPLocalSvmLane.sol",
+      // The token test reads CCIP-BnM from the simulator and mints it with the faucet (`drip`).
+      "@chainlink/local/src/ccip/BurnMintERC677Helper.sol",
     ],
   },
 });
@@ -275,6 +277,99 @@ contract HelloSolana {
     emit Sent(messageId, fee);
   }
 }
+EOF
+
+cat > contracts/TokenSolana.sol <<'EOF'
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.24;
+
+import {IRouterClient} from "@chainlink/contracts-ccip/contracts/interfaces/IRouterClient.sol";
+import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
+
+interface IERC20Approve {
+  function approve(address spender, uint256 amount) external returns (bool);
+}
+
+/// Sends `amount` of a token it holds to a Solana wallet (named in `extraArgs`) over CCIP, paying the fee in native.
+contract TokenSolana {
+  IRouterClient public immutable router;
+
+  constructor(address _router) {
+    router = IRouterClient(_router);
+  }
+
+  receive() external payable {}
+
+  function sendToken(
+    uint64 destinationChainSelector,
+    address token,
+    uint256 amount,
+    bytes calldata extraArgs
+  ) external returns (bytes32 messageId) {
+    Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
+    tokenAmounts[0] = Client.EVMTokenAmount({token: token, amount: amount});
+    Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
+      receiver: abi.encodePacked(bytes32(0)),
+      data: "",
+      tokenAmounts: tokenAmounts,
+      feeToken: address(0),
+      extraArgs: extraArgs
+    });
+    IERC20Approve(token).approve(address(router), amount);
+    uint256 fee = router.getFee(destinationChainSelector, message);
+    messageId = router.ccipSend{value: fee}(destinationChainSelector, message);
+  }
+}
+EOF
+
+cat > test/TokenSolana.test.ts <<'EOF'
+import assert from "node:assert/strict";
+import { after, before, describe, it } from "node:test";
+import { network } from "hardhat";
+import { Keypair } from "@solana/web3.js";
+import { routeToSvm, startSvmLocal, svmExtraArgs, type SvmLocal } from "@chainlink/local/svm";
+
+const SOLANA_DEVNET_SELECTOR = 16423721717087811551n;
+
+describe("TokenSolana", () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let ethers: any, bnm: any, sender: any, svm: SvmLocal;
+
+  before(async () => {
+    ({ ethers } = await network.connect());
+    const simulator = await ethers.deployContract("CCIPLocalSimulator");
+    const [, router, , , , ccipBnM] = await simulator.configuration();
+    const routerContract = await ethers.getContractAt("CCIPLocalRouter", router);
+    await (await routerContract.setSvmLane(await ethers.deployContract("CCIPLocalSvmLane"))).wait();
+    await (await routerContract.setFee(10n ** 16n)).wait();
+    bnm = await ethers.getContractAt("BurnMintERC677Helper", ccipBnM);
+    sender = await ethers.deployContract("TokenSolana", [router]);
+    const [funder] = await ethers.getSigners();
+    await (await funder.sendTransaction({ to: sender, value: ethers.parseEther("1") })).wait();
+    await (await bnm.drip(sender)).wait();
+
+    svm = await startSvmLocal();
+  });
+
+  after(() => svm?.stop());
+
+  it("delivers CCIP-BnM from Solidity to a Solana wallet", async () => {
+    const token = await svm.createBurnMintToken();
+    await svm.linkToken(token, { evmToken: await bnm.getAddress() });
+    const wallet = Keypair.generate().publicKey;
+    await svm.createTokenAccount(token.mint, wallet);
+
+    const extraArgs = svmExtraArgs({ computeUnits: 0, accounts: [], writableBitmap: 0n, tokenReceiver: wallet });
+    const tx = await sender.sendToken(SOLANA_DEVNET_SELECTOR, await bnm.getAddress(), 10n ** 18n, extraArgs);
+
+    const [result] = await routeToSvm(svm, await tx.wait());
+
+    assert.equal(result.state, "Success", result.error);
+    assert.equal(await bnm.balanceOf(sender), 0n);
+    // 1 CCIP-BnM (18 decimals) becomes 1e9 on the 9-decimal Solana mint.
+    assert.equal(await svm.tokenBalance(token.mint, wallet), 1_000_000_000n);
+  });
+});
 EOF
 
 cat > test/HelloSolana.test.ts <<'EOF'

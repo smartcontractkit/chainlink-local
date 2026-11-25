@@ -12,8 +12,9 @@ import type { SvmRuntime } from "./runtime.ts";
 
 export const DEFAULT_COMPUTE_UNITS = 200_000;
 /**
- * Added to the default when a token is delivered: the pool CPI, the mint and (on 2.0) the receiver's token account
- * creation took 203,000 to 273,000 compute units in total, against about 50,000 for a data-only message.
+ * Added on top of the message's `computeUnits` when a token is delivered, as a live executor covers the token's
+ * destination gas overhead (charged separately by the FeeQuoter) on top of the receiver's compute units: the pool
+ * CPI, the mint and (on 2.0) the receiver's token account creation took 170,000 to 255,000 compute units in total.
  */
 export const TOKEN_COMPUTE_UNITS = 300_000;
 const MAX_UINT64 = (1n << 64n) - 1n;
@@ -37,7 +38,7 @@ export function checkDeliverOptions(options: {
   computeUnits?: number;
   onRampAddress?: Uint8Array;
 }): CheckedDeliver {
-  const computeUnits = options.computeUnits ?? DEFAULT_COMPUTE_UNITS + (options.token ? TOKEN_COMPUTE_UNITS : 0);
+  const computeUnits = (options.computeUnits ?? DEFAULT_COMPUTE_UNITS) + (options.token ? TOKEN_COMPUTE_UNITS : 0);
   // 0 is not misuse: a CCIP 2.0 EVM send accepts it, so the message runs and Solana decides the outcome.
   if (!Number.isInteger(computeUnits) || computeUnits < 0) {
     throw new Error(`deliver: computeUnits must be a non-negative integer, got ${computeUnits}`);

@@ -5,6 +5,7 @@ import { PublicKey } from "@solana/web3.js";
 import { EVM_CHAIN_SELECTOR } from "./constants.ts";
 import type { CcipVersion } from "./artifacts.ts";
 import type { DeliverResult, SvmLocal } from "./local.ts";
+import type { DeliverToken } from "./tokens.ts";
 
 const SVM_MESSAGE_SENT = new Interface([
   "event SvmMessageSent(bytes32 indexed messageId, uint64 indexed destinationChainSelector, address indexed sender, " +
@@ -47,23 +48,47 @@ export async function routeToSvm(svm: SvmLocal, receipt: EvmReceiptLike): Promis
       await checkLaneVersion(receipt.provider, router, svm.ccipVersion);
     }
   }
-  const results: RouteResult[] = [];
-  for (const log of logs) {
-    const event = SVM_MESSAGE_SENT.parseLog({ topics: [...log.topics], data: log.data })!.args;
-    if (event.token !== ZeroAddress) {
-      throw new Error(`routeToSvm: the message carries the EVM token ${event.token}; token delivery to Solana is not supported yet.`);
+  const events = logs.map((log) => SVM_MESSAGE_SENT.parseLog({ topics: [...log.topics], data: log.data })!.args);
+  // Check every token before delivering anything, so a receipt with an unlinked token delivers none of its messages.
+  for (const event of events) {
+    if (event.token !== ZeroAddress && !svm.linkedMint(event.token as string)) {
+      throw new Error(
+        `routeToSvm: the message carries the EVM token ${event.token}, which is not linked to a Solana token. ` +
+          `Call svm.createBurnMintToken() and svm.linkToken(token, { evmToken: "${event.token}" }) before routing.`,
+      );
     }
-    const result = await svm.deliver({
-      receiverProgram: new PublicKey(getBytes(event.receiver)),
-      receiverAccounts: (event.extraArgs.accounts as string[]).map((account) => new PublicKey(getBytes(account))),
-      receiverWritableBitmap: event.extraArgs.accountIsWritableBitmap as bigint,
-      data: getBytes(event.data),
+  }
+  const results: RouteResult[] = [];
+  for (const [index, log] of logs.entries()) {
+    const event = events[index];
+    const common = {
       sender: getBytes(event.sender),
       onRampAddress: getBytes(getAddress(log.address)),
       sourceChainSelector: EVM_CHAIN_SELECTOR,
       messageNumber: event.nonce as bigint,
       computeUnits: Number(event.extraArgs.computeUnits),
-    });
+    };
+    const receiverBytes = getBytes(event.receiver);
+    const message = {
+      receiverProgram: new PublicKey(receiverBytes),
+      receiverAccounts: (event.extraArgs.accounts as string[]).map((account) => new PublicKey(getBytes(account))),
+      receiverWritableBitmap: event.extraArgs.accountIsWritableBitmap as bigint,
+      data: getBytes(event.data),
+    };
+    let token: DeliverToken | undefined;
+    if (event.token !== ZeroAddress) {
+      token = {
+        evmToken: event.token as string,
+        amount: event.tokenAmount as bigint,
+        receiver: new PublicKey(getBytes(event.extraArgs.tokenReceiver)),
+      };
+    }
+    // A token with a zero receiver is token-only: no program is invoked, so the deliver API takes no message fields.
+    const tokenOnly = token !== undefined && receiverBytes.every((byte) => byte === 0);
+    // `computeUnits` is the receiver's budget (0 for token-only); deliver() adds the token overhead on top.
+    const result = await svm.deliver(
+      tokenOnly ? { ...common, token } : { ...common, ...message, ...(token && { token }) },
+    );
     results.push({ ...result, evmMessageId: event.messageId as string });
   }
   return results;

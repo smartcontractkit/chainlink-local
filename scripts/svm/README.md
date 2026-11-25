@@ -67,9 +67,10 @@ await svm.tokenBalance(token.mint, wallet);                       // 1_500_000_0
 - Receiver token account, the one difference between the versions: on 2.0 the OffRamp creates the receiver's ATA if it
   is missing. On 1.6 the ATA must already exist, as on the live lane, or the execution fails with `AccountNotInitialized`;
   call `createTokenAccount` first. A failed execute still leaves its root committed (see "CCIP versions").
-- Compute units: a token delivery measured 170,000 to 255,000 units, against about 50,000 for data only, so the default
-  limit is 500,000 (200,000 + 300,000) when a `token` is present. `computeUnits` still overrides it, and
-  `computeUnitsUsed` reports the real figure.
+- Compute units: a token delivery measured 170,000 to 255,000 units, against about 50,000 for data only. With a
+  `token`, the execution limit is `computeUnits` (the receiver's budget, default 200,000) plus 300,000 for the pool,
+  as a live executor covers the token's destination gas overhead on top of the receiver's. `computeUnitsUsed` reports
+  the real figure.
 
 ## Enable Solana sends on the router
 
@@ -121,6 +122,8 @@ as a suffix. Expected output ends with every test passing, and prints lines such
 [svm-timing] journey-2 send-to-result@2.0 62ms
 [svm-timing] startSvmLocal@1.6 173ms
 [svm-timing] journey-2 send-to-result@1.6 55ms
+[svm-timing] journey-3 token-only send-to-result@2.0 80ms
+[svm-result] BnM token-only@2.0: 168488 compute units
 [svm-result] 1000 CU: compute budget exceeded: used 1000 of 1000 compute units; raise computeUnits
 ```
 
@@ -146,6 +149,31 @@ svm.stop();
 shipped in the pinned CCIP Solana bundle (downloaded on first use). Pass `programPath` and `programId` to
 `svm.deployProgram`, and `idl` to `new anchor.Program(idl as never, provider)`. It does not deploy or initialize
 anything, and your own program replaces it in a real project.
+
+## Tokens from Solidity
+
+A Solana-bound `ccipSend` may carry one ERC20 (`SvmMessageSender.sendToken` in `src/test/ccip/` is a minimal sender; the
+sender approves the router for the amount). The router pulls the token after the fee and emits `SvmMessageSent` with
+`token` and `tokenAmount` (both zero without a token); the wallet that receives it on Solana is
+`extraArgs.tokenReceiver`. The router does not know which tokens exist on Solana, so link the EVM token before routing:
+
+```ts
+const [, router, , , , ccipBnM] = await simulator.configuration();   // CCIP-BnM; BurnMintERC677Helper.drip() mints one
+const token = await svm.createBurnMintToken();
+await svm.linkToken(token, { evmToken: ccipBnM });                    // routeToSvm throws for an unlinked token
+const extraArgs = svmExtraArgs({ computeUnits: 0, accounts: [], writableBitmap: 0n, tokenReceiver: wallet });
+const receipt = await (await sender.sendToken(selector, new Uint8Array(32), "0x", extraArgs, ethers.ZeroAddress, ccipBnM, amount)).wait();
+const [result] = await routeToSvm(svm, receipt);
+await svm.tokenBalance(token.mint, wallet);                           // amount converted to the mint's decimals
+```
+
+- A zero `receiver` is a token-only message: no program runs and `computeUnits` is 0 (a 1.6 lane requires it for a zero
+  receiver). A program as `receiver` delivers the tokens and the data together, with `computeUnits` as the receiver's
+  budget; the token overhead comes on top.
+- On 1.6 the receiver's token account must exist (`svm.createTokenAccount(mint, wallet)`), or the delivery returns
+  `Failure` with `AccountNotInitialized`, as on the live lane. On 2.0 the OffRamp creates it.
+- 2.0 accepts a zero `tokenReceiver` at send time (as OnRamp 2.0 does) and the OffRamp mints to the token account of the
+  all-zero address, where nobody can spend the tokens. 1.6 rejects it at send time (`InvalidTokenReceiver`).
 
 ## Timing
 
@@ -192,8 +220,9 @@ Simulated:
   payer as the only transmitter, no RMN signatures and no price updates (the FeeQuoter is deployed but not initialised).
 - There is one EVM source chain (selector 16015286601757825753) and one Solana chain (devnet selector).
 - Fees are the router's `setFee` value on the EVM side, with no Solana-side pricing.
-- Tokens: the Solana side of a transfer is real (see "Tokens"); the EVM side is not wired yet, so `deliver({ token })`
-  stands in for a message that carries tokens. There is no rate limit on the pool and no pool-side attestation.
+- Tokens: the Solana side of a transfer is real (see "Tokens"); the EVM side is the router pulling the token and
+  emitting the event (see "Tokens from Solidity"), with no EVM pool, so nothing is burned on the EVM side. There is no
+  rate limit on the pool and no pool-side attestation.
 - Surfnet clamps a compute-unit limit above 1,400,000 to 1,400,000, as a validator does, while a 2.0 EVM send allows
   3,000,000. A message that needs more than 1.4M compute units cannot succeed on real Solana either.
 - Until the first routed message, that one onRamp is a placeholder registered at startup, so `deliver()` works
