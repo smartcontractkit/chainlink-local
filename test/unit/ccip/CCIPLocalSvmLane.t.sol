@@ -197,7 +197,6 @@ contract CCIPLocalSvmLaneTest is Test {
             ICCIPLocalSvmLane.MessageComputeUnitLimitTooHigh.selector
         );
         assertEq(CCIPLocalRouter.MessageTooLarge.selector, ICCIPLocalSvmLane.MessageTooLarge.selector);
-        assertEq(CCIPLocalRouter.UnsupportedToken.selector, ICCIPLocalSvmLane.UnsupportedToken.selector);
         assertEq(CCIPLocalRouter.InvalidDestChainAddress.selector, ICCIPLocalSvmLane.InvalidDestChainAddress.selector);
         assertEq(CCIPLocalRouter.InvalidTokenReceiver.selector, ICCIPLocalSvmLane.InvalidTokenReceiver.selector);
         assertEq(

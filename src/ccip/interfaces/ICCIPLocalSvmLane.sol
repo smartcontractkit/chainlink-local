@@ -31,8 +31,6 @@ interface ICCIPLocalSvmLane {
     error MessageComputeUnitLimitTooHigh();
     /// @dev Mirrors `FeeQuoter.MessageTooLarge` (2.0).
     error MessageTooLarge(uint256 maxSize, uint256 actualSize);
-    /// @dev Mirrors `OnRamp.UnsupportedToken` (2.0).
-    error UnsupportedToken(address token);
     /// @dev Mirrors `OnRamp.InvalidDestChainAddress` (2.0).
     error InvalidDestChainAddress(bytes destChainAddress);
 
