@@ -44,10 +44,42 @@ contract SvmMessageSender is Withdraw {
         bytes memory extraArgs,
         address feeTokenAddress
     ) external returns (bytes32 messageId) {
+        return _send(
+            destinationChainSelector, receiver, dataToSend, extraArgs, feeTokenAddress, new Client.EVMTokenAmount[](0)
+        );
+    }
+
+    /**
+     * @notice Like `send`, with `amount` of `token` taken from this contract's balance. The router is approved for it.
+     * Put the Solana wallet that receives the tokens in `extraArgs.tokenReceiver`.
+     */
+    function sendToken(
+        uint64 destinationChainSelector,
+        bytes32 receiver,
+        bytes memory dataToSend,
+        bytes memory extraArgs,
+        address feeTokenAddress,
+        address token,
+        uint256 amount
+    ) external returns (bytes32 messageId) {
+        Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
+        tokenAmounts[0] = Client.EVMTokenAmount({token: token, amount: amount});
+        IERC20(token).forceApprove(i_router, amount);
+        return _send(destinationChainSelector, receiver, dataToSend, extraArgs, feeTokenAddress, tokenAmounts);
+    }
+
+    function _send(
+        uint64 destinationChainSelector,
+        bytes32 receiver,
+        bytes memory dataToSend,
+        bytes memory extraArgs,
+        address feeTokenAddress,
+        Client.EVMTokenAmount[] memory tokenAmounts
+    ) private returns (bytes32 messageId) {
         Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
             receiver: abi.encodePacked(receiver),
             data: dataToSend,
-            tokenAmounts: new Client.EVMTokenAmount[](0),
+            tokenAmounts: tokenAmounts,
             extraArgs: extraArgs,
             feeToken: feeTokenAddress
         });
