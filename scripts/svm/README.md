@@ -203,7 +203,7 @@ await svm.tokenBalance(token.mint, wallet);                           // amount 
 
 `startSvmLocal()` also sets up the Solana -> EVM direction, so there is no extra call. A message goes through the real
 Router (`ccip_send` on 1.6, `ccip_send_v2` on 2.0), is paid in native SOL and comes back decoded from the event the
-Router emitted. Nothing delivers it to an EVM chain yet: the result is the message, and the EVM side is yours.
+Router emitted. `send` does not deliver it: `routeFromSvm` does (see "Routing both ways").
 
 ```ts
 const svm = await startSvmLocal();                                   // or { ccipVersion: "1.6" }
@@ -246,8 +246,80 @@ Real: the Router, FeeQuoter, RMN Remote (curse check and event authority) and, f
 Router's token admin registry, the SPL `Approve` of the Router's fee billing signer and the burn; the lookup table
 and account lists of the real transactions; the event the Router emits. Simulated: the prices (SOL $150, on 1.6 LINK $15, EVM
 gas 30 gwei at ETH $3,000, set by the harness, so fees are plausible but not live), the FeeQuoter destination limits,
-the EVM destination (one chain, the Sepolia selector, 20-byte addresses), the LINK mint (a stand-in with no supply or
-holders; fees are paid in SOL; on 2.0 only the Router's config names it), and delivery to the EVM chain.
+the EVM destination (one chain, the Sepolia selector, 20-byte addresses) and the LINK mint (a stand-in with no supply or
+holders; fees are paid in SOL; on 2.0 only the Router's config names it). Delivery to the EVM chain is `CCIPLocalSvmLane`
+(see "Routing both ways"), with no commit, verifier or RMN check.
+
+## Routing both ways
+
+`routeToSvm` takes EVM -> Solana messages to the real OffRamp; `routeFromSvm` takes Solana -> EVM messages to the EVM
+receiver through the lane contract (`CCIPLocalSvmLane`, registered with `router.setSvmLane(lane)`).
+
+```ts
+const lane = await ethers.deployContract("CCIPLocalSvmLane", [router]);      // connected to a signer
+await router.setSvmLane(lane);
+
+const sent = await svm.send({ sender: wallet, receiver: evmReceiver, data: Buffer.from("hi"), gasLimit: 500_000n });
+const [result] = await routeFromSvm(svm, lane, sent);      // also: an array of messages, or a Solana transaction signature
+// result: { messageId, state: "Success" | "Failure", error?, evmTransactionHash, receipt }
+```
+
+`routeFromSvm(svm, lane, messages)` checks every message before it executes any: the destination must be the local EVM
+chain, and the router's lane version (`lane.ROUTER()`, then `getSvmLaneVersion()`) must be the version `svm` runs, or it
+throws. Then it calls `lane.execute` for each, which does what the OffRamp does: a success cannot run twice (routing it
+again reverts with `SkippedAlreadyExecutedMessage`), a failure can be retried (a retry that fails again reverts with
+`NoStateProgressMade` on 2.0 and `ExecutionError` on 1.6), the token is released and the receiver called in one
+attempt that is rolled back as a whole when either fails, and a CCIP 2.0 receiver that does not accept the message's
+finality fails it. A receiver or token failure does not throw: the result is `Failure` and `error` is the decoded
+reason, so fix the receiver and call `routeFromSvm` again with the same message.
+
+- **Receivers must not decode the sender as an address.** The sender of a Solana message is a 32-byte public key:
+  `abi.decode(message.sender, (address))`, which `BasicMessageReceiver` does, reverts. Keep it as `bytes`
+  (`SvmMessageReceiver` in `src/test/ccip/` records it so).
+- **Tokens.** An EVM -> Solana send puts the token in the lane's escrow. A Solana -> EVM message releases the token from
+  that escrow, scaled from the Solana mint's decimals (`extraData`) to the EVM token's, so 1.5e9 of a 9-decimal mint
+  release 1.5e18 of CCIP-BnM. A message that releases more than the lane holds fails with `InsufficientEscrow`; to give
+  a test a balance Solana-first, transfer the token to the lane.
+- **`error`.** The lane keeps 132 bytes of a failure's revert data, as the OffRamp does, which cuts off a receiver's
+  reason. `routeFromSvm` therefore runs the receiver's call again (without tokens) to read it, and reports for example
+  `receiver reverted: SvmMessageReceiver: told to revert`; other lane errors come as `InsufficientEscrow(token, held, needed)`.
+
+### routeAll
+
+```ts
+const receipt = await (await pingPong.start(0)).wait();
+const { deliveries, complete } = await routeAll(svm, {
+  lane,
+  fromBlock: receipt.blockNumber,                 // required, see below
+  afterSignature: await newestRouterSignature(),  // optional
+  maxMessages: 20,                                // default
+  onSolanaDelivery: async (result) => { /* reply from a wallet with svm.send */ },
+});
+```
+
+`routeAll` alternates both directions until nothing is pending. It reads the `SvmMessageSent` logs of the lane's router
+from `fromBlock` and delivers them with `routeToSvm`, then scans `svm.sentMessages({ afterSignature })` and delivers them
+with `routeFromSvm`, and repeats, so a message sent while routing (a reply) is routed too. A message is delivered once per
+direction. It returns every delivery in order, `{ direction: "evm-to-solana" | "solana-to-evm", result }`, with `message`
+for the Solana ones. A `Failure` is a delivery too and is not retried.
+
+- `fromBlock` is required because there is no safe default: the message that starts the exchange has usually been sent
+  already, so "the block now" would skip it. Pass the block of the first send (`receipt.blockNumber`) or one before it.
+  Every `SvmMessageSent` log of the router since then is delivered, including ones you routed yourself with
+  `routeToSvm`, so start after those.
+- `afterSignature` defaults to every message since the Solana side started. Pass the newest Router signature when
+  earlier tests sent other messages.
+- `maxMessages` (default 20) bounds the deliveries. When it is reached with messages still pending, `routeAll` does not
+  throw: it returns `complete: false` with the deliveries made so far, so a never-ending exchange (a ping-pong with no
+  stop) keeps its record. Check `complete`.
+- `onSolanaDelivery(result)` is awaited after every delivery to Solana, before the next scan. **This is where a test
+  answers from Solana, because no Solana program can answer locally today:** on 1.6 the OffRamp runs out of heap for a
+  receiver that needs more than 14 accounts (see "Receiver account limits (1.6)"), and the 1.6 `ping_pong_demo` needs 20;
+  the 2.0 bundle ships no such program. So the hook sends the reply from a funded wallet with `svm.send`, which is what
+  the program would have sent.
+
+`test/smoke/svm/RouteFromSvm.test.ts` plays a ping-pong this way: `SvmPingPong` (`src/test/ccip/`) sends `count + 1` to
+the example receiver program on every message from Solana until `maxCount`, and the hook replies from a wallet.
 
 ## Timing
 

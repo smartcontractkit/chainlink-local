@@ -200,7 +200,7 @@ log "Running forge test (Foundry consumer)"
 forge test
 
 # ---------------------------------------------------------------------------
-# 6. SVM consumer (tarball + Hardhat + the Solana peer packages): Solidity -> Solana through /svm.
+# 6. SVM consumer (tarball + Hardhat + the Solana peer packages): Solidity -> Solana and Solana -> Solidity through /svm.
 # ---------------------------------------------------------------------------
 log "Building SVM consumer"
 SVM_DIR="$WORK_DIR/svm-consumer"
@@ -320,6 +320,66 @@ contract TokenSolana {
     messageId = router.ccipSend{value: fee}(destinationChainSelector, message);
   }
 }
+EOF
+
+cat > contracts/RecordSolana.sol <<'EOF'
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.24;
+
+import {CCIPReceiver} from "@chainlink/contracts-ccip/contracts/applications/CCIPReceiver.sol";
+import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
+
+/// Records the data of the latest message from Solana. The sender is a 32-byte Solana address, so it is kept as bytes.
+contract RecordSolana is CCIPReceiver {
+  bytes public latestSender;
+  bytes public latestData;
+
+  constructor(address router) CCIPReceiver(router) {}
+
+  function _ccipReceive(Client.Any2EVMMessage memory message) internal override {
+    latestSender = message.sender;
+    latestData = message.data;
+  }
+}
+EOF
+
+cat > test/RecordSolana.test.ts <<'EOF'
+import assert from "node:assert/strict";
+import { after, before, describe, it } from "node:test";
+import { network } from "hardhat";
+import { Keypair, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { routeFromSvm, startSvmLocal, type SvmLocal } from "@chainlink/local/svm";
+
+describe("RecordSolana", () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let ethers: any, lane: any, recorder: any, svm: SvmLocal;
+
+  before(async () => {
+    ({ ethers } = await network.connect());
+    const simulator = await ethers.deployContract("CCIPLocalSimulator");
+    const [, router] = await simulator.configuration();
+    lane = await ethers.deployContract("CCIPLocalSvmLane", [router]);
+    await (await (await ethers.getContractAt("CCIPLocalRouter", router)).setSvmLane(lane)).wait();
+    recorder = await ethers.deployContract("RecordSolana", [router]);
+
+    svm = await startSvmLocal();
+  });
+
+  after(() => svm?.stop());
+
+  it("delivers a message from a Solana wallet to a Solidity contract", async () => {
+    const wallet = Keypair.generate();
+    // The sender pays the CCIP fee in SOL on Solana.
+    await svm.connection.confirmTransaction(await svm.connection.requestAirdrop(wallet.publicKey, 10 * LAMPORTS_PER_SOL), "confirmed");
+    const sent = await svm.send({ sender: wallet, receiver: await recorder.getAddress(), data: Buffer.from("hello evm"), gasLimit: 500_000n });
+
+    const [result] = await routeFromSvm(svm, lane, sent);
+
+    assert.equal(result.state, "Success", result.error);
+    assert.equal(ethers.toUtf8String(await recorder.latestData()), "hello evm");
+    assert.equal(await recorder.latestSender(), ethers.hexlify(wallet.publicKey.toBytes()));
+  });
+});
 EOF
 
 cat > test/TokenSolana.test.ts <<'EOF'
