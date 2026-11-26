@@ -123,12 +123,18 @@ export async function writeLookupTable(
   return table;
 }
 
-/** Turns a failed transaction into a sentence: the Anchor error, the compute budget, or the raw error. */
+/** Turns a failed transaction into a sentence: the Anchor error, the compute budget, the heap, or the raw error. */
 export function describeFailure(err: unknown, logs: string[], used: number, limit: number): string {
   const anchorLine = logs.find((line) => line.includes("AnchorError"));
   if (anchorLine) return anchorLine.replace(/^Program log: /, "");
   if (/exceeded CUs meter|ComputationalBudgetExceeded/.test(logs.join("\n") + JSON.stringify(err))) {
     return `compute budget exceeded: used ${used} of ${limit} compute units; raise computeUnits`;
+  }
+  const outOfMemory = logs.findIndex((line) => line.includes("memory allocation failed, out of memory"));
+  if (outOfMemory !== -1) {
+    // `Program <id> failed: ...` follows the panic and names the program that ran out.
+    const program = logs.slice(outOfMemory).find((line) => / failed: /.test(line))?.split(" ")[1] ?? "a program";
+    return `${program} ran out of heap (memory allocation failed, out of memory); see "Receiver account limits" in the README`;
   }
   const lastLog = logs.filter((line) => line.startsWith("Program log:")).at(-1);
   return `${JSON.stringify(err)}${lastLog ? ` (${lastLog.replace(/^Program log: /, "")})` : ""}`;
