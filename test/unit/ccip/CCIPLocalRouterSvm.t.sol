@@ -30,7 +30,7 @@ contract CCIPLocalRouterSvmTest is Test {
         link = linkToken;
         sender = new SvmMessageSender(address(router), address(link));
         router.setFee(FEE);
-        router.setSvmLane(address(new CCIPLocalSvmLane()));
+        router.setSvmLane(address(new CCIPLocalSvmLane(address(router))));
         vm.deal(address(sender), 10 ether);
         simulator.requestLinkFromFaucet(address(sender), 10 ether);
         simulator.requestLinkFromFaucet(address(this), 10 ether);

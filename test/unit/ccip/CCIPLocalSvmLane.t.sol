@@ -70,7 +70,7 @@ contract CCIPLocalSvmLaneTest is Test {
     }
 
     function test_setSvmLane_storesLane() public {
-        address lane = address(new CCIPLocalSvmLane());
+        address lane = address(new CCIPLocalSvmLane(address(router)));
         router.setSvmLane(lane);
         assertEq(router.getSvmLane(), lane);
     }
@@ -138,7 +138,7 @@ contract CCIPLocalSvmLaneTest is Test {
     /// @dev Production behaviour of an undecodable `SVMExtraArgsV1` body is a revert with no data (plain `abi.decode`),
     ///      in both lane versions.
     function test_undecodableExtraArgsRevertsWithEmptyDataThroughRouter() public {
-        router.setSvmLane(address(new CCIPLocalSvmLane()));
+        router.setSvmLane(address(new CCIPLocalSvmLane(address(router))));
         Client.EVM2AnyMessage memory message = _svmMessage(0);
         message.extraArgs = abi.encodePacked(Client.SVM_EXTRA_ARGS_V1_TAG, hex"1234");
 
@@ -155,7 +155,7 @@ contract CCIPLocalSvmLaneTest is Test {
 
     /// @dev One lane serves both versions: a 2,000-byte payload fits the 2.0 lane (30,000) but not the 1.6 lane (1,280).
     function test_oneLaneServesBothVersions() public {
-        router.setSvmLane(address(new CCIPLocalSvmLane()));
+        router.setSvmLane(address(new CCIPLocalSvmLane(address(router))));
         Client.EVM2AnyMessage memory message = _svmMessage(2_000);
 
         router.ccipSend(SOLANA, message);
@@ -169,7 +169,7 @@ contract CCIPLocalSvmLaneTest is Test {
     }
 
     function test_laneIsCallableDirectly() public {
-        CCIPLocalSvmLane lane = new CCIPLocalSvmLane();
+        CCIPLocalSvmLane lane = new CCIPLocalSvmLane(address(router));
         Client.SVMExtraArgsV1 memory args = lane.validate(ICCIPLocalSvmLane.SvmLaneVersion.V2_0, _svmMessage(0));
         assertEq(args.computeUnits, 1);
         vm.expectRevert(abi.encodeWithSelector(CCIPLocalRouter.MessageTooLarge.selector, 1_280, 2_000));
@@ -181,7 +181,7 @@ contract CCIPLocalSvmLaneTest is Test {
     /// @dev The router and the lane interface each declare the enum and the Solana errors (Solidity cannot share them).
     ///      They must stay identical: the router passes its enum to the lane as a `uint8` and users decode lane reverts
     ///      with the router ABI.
-    function test_routerAndLaneDeclarationsMatch() public pure {
+    function test_routerAndLaneDeclarationsMatch() public {
         assertEq(uint8(type(CCIPLocalRouter.SvmLaneVersion).max), uint8(type(ICCIPLocalSvmLane.SvmLaneVersion).max));
         assertEq(uint8(CCIPLocalRouter.SvmLaneVersion.V1_6), uint8(ICCIPLocalSvmLane.SvmLaneVersion.V1_6));
 
@@ -191,6 +191,9 @@ contract CCIPLocalSvmLaneTest is Test {
             ICCIPLocalSvmLane.CanOnlySendOneTokenPerMessage.selector
         );
         assertEq(CCIPLocalRouter.CannotSendZeroTokens.selector, ICCIPLocalSvmLane.CannotSendZeroTokens.selector);
+        assertEq(CCIPLocalRouter.ReceiverError.selector, ICCIPLocalSvmLane.ReceiverError.selector);
+        assertEq(CCIPLocalRouter.InvalidOptionalThreshold.selector, ICCIPLocalSvmLane.InvalidOptionalThreshold.selector);
+        assertEq(router.SOLANA_CHAIN_SELECTOR(), new CCIPLocalSvmLane(address(router)).SOLANA_CHAIN_SELECTOR());
         assertEq(CCIPLocalRouter.InvalidExtraArgsData.selector, ICCIPLocalSvmLane.InvalidExtraArgsData.selector);
         assertEq(
             CCIPLocalRouter.MessageComputeUnitLimitTooHigh.selector,

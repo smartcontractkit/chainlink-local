@@ -65,8 +65,9 @@ contract CCIPLocalRouter is IRouter, IRouterClient {
     error UnsupportedNumberOfTokens(uint256 numberOfTokens, uint256 maxNumberOfTokensPerMsg);
 
     /// @notice A Solana-bound `ccipSend` was made before a Solana lane was registered.
-    /// @dev Enable Solana with `router.setSvmLane(address(new CCIPLocalSvmLane()))`. The lane holds the Solana send
-    ///      rules and is not built into the simulator so that EVM-only users do not pay for it. Sends to EVM
+    /// @dev Enable Solana with `router.setSvmLane(address(new CCIPLocalSvmLane(address(router))))`. The lane holds the
+    ///      Solana send rules and the token escrow, and is not built into the simulator so that EVM-only users do not
+    ///      pay for it. Sends to EVM
     ///      destinations never need it.
     error SvmLaneNotSet();
     /// @notice `setSvmLane` was called with an address that has no code.
@@ -99,7 +100,7 @@ contract CCIPLocalRouter is IRouter, IRouterClient {
     ///        the Router keeps any overpayment.
     /// @param nonce The value of the router nonce that produced `messageId`.
     /// @param token The token sent with the message, `address(0)` when the message carries none. At most one.
-    /// @param tokenAmount The amount of `token` pulled from `sender` into this router, 0 when there is no token. The
+    /// @param tokenAmount The amount of `token` pulled from `sender` into the lane's escrow, 0 when there is no token. The
     ///        offchain layer releases it on Solana to `extraArgs.tokenReceiver` through the BurnMint pool.
     event SvmMessageSent(
         bytes32 indexed messageId,
@@ -230,10 +231,11 @@ contract CCIPLocalRouter is IRouter, IRouterClient {
     ///      2. OnRamp.getFee / FeeQuoter validation, in `CCIPLocalSvmLane.validate`.
     ///      3. Router.ccipSend: native fee payment, `InsufficientFeeTokenAmount`.
     ///      4. OnRamp.forwardFromRouter: 2.0 requires a 32-byte receiver; both versions then reject a zero token
-    ///         amount (`_lockOrBurnSingleToken`, `CannotSendZeroTokens`) and take custody of the token.
+    ///         amount (`_lockOrBurnSingleToken`, `CannotSendZeroTokens`) and escrow the token in the lane.
     /// @dev A token is any ERC20 with a non-zero amount, at most one per message. There is no pool registry locally, so
     ///      a token that is not linked to a Solana mint passes here; the offchain layer rejects it. Production would
-    ///      revert in `getFee` with `UnsupportedToken`. The sender must approve this router for the token.
+    ///      revert in `getFee` with `UnsupportedToken`. The sender must approve this router for the token; it moves to the lane, which
+    ///      releases it when a Solana -> EVM message is executed.
     /// @dev The lane call is a plain external call to a `pure` function, so it is a STATICCALL and its revert data,
     ///      including empty data, bubbles up unchanged.
     function _ccipSendSvm(Client.EVM2AnyMessage calldata message) internal returns (bytes32 messageId) {
@@ -256,7 +258,7 @@ contract CCIPLocalRouter is IRouter, IRouterClient {
         if (message.tokenAmounts.length == 1) {
             Client.EVMTokenAmount calldata tokenAmount = message.tokenAmounts[0];
             if (tokenAmount.amount == 0) revert CannotSendZeroTokens();
-            IERC20(tokenAmount.token).safeTransferFrom(msg.sender, address(this), tokenAmount.amount);
+            IERC20(tokenAmount.token).safeTransferFrom(msg.sender, lane, tokenAmount.amount);
         }
 
         return _emitSvmMessageSent(message, svmExtraArgs, feeTokenAmount);
@@ -428,8 +430,8 @@ contract CCIPLocalRouter is IRouter, IRouterClient {
     }
 
     /// @notice Registers the contract that validates Solana-bound sends. Required before sending to Solana.
-    /// @dev `router.setSvmLane(address(new CCIPLocalSvmLane()))`. Reverts with `InvalidSvmLane` for an address without
-    ///      code, which would otherwise surface as an opaque revert on the first send.
+    /// @dev `router.setSvmLane(address(new CCIPLocalSvmLane(address(router))))`. Reverts with `InvalidSvmLane` for an
+    ///      address without code, which would otherwise surface as an opaque revert on the first send.
     function setSvmLane(address lane) external {
         if (lane.code.length == 0) revert InvalidSvmLane(lane);
         s_svmLane = lane;

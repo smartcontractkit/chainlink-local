@@ -79,14 +79,14 @@ Solana-bound sends are validated by `CCIPLocalSvmLane`, a separate contract that
 `SvmLaneNotSet()`. Sends to EVM destinations never need it.
 
 ```solidity
-CCIPLocalRouter(router).setSvmLane(address(new CCIPLocalSvmLane()));
+CCIPLocalRouter(router).setSvmLane(address(new CCIPLocalSvmLane(router)));
 ```
 
 ```ts
 // Hardhat 3: add "@chainlink/local/src/ccip/CCIPLocalSvmLane.sol" and "@chainlink/local/src/ccip/CCIPLocalRouter.sol"
 // to solidity.npmFilesToBuild.
 const routerContract = await ethers.getContractAt("CCIPLocalRouter", router);
-await routerContract.setSvmLane(await ethers.deployContract("CCIPLocalSvmLane"));
+await routerContract.setSvmLane(await ethers.deployContract("CCIPLocalSvmLane", [router]));
 ```
 
 ## Lane version on both sides
@@ -133,7 +133,7 @@ as a suffix. Expected output ends with every test passing, and prints lines such
 const { ethers } = await network.connect();
 const simulator = await ethers.deployContract("CCIPLocalSimulator");
 const [, router, , , link] = await simulator.configuration();
-await (await ethers.getContractAt("CCIPLocalRouter", router)).setSvmLane(await ethers.deployContract("CCIPLocalSvmLane"));
+await (await ethers.getContractAt("CCIPLocalRouter", router)).setSvmLane(await ethers.deployContract("CCIPLocalSvmLane", [router]));
 const sender = await ethers.deployContract("SvmMessageSender", [router, link]);
 
 const svm = await startSvmLocal();
@@ -252,7 +252,7 @@ Real:
   message and its receiver accounts, RMN Remote curse check, the receiver's CPI).
 - The EVM side of the send, through `CCIPLocalRouter` and its `CCIPLocalSvmLane`:
   - 2.0 lane (default): the Router 1.2 and OnRamp 2.0 checks for Solana (extra-args tag, 3,000,000 compute-unit cap,
-    255 accounts, no tokens, 30,000-byte payload, 32-byte receiver) and nothing more.
+    255 accounts, one token at most, 30,000-byte payload, 32-byte receiver) and nothing more.
   - 1.6 lane (`setSvmLaneVersion(1)`): the Router 1.2, OnRamp 1.6.0 and FeeQuoter 2.0.0 checks of the live mainnet
     Ethereum -> Solana lane, in its order and with its errors: 1,400,000 compute units, 1,280 bytes (payload plus 32
     bytes per account and 2 fixed ones), at most 64 accounts, the writable bitmap, no accounts for a zero receiver, a
