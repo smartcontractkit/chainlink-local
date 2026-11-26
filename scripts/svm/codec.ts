@@ -161,3 +161,27 @@ export function encodeTokenTransfer(transfer: {
     lenU16(transfer.extraData),
   ]);
 }
+
+/** Inverse of {@link encodeTokenTransfer}, with the addresses as raw bytes. Throws on an unknown version, truncation or trailing bytes. */
+export function decodeTokenTransfer(encoded: Uint8Array) {
+  const buf = Buffer.from(encoded);
+  let offset = 0;
+  const take = (n: number): Buffer => {
+    if (offset + n > buf.length) throw new Error("truncated TokenTransferV1");
+    const slice = buf.subarray(offset, offset + n);
+    offset += n;
+    return slice;
+  };
+  const version = take(1)[0];
+  if (version !== TOKEN_TRANSFER_V1_VERSION) throw new Error(`unsupported TokenTransferV1 version ${version}`);
+  const decoded = {
+    amount: BigInt("0x" + take(32).toString("hex")),
+    sourcePool: Uint8Array.from(take(take(1)[0])),
+    sourceToken: Uint8Array.from(take(take(1)[0])),
+    destToken: Uint8Array.from(take(take(1)[0])),
+    tokenReceiver: Uint8Array.from(take(take(1)[0])),
+    extraData: Uint8Array.from(take(take(2).readUInt16BE())),
+  };
+  if (offset !== buf.length) throw new Error("trailing bytes in TokenTransferV1");
+  return decoded;
+}

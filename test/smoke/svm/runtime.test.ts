@@ -54,6 +54,18 @@ describe("embedded Surfnet runtime", () => {
     assert.equal(await runtime.connection.getBalance(recipient), LAMPORTS_PER_SOL);
   });
 
+  // web3.js guesses the WebSocket at the HTTP port + 1, which is wrong whenever the free ports are not consecutive
+  // (the usual case on Linux): subscriptions then never connect and the client retries forever, hanging the process.
+  it("connects subscriptions to the Surfnet's real WebSocket endpoint", async () => {
+    const endpoint = (runtime.connection as unknown as { _rpcWsEndpoint: string })._rpcWsEndpoint;
+    assert.equal(endpoint, runtime.wsUrl);
+    const recipient = PublicKey.unique();
+    // confirmTransaction with a bare signature waits on a WebSocket subscription.
+    const signature = await runtime.connection.requestAirdrop(recipient, LAMPORTS_PER_SOL);
+    await timed("confirm-over-websocket", () => runtime.connection.confirmTransaction(signature, "confirmed"));
+    assert.equal(await runtime.connection.getBalance(recipient), LAMPORTS_PER_SOL);
+  });
+
   it("wraps the account and time cheatcodes", async () => {
     const address = PublicKey.unique();
     await runtime.setAccount(address, { lamports: 777 });

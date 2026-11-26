@@ -28,6 +28,9 @@ const ASSOCIATED_TOKEN_PROGRAM = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25
 const DEFAULT_MINT_DECIMALS = 9;
 const DEFAULT_EVM_DECIMALS = 18;
 const MINT_ACCOUNT_BYTES = 82;
+/** `supply` follows the 36 bytes of the optional mint authority in the SPL mint layout. */
+const MINT_SUPPLY_OFFSET = 36;
+const MAX_UINT64 = (1n << 64n) - 1n;
 
 /** A token made by `createBurnMintToken`. */
 export interface BurnMintToken {
@@ -111,7 +114,7 @@ export function encodeDecimals(decimals: number): Buffer {
   return Buffer.concat([Buffer.alloc(31), Buffer.from([decimals])]);
 }
 
-function parseEvmAddress(what: string, value: unknown): Buffer {
+export function parseEvmAddress(what: string, value: unknown): Buffer {
   if (typeof value !== "string" || !/^0x[0-9a-fA-F]{40}$/.test(value)) {
     throw new Error(`${what} must be a 0x-prefixed 20-byte hex address, got ${JSON.stringify(value)}`);
   }
@@ -255,6 +258,60 @@ export class TokenSupport {
     const account = associatedTokenAddress(mint, owner);
     if (!(await connection.getAccountInfo(account))) return 0n;
     return BigInt((await connection.getTokenAccountBalance(account)).value.amount);
+  }
+
+  /** Whether `mint` is connected to an EVM token, which a send needs for its destination token address. */
+  isLinked(mint: PublicKey): boolean {
+    return this.tokens.get(mint?.toBase58())?.linked === true;
+  }
+
+  /**
+   * Adds `amount` to the associated token account of `owner` (created if needed) and to the mint's supply: a burn
+   * needs the supply to cover it, and the token-account cheatcode does not touch the supply. Returns the account.
+   */
+  async mintTokens(mint: PublicKey, owner: PublicKey, amount: bigint): Promise<PublicKey> {
+    if (!(mint instanceof PublicKey) || !(owner instanceof PublicKey)) throw new Error("mintTokens: mint and owner must be PublicKeys");
+    if (typeof amount !== "bigint" || amount < 0n || amount > MAX_UINT64) {
+      throw new Error(`mintTokens: amount must be a bigint in 0..2^64-1, got ${String(amount)}`);
+    }
+    const { runtime } = this.context;
+    const mintAccount = await runtime.connection.getAccountInfo(mint);
+    if (!mintAccount?.owner.equals(TOKEN_PROGRAM) || mintAccount.data.length !== MINT_ACCOUNT_BYTES) {
+      throw new Error(`mintTokens: ${mint.toBase58()} is not a classic SPL Token mint on this chain`);
+    }
+    const supply = mintAccount.data.readBigUInt64LE(MINT_SUPPLY_OFFSET) + amount;
+    const balance = (await this.tokenBalance(mint, owner)) + amount;
+    if (supply > MAX_UINT64 || balance > MAX_UINT64) throw new Error("mintTokens: the amount overflows the supply of the mint");
+    await runtime.setTokenAccount(owner, mint, { amount: balance });
+    const data = Buffer.from(mintAccount.data);
+    data.writeBigUInt64LE(supply, MINT_SUPPLY_OFFSET);
+    await runtime.setAccount(mint, { data });
+    return associatedTokenAddress(mint, owner);
+  }
+
+  /**
+   * CCIP 1.6: the 13 accounts `ccip_send` takes after its fixed ones for one token, in the order the Router
+   * expects: the sender's token account, the FeeQuoter per-chain token config, then the pool's.
+   */
+  sendAccounts16(mint: PublicKey, sender: PublicKey): { pubkey: PublicKey; isWritable: boolean }[] {
+    const a = this.addresses(mint);
+    const lookupTable = this.tokens.get(mint.toBase58())!.lookupTable;
+    const accounts: [PublicKey, boolean][] = [
+      [associatedTokenAddress(mint, sender), true],
+      [pda([Buffer.from("per_chain_per_token_config"), selectorSeed(EVM_CHAIN_SELECTOR), mint.toBuffer()], this.ids.fee_quoter), false],
+      [a.chainConfig, true],
+      [lookupTable, false],
+      [a.registry, false],
+      [BURNMINT_POOL_PROGRAM, false],
+      [a.poolState, false],
+      [a.poolTokenAccount, true],
+      [a.poolSigner, false],
+      [TOKEN_PROGRAM, false],
+      [mint, true],
+      [a.feeTokenConfig, false],
+      [a.routerPoolSigner, false],
+    ];
+    return accounts.map(([pubkey, isWritable]) => ({ pubkey, isWritable }));
   }
 
   /** The bytes a delivered message carries for `token`. Throws if the EVM token is not linked. */

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { PublicKey } from "@solana/web3.js";
-import { decodeMessage, encodeDestBlob, encodeMessage, messageId, type MessageV1 } from "../../../scripts/svm/codec.ts";
+import { decodeMessage, decodeTokenTransfer, encodeDestBlob, encodeMessage, encodeTokenTransfer, messageId, type MessageV1 } from "../../../scripts/svm/codec.ts";
 
 const message: MessageV1 = {
   sourceChainSelector: 16015286601757825753n,
@@ -72,6 +72,34 @@ describe("MessageV1 codec", () => {
       encodeDestBlob({ accounts: [account], accountIsWritableBitmap: 1n }).toString("hex"),
       "1a2b3c4d" + "00" + "0000000000000001" + "01" + "05".repeat(32),
     );
+  });
+});
+
+describe("TokenTransferV1 codec", () => {
+  const transfer = {
+    amount: 1_500_000_000n,
+    sourcePool: new Uint8Array(20).fill(1),
+    sourceToken: new Uint8Array(20).fill(2),
+    destToken: new PublicKey(new Uint8Array(32).fill(3)),
+    tokenReceiver: new PublicKey(new Uint8Array(32).fill(4)),
+    extraData: Uint8Array.from({ length: 32 }, (_, i) => (i === 31 ? 9 : 0)),
+  };
+
+  it("decodes what encodeTokenTransfer encodes", () => {
+    const decoded = decodeTokenTransfer(encodeTokenTransfer(transfer));
+    assert.equal(decoded.amount, transfer.amount);
+    assert.deepEqual(decoded.sourcePool, transfer.sourcePool);
+    assert.deepEqual(decoded.sourceToken, transfer.sourceToken);
+    assert.deepEqual(decoded.destToken, transfer.destToken.toBytes());
+    assert.deepEqual(decoded.tokenReceiver, transfer.tokenReceiver.toBytes());
+    assert.deepEqual(decoded.extraData, transfer.extraData);
+  });
+
+  it("rejects an unknown version, truncation and trailing bytes", () => {
+    const encoded = encodeTokenTransfer(transfer);
+    assert.throws(() => decodeTokenTransfer(encoded.subarray(0, encoded.length - 1)), /truncated/);
+    assert.throws(() => decodeTokenTransfer(Buffer.concat([encoded, Buffer.from([0])])), /trailing/);
+    assert.throws(() => decodeTokenTransfer(Buffer.concat([Buffer.from([2]), encoded.subarray(1)])), /version/);
   });
 });
 

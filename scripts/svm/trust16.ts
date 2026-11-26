@@ -3,8 +3,7 @@
 // passes `execute`.
 //
 // 1.6 has no CommitteeVerifier: the OffRamp itself holds the OCR3 config (signers and transmitters per plugin)
-// and checks the commit signatures. There is no executor and the FeeQuoter is deployed but not initialised:
-// a commit without price updates never touches it.
+// and checks the commit signatures. There is no executor. The FeeQuoter is initialised by the send setup (send16.ts).
 
 import anchor from "@anchor-lang/core";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
@@ -43,6 +42,7 @@ export function loadPrograms16(runtime: SvmRuntime, bundleDir: string) {
     offRamp: program("ccip_offramp"),
     router: program("ccip_router"),
     rmnRemote: program("rmn_remote"),
+    feeQuoter: program("fee_quoter"),
   };
 }
 

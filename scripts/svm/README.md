@@ -175,6 +175,56 @@ await svm.tokenBalance(token.mint, wallet);                           // amount 
 - 2.0 accepts a zero `tokenReceiver` at send time (as OnRamp 2.0 does) and the OffRamp mints to the token account of the
   all-zero address, where nobody can spend the tokens. 1.6 rejects it at send time (`InvalidTokenReceiver`).
 
+## Sending from Solana
+
+`startSvmLocal()` also sets up the Solana -> EVM direction, so there is no extra call. A message goes through the real
+Router (`ccip_send` on 1.6, `ccip_send_v2` on 2.0), is paid in native SOL and comes back decoded from the event the
+Router emitted. Nothing delivers it to an EVM chain yet: the result is the message, and the EVM side is yours.
+
+```ts
+const svm = await startSvmLocal();                                   // or { ccipVersion: "1.6" }
+const sender = Keypair.generate();
+// The sender pays the CCIP fee in SOL, so fund it first (or send from svm.payer); an unfunded sender fails.
+await svm.connection.confirmTransaction(await svm.connection.requestAirdrop(sender.publicKey, 10e9), "confirmed");
+
+const sent = await svm.send({ sender, receiver: "0x2222222222222222222222222222222222222222", data: Buffer.from("hi"), gasLimit: 250_000n });
+// sent.messageId, sent.sequenceNumber, sent.receiver, sent.data, sent.gasLimit, sent.sender (32 bytes), sent.signature ...
+
+const token = await svm.createBurnMintToken();
+await svm.linkToken(token, { evmToken: "0x1111111111111111111111111111111111111111" });
+await svm.mintTokens(token.mint, sender.publicKey, 5_000_000_000n);  // balance and supply, in mint decimals
+const withToken = await svm.send({ sender, receiver, token: { mint: token.mint, amount: 1_500_000_000n } });
+// withToken.token: { mint, sourcePool, destToken, amount, extraData } ; the pool burned the amount
+
+const [found] = await svm.sentMessages({ signature: sent.signature });                  // one transaction
+const newer = await svm.sentMessages({ afterSignature: sent.signature });               // Router transactions after it, oldest first
+const all = await svm.sentMessages();                                                    // everything since start
+```
+
+- `send({ sender, receiver, data?, gasLimit?, token? })`: `receiver` is a `0x` EVM address, `gasLimit` defaults to
+  200,000 and `data` to empty. One token at most, taken from the sender's associated token account: use `mintTokens`
+  to fund it. The mint must be linked with `linkToken` (the EVM token is the message's destination token), or `send`
+  throws. A transaction Solana rejects (too few tokens, a gas limit above the lane's 3,000,000) throws with the reason.
+- `mintTokens(mint, owner, amount)` adds to the owner's associated token account (created if needed) and to the
+  mint's supply, which a burn needs; it returns the account. `createBurnMintToken` makes a mint with zero supply.
+- The message follows the lane version. 1.6: `sequenceNumber` and `nonce` increase with every message and `gasLimit`
+  comes from the `GenericExtraArgsV2` bytes. 2.0: `sequenceNumber` is the `message_number`, `nonce` is 0n, `encodedMessage`
+  is the `MessageV1` wire format and `keccak256(encodedMessage) == messageId`. `finality` is `"0x00000000"`.
+- Token amounts are in the mint's decimals. `extraData` is `abi.encode(uint8 mintDecimals)`: the EVM pool converts the
+  amount to its own decimals, neither Solana lane does.
+- `data` is at most 600 bytes: a send is one Solana transaction (1,232 bytes).
+- What the EVM side lacks is stood in for. On 2.0 the Router needs a destination OffRamp address, which is
+  `PLACEHOLDER_OFFRAMP_2_0` (`0x0303...03`, exported); and the executor is `NO_EXECUTION_EXECUTOR` (the `NO_EXECUTION`
+  sentinel `0xeba517d2` + 28 zero bytes), so the real Executor program is not initialised and no executor fee is
+  charged. The one committee verifier is the CommitteeVerifier that also checks inbound messages.
+
+Real: the Router, FeeQuoter, RMN Remote (curse check and event authority) and, for a token, the BurnMint pool, the
+Router's token admin registry, the SPL `Approve` of the Router's fee billing signer and the burn; the lookup table
+and account lists of the real transactions; the event the Router emits. Simulated: the prices (SOL $150, on 1.6 LINK $15, EVM
+gas 30 gwei at ETH $3,000, set by the harness, so fees are plausible but not live), the FeeQuoter destination limits,
+the EVM destination (one chain, the Sepolia selector, 20-byte addresses), the LINK mint (a stand-in with no supply or
+holders; fees are paid in SOL; on 2.0 only the Router's config names it), and delivery to the EVM chain.
+
 ## Timing
 
 Measured on a MacBook (Apple silicon), warm cache unless noted; ranges over several runs.
@@ -182,7 +232,8 @@ Measured on a MacBook (Apple silicon), warm cache unless noted; ranges over seve
 | Step | CCIP 2.0 | CCIP 1.6 |
 | --- | --- | --- |
 | First run, cold program cache: `startSvmLocal()` (includes the download) | 668–1163 ms | not measured |
-| `startSvmLocal()` | 320–401 ms | 161–182 ms |
+| `startSvmLocal()` (includes the send setup, about 100–260 ms) | 320–750 ms | 160–480 ms |
+| One `send()` of data, or of a token (`SendFromSolana.test.ts`) | 25–45 ms, 40–50 ms | 22–30 ms, 30–35 ms |
 | One `deliver()` (receiver-only test, first call) | 39–51 ms | 33–41 ms |
 | Journey 2, from `send` to result | 56–65 ms | 52–56 ms |
 | `MessageToSolana.test.ts`, whole file | 836–1096 ms | 1844 ms |
@@ -215,11 +266,13 @@ Real:
 Simulated:
 
 - On 2.0 the committee is local: `deliver()` signs the message with keys it generated and the CommitteeVerifier trusts
-  them (threshold 1 of 8). There is no commit, no finality wait and no executor or offchain network.
+  them (threshold 1 of 8). There is no commit, no finality wait and no executor or offchain network. (A send uses the
+  `NO_EXECUTION` executor; see "Sending from Solana".)
 - On 1.6 the commit and execution DONs are local: 4 deterministic signer keys with F = 1 (2 signatures per commit), the
-  payer as the only transmitter, no RMN signatures and no price updates (the FeeQuoter is deployed but not initialised).
+  payer as the only transmitter and no RMN signatures. Only the send setup initialises the FeeQuoter and sets prices.
 - There is one EVM source chain (selector 16015286601757825753) and one Solana chain (devnet selector).
-- Fees are the router's `setFee` value on the EVM side, with no Solana-side pricing.
+- Fees are the router's `setFee` value on the EVM side, with no Solana-side pricing; sends from Solana are billed by the
+  real FeeQuoter at local prices (see "Sending from Solana").
 - Tokens: the Solana side of a transfer is real (see "Tokens"); the EVM side is the router pulling the token and
   emitting the event (see "Tokens from Solidity"), with no EVM pool, so nothing is burned on the EVM side. There is no
   rate limit on the pool and no pool-side attestation.

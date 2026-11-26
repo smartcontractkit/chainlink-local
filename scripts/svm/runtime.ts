@@ -72,7 +72,10 @@ export class SvmRuntime {
     this.surfnet = surfnet;
     this.rpcUrl = surfnet.rpcUrl;
     this.wsUrl = surfnet.wsUrl;
-    this.connection = new Connection(this.rpcUrl, "confirmed");
+    // Pass the real WebSocket endpoint: web3.js otherwise guesses the HTTP port + 1, which is only right when the
+    // free ports happen to be consecutive (usually on macOS, not on Linux). With a wrong guess, subscriptions such as
+    // `connection.confirmTransaction` never connect, and the client keeps reconnecting forever.
+    this.connection = new Connection(this.rpcUrl, { commitment: "confirmed", wsEndpoint: this.wsUrl });
     this.payer = Keypair.fromSecretKey(surfnet.payerSecretKey);
   }
 
@@ -83,6 +86,9 @@ export class SvmRuntime {
 
   /** Frees the Surfnet's ports. Safe to call more than once. */
   stop(): void {
+    // Close the connection's WebSocket first (web3.js keeps it private). A normal close (code 1000) stops its
+    // reconnect loop, so a subscription left open cannot keep the process alive against the stopped Surfnet.
+    (this.connection as unknown as { _rpcWebSocket?: { close(): void } })._rpcWebSocket?.close();
     this.surfnet?.stop();
     this.surfnet = undefined;
   }
